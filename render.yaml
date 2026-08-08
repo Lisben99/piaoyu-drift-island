@@ -1,0 +1,35 @@
+# Render Blueprint - Drift Island Backend
+# https://render.com/docs/blueprint-spec
+# 
+# Usage: Push this file to your GitHub repo, then go to
+# https://dashboard.render.com/select-repo?type=blueprint
+# and select your repository. Render will auto-create all services.
+
+databases:
+  - name: drift-island-db
+    databaseName: drift_island
+    plan: free
+    ipAllowList: []
+
+services:
+  - type: web
+    name: drift-island-api
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node src/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: drift-island-db
+        property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SMS_PROVIDER
+        value: dev
+      - key: PAYMENT_PROVIDER
+        value: dev
+      - key: MODERATION_PROVIDER
+        value: local
+    autoDeploy: true

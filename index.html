@@ -1,0 +1,1859 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f7f5ef">
+<title>漂流大厅 · DRIFT ISLAND</title>
+<script src="config.js"></script>
+<style>
+/* ===== Reset ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#e8e6df;color:#172b2d;min-height:100vh;display:flex;justify-content:center}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,textarea{font-family:inherit;-webkit-appearance:none;appearance:none;outline:none;resize:none}
+input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height:16px;accent-color:#1f7a74;flex-shrink:0;cursor:pointer}
+
+/* ===== Phone Frame ===== */
+#app{width:100%;max-width:430px;min-height:100vh;background:#f7f5ef;position:relative;overflow:hidden;box-shadow:0 0 60px rgba(0,0,0,.08);display:flex;flex-direction:column}
+
+/* ===== Status Bar ===== */
+.status-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 22px 4px;font-size:13px;font-weight:600;color:#172b2d;background:inherit;user-select:none;flex-shrink:0}
+
+/* ===== Nav Bar ===== */
+.nav-bar{display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 16px;position:relative;flex-shrink:0}
+.nav-bar__back{display:flex;align-items:center;gap:2px;color:#172b2d;font-size:16px;font-weight:500}
+.nav-bar__title{position:absolute;left:50%;transform:translateX(-50%);font-size:16px;font-weight:600;color:#172b2d;white-space:nowrap}
+.nav-bar__right{display:flex;align-items:center;gap:8px}
+.nav-bar__spacer{width:60px}
+
+/* ===== Pages ===== */
+.page{display:none;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.page.active{display:flex;flex-direction:column;animation:pageIn .3s ease}
+@keyframes pageIn{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
+
+/* ===== Toast ===== */
+#toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.9);background:rgba(0,0,0,.72);color:#fff;padding:12px 24px;border-radius:14px;font-size:14px;font-weight:500;z-index:9999;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;max-width:280px;text-align:center;line-height:1.5}
+#toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+/* ===== Modal ===== */
+#modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;display:none;align-items:center;justify-content:center}
+#modal-overlay.show{display:flex}
+.modal-card{width:300px;background:#fff;border-radius:16px;overflow:hidden;animation:modalIn .25s ease}
+@keyframes modalIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+.modal-card__title{padding:24px 24px 8px;text-align:center;font-size:17px;font-weight:700}
+.modal-card__body{padding:0 24px 20px;text-align:center;font-size:14px;color:#657476;line-height:1.6}
+.modal-card__actions{display:flex;border-top:1px solid #e6e4dc}
+.modal-card__btn{flex:1;padding:14px 0;font-size:16px;font-weight:600;text-align:center}
+.modal-card__btn--cancel{color:#718082;border-right:1px solid #e6e4dc}
+.modal-card__btn--confirm{color:#ef7b62}
+.modal-card__btn--danger{color:#e74c3c}
+
+/* ===== Tab Bar ===== */
+.tab-bar{display:flex;height:56px;background:#fff;border-top:1px solid #e6e4dc;flex-shrink:0}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#98a2a0;font-size:10px;font-weight:600}
+.tab-item.active{color:#1f7a74}
+.tab-item svg{width:24px;height:24px}
+
+/* ===== Shared ===== */
+.eyebrow{color:#1f7a74;font-size:10px;font-weight:700;letter-spacing:2.5px}
+.muted{color:#718082}
+.brand-lockup{display:flex;align-items:center;gap:11px}
+.brand-mark{display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:15px;background:#1f7a74;box-shadow:0 10px 20px rgba(31,122,116,.22)}
+.brand-wave{width:24px;height:9px;border-top:3px solid #fff;border-bottom:3px solid rgba(255,255,255,.7);border-radius:50%;transform:rotate(-8deg)}
+.brand-name{display:block;font-size:18px;font-weight:700;letter-spacing:4px}
+.brand-caption{display:block;margin-top:2px;color:#718082;font-size:9px;letter-spacing:2px}
+
+/* ===== Buttons ===== */
+.primary-button{width:100%;min-height:48px;border-radius:14px;background:#1f7a74;box-shadow:0 8px 16px rgba(31,122,116,.15);color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s}
+.primary-button:active{opacity:.88}
+.primary-button:disabled{opacity:.4;box-shadow:none}
+.primary-button .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.text-button{color:#1f7a74;font-size:12px;font-weight:700;padding:6px}
+.ghost-button{padding:8px 18px;border-radius:10px;border:1.5px solid #1f7a74;color:#1f7a74;font-size:13px;font-weight:600}
+.coral-button{background:#ef7b62;color:#fff;padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600}
+
+/* ===== Inputs ===== */
+.field-label{display:block;margin-bottom:7px;font-size:12px;font-weight:600;color:#718082}
+.input-wrap{display:flex;align-items:center;height:48px;padding:0 14px;background:#fff;border:1px solid #e6e4dc;border-radius:12px}
+.input-wrap:focus-within{border-color:#1f7a74}
+.prefix{margin-right:11px;padding-right:11px;border-right:1px solid #e6e4dc;font-size:14px;font-weight:600}
+.plain-input{flex:1;min-width:0;color:#172b2d;font-size:15px;border:none;background:transparent}
+.plain-input::placeholder{color:#b0b8b7}
+
+/* ===== Cards ===== */
+.card{background:#fff;border-radius:16px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,.04)}
+
+/* ===== Login Page ===== */
+.auth-page{padding:28px 22px 22px;min-height:100vh}
+.auth-art{position:relative;height:165px;margin:16px -4px 7px}
+.form-stack{display:flex;flex-direction:column;gap:15px}
+.legal-list{display:flex;flex-direction:column;gap:8px}
+.legal{display:flex;align-items:center;gap:8px;color:#718082;font-size:12px;cursor:pointer}
+.legal span{flex:1}
+.legal a{color:#1f7a74;font-weight:600;text-decoration:none}
+.auth-note{display:block;color:#98a2a0;font-size:10px;text-align:center}
+.code-input .plain-input{text-align:center;font-size:18px;font-weight:700;letter-spacing:9px}
+.code-actions{display:flex;align-items:center;justify-content:space-between;min-height:29px}
+.demo-code{color:#ef7b62;font-size:12px;font-weight:700}
+
+/* ===== Role Select ===== */
+.role-page{padding:32px 22px 26px;min-height:100vh}
+.role-header{margin:36px auto 23px;text-align:center}
+.role-header .title{display:block;font-size:26px;font-weight:700}
+.role-header .description{display:block;max-width:280px;margin:9px auto 0;color:#718082;font-size:13px;line-height:1.7}
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.role-card{position:relative;min-height:175px;border-radius:18px;border:2px solid #e6e4dc;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;transition:all .2s}
+.role-card.selected{border-color:#1f7a74;background:rgba(31,122,116,.04)}
+.role-portrait{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:700}
+.role-portrait--male{background:rgba(31,122,116,.12);color:#1f7a74}
+.role-portrait--female{background:rgba(239,123,98,.12);color:#ef7b62}
+.role-title{font-size:16px;font-weight:700}
+.role-sub{font-size:11px;color:#98a2a0}
+.role-check{position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:50%;background:#1f7a74;color:#fff;display:none;align-items:center;justify-content:center;font-size:13px}
+.role-card.selected .role-check{display:flex}
+.role-warn{margin-top:16px;padding:10px 14px;background:rgba(223,169,72,.12);border-radius:10px;color:#8a6d2f;font-size:12px;text-align:center}
+
+/* ===== Home Page ===== */
+.home-content{padding:0 16px 16px;flex:1}
+.home-top{display:flex;align-items:center;gap:12px;padding:16px 0}
+.home-avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;flex-shrink:0}
+.home-greeting{flex:1}
+.home-greeting .name{font-size:16px;font-weight:700}
+.home-greeting .sub{font-size:12px;color:#718082}
+.home-coin-pill{display:flex;align-items:center;gap:5px;padding:6px 12px;background:rgba(223,169,72,.12);border-radius:20px}
+.home-coin-pill .coin-icon{width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#dfa948,#e8c87a);display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:700}
+.home-coin-pill .amount{font-size:14px;font-weight:700;color:#8a6d2f}
+.hero-card{position:relative;border-radius:20px;padding:28px 22px;background:linear-gradient(135deg,#1f7a74,#2a9d98);color:#fff;overflow:hidden;margin-bottom:12px}
+.hero-card::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;border:2px solid rgba(255,255,255,.1)}
+.hero-card::after{content:'';position:absolute;bottom:-40px;right:-10px;width:80px;height:80px;border-radius:50%;border:2px solid rgba(255,255,255,.08)}
+.hero-card .hero-title{font-size:20px;font-weight:700;position:relative;z-index:1}
+.hero-card .hero-desc{font-size:13px;opacity:.85;margin-top:6px;position:relative;z-index:1}
+.hero-card .hero-btn{margin-top:16px;display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:rgba(255,255,255,.2);border-radius:20px;font-size:13px;font-weight:700;position:relative;z-index:1}
+.home-section{margin-bottom:12px}
+.home-section-title{font-size:14px;font-weight:700;margin-bottom:10px;padding:0 2px}
+.checkin-card{display:flex;align-items:center;gap:12px}
+.checkin-days{display:flex;gap:6px;flex:1;justify-content:center}
+.checkin-day{display:flex;flex-direction:column;align-items:center;gap:4px}
+.checkin-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:1.5px solid #e6e4dc;color:#98a2a0}
+.checkin-dot.done{background:#1f7a74;color:#fff;border-color:#1f7a74}
+.checkin-dot.today{border-color:#dfa948;color:#dfa948}
+.checkin-label{font-size:9px;color:#98a2a0}
+
+/* ===== Lobby ===== */
+.lobby-content{flex:1;padding:0 16px 16px}
+.lobby-top{display:flex;align-items:center;justify-content:space-between;padding:12px 0}
+.lobby-top h2{font-size:18px;font-weight:700}
+.lobby-coin{display:flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(223,169,72,.12);border-radius:16px;font-size:12px;font-weight:700;color:#8a6d2f}
+.lobby-tabs{display:flex;gap:0;margin-bottom:12px;background:rgba(0,0,0,.04);border-radius:10px;padding:3px}
+.lobby-tab{flex:1;padding:8px;text-align:center;font-size:13px;font-weight:600;color:#718082;border-radius:8px;transition:all .2s}
+.lobby-tab.active{background:#fff;color:#1f7a74;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.bottle-list{display:flex;flex-direction:column;gap:10px}
+.bottle-card{background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.03)}
+.bottle-card__head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.bottle-card__avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0}
+.bottle-card__name{font-size:14px;font-weight:700}
+.bottle-card__role{font-size:10px;color:#718082}
+.bottle-card__time{margin-left:auto;font-size:11px;color:#98a2a0}
+.bottle-card__content{font-size:14px;line-height:1.6;color:#172b2d;margin-bottom:10px}
+.bottle-card__footer{display:flex;align-items:center;justify-content:space-between}
+.bottle-card__status{font-size:11px;color:#98a2a0}
+.bottle-card__actions{display:flex;gap:8px}
+.bottle-card__chat-btn{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600}
+.chat-btn-primary{background:#1f7a74;color:#fff}
+.chat-btn-active{background:rgba(31,122,116,.1);color:#1f7a74}
+.chat-btn-expired{background:rgba(223,169,72,.12);color:#8a6d2f}
+.chat-btn-permanent{background:rgba(31,122,116,.1);color:#1f7a74}
+.chat-btn-self{background:rgba(231,76,60,.08);color:#e74c3c}
+.bottle-card__report{padding:4px 8px;font-size:11px;color:#98a2a0}
+
+/* ===== Empty State ===== */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center}
+.empty-state__icon{width:80px;height:80px;border-radius:50%;background:rgba(31,122,116,.08);display:flex;align-items:center;justify-content:center;font-size:36px;margin-bottom:16px}
+.empty-state__title{font-size:16px;font-weight:700;color:#718082;margin-bottom:6px}
+.empty-state__desc{font-size:13px;color:#98a2a0;max-width:220px;line-height:1.6}
+
+/* ===== Publish Page ===== */
+.publish-content{flex:1;padding:16px}
+.publish-editor{background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.03)}
+.publish-textarea{width:100%;min-height:160px;font-size:15px;line-height:1.7;border:none;color:#172b2d}
+.publish-textarea::placeholder{color:#b0b8b7}
+.publish-counter{text-align:right;font-size:12px;color:#98a2a0;padding-top:8px;border-top:1px solid #f0eee8}
+.publish-info{background:rgba(31,122,116,.06);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+.publish-info__row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
+.publish-info__row .label{color:#718082}
+.publish-info__row .value{font-weight:700}
+.publish-warn{font-size:12px;color:#98a2a0;text-align:center;margin-bottom:14px;line-height:1.6}
+
+/* ===== Chat Page ===== */
+.chat-page{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.chat-header{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid #e6e4dc;flex-shrink:0}
+.chat-header__avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff}
+.chat-header__info{flex:1}
+.chat-header__name{font-size:15px;font-weight:700}
+.chat-header__status{font-size:11px}
+.chat-header__status.timer{color:#dfa948}
+.chat-header__status.expired{color:#e74c3c}
+.chat-header__status.permanent{color:#1f7a74}
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch}
+.msg-bubble{max-width:75%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5;word-break:break-word}
+.msg-bubble--mine{align-self:flex-end;background:#1f7a74;color:#fff;border-bottom-right-radius:4px}
+.msg-bubble--other{align-self:flex-start;background:#fff;color:#172b2d;border-bottom-left-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.msg-time{font-size:10px;color:#98a2a0;text-align:center;padding:4px 0}
+.chat-expired-banner{padding:16px;text-align:center;background:rgba(223,169,72,.08);border-top:1px solid rgba(223,169,72,.2);flex-shrink:0}
+.chat-expired-banner p{font-size:13px;color:#8a6d2f;line-height:1.5;margin-bottom:10px}
+.chat-permanent-banner{padding:12px;text-align:center;background:rgba(31,122,116,.08);flex-shrink:0}
+.chat-permanent-banner p{font-size:13px;color:#1f7a74;font-weight:600}
+.chat-input-bar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid #e6e4dc;background:#fff;flex-shrink:0}
+.chat-input-bar input{flex:1;height:38px;padding:0 14px;background:#f7f5ef;border-radius:19px;font-size:14px;border:1px solid #e6e4dc}
+.chat-send-btn{width:38px;height:38px;border-radius:50%;background:#1f7a74;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.chat-send-btn:disabled{opacity:.4}
+.chat-pending-banner{padding:14px;text-align:center;background:rgba(31,122,116,.06);flex-shrink:0}
+.chat-pending-banner p{font-size:13px;color:#1f7a74;line-height:1.5}
+.chat-invite-actions{display:flex;gap:10px;padding:14px;background:#fff;border-top:1px solid #e6e4dc;flex-shrink:0}
+.chat-invite-actions button{flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:600}
+
+/* ===== Messages List ===== */
+.messages-content{flex:1;padding:0 16px 16px;overflow-y:auto}
+.message-item{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid #f0eee8}
+.message-item__avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0}
+.message-item__body{flex:1;min-width:0}
+.message-item__top{display:flex;align-items:center;justify-content:space-between}
+.message-item__name{font-size:15px;font-weight:600}
+.message-item__time{font-size:11px;color:#98a2a0}
+.message-item__preview{font-size:13px;color:#718082;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.message-item__badge{display:flex;align-items:center;gap:6px}
+.message-item__unread{min-width:18px;height:18px;border-radius:9px;background:#ef7b62;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
+.message-status-tag{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600}
+.tag-active{background:rgba(31,122,116,.1);color:#1f7a74}
+.tag-expired{background:rgba(231,76,60,.08);color:#e74c3c}
+.tag-permanent{background:rgba(31,122,116,.1);color:#1f7a74}
+.tag-pending{background:rgba(223,169,72,.12);color:#8a6d2f}
+
+/* ===== Coin Center ===== */
+.coin-content{flex:1;padding:0 16px 16px;overflow-y:auto}
+.coin-balance-card{background:linear-gradient(135deg,#1f7a74,#2a9d98);border-radius:18px;padding:24px;color:#fff;text-align:center;margin-bottom:14px}
+.coin-balance-card .balance{font-size:40px;font-weight:800}
+.coin-balance-card .label{font-size:13px;opacity:.8;margin-bottom:4px}
+.coin-balance-card .recharge-btn{margin-top:16px;display:inline-flex;padding:10px 28px;background:rgba(255,255,255,.2);border-radius:20px;font-size:14px;font-weight:700}
+.coin-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+.coin-stat{background:#fff;border-radius:12px;padding:12px;text-align:center}
+.coin-stat .num{font-size:18px;font-weight:700;color:#1f7a74}
+.coin-stat .lbl{font-size:10px;color:#718082;margin-top:2px}
+.coin-section-title{font-size:14px;font-weight:700;margin-bottom:10px}
+.checkin-progress{display:flex;justify-content:space-between;margin-bottom:14px}
+.checkin-progress-day{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1}
+.ledger-item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f0eee8}
+.ledger-item__info .type{font-size:14px;font-weight:600}
+.ledger-item__info .time{font-size:11px;color:#98a2a0;margin-top:2px}
+.ledger-item__amount{font-size:15px;font-weight:700}
+.ledger-item__amount.plus{color:#1f7a74}
+.ledger-item__amount.minus{color:#e74c3c}
+
+/* ===== Recharge ===== */
+.recharge-content{flex:1;padding:16px;overflow-y:auto}
+.recharge-balance{text-align:center;padding:20px 0}
+.recharge-balance .amount{font-size:32px;font-weight:800;color:#1f7a74}
+.recharge-balance .label{font-size:12px;color:#718082}
+.recharge-packages{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+.recharge-pkg{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:#fff;border-radius:14px;border:2px solid #e6e4dc;transition:all .2s}
+.recharge-pkg.selected{border-color:#1f7a74;background:rgba(31,122,116,.03)}
+.recharge-pkg__coins{font-size:18px;font-weight:700}
+.recharge-pkg__coins small{font-size:12px;color:#718082;font-weight:400}
+.recharge-pkg__price{font-size:16px;font-weight:700;color:#ef7b62}
+.recharge-pkg.selected::after{content:'✓';color:#1f7a74;font-size:18px;font-weight:700}
+
+/* ===== Profile Page ===== */
+.profile-content{flex:1;padding:16px;overflow-y:auto}
+.profile-header{display:flex;flex-direction:column;align-items:center;padding:20px 0}
+.profile-avatar{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:#fff;margin-bottom:12px}
+.profile-name{font-size:20px;font-weight:700}
+.profile-role{font-size:12px;color:#718082;margin-top:4px}
+.profile-bio{font-size:13px;color:#657476;margin-top:8px;text-align:center;max-width:280px;line-height:1.6}
+.profile-meta{font-size:11px;color:#98a2a0;margin-top:8px}
+.profile-actions{display:flex;gap:10px;margin-top:20px}
+.profile-action-btn{flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:600;text-align:center}
+
+/* ===== Settings ===== */
+.settings-content{flex:1;padding:0 16px 16px;overflow-y:auto}
+.settings-header{display:flex;flex-direction:column;align-items:center;padding:24px 0 20px}
+.settings-avatar{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#fff;margin-bottom:10px}
+.settings-name{font-size:18px;font-weight:700}
+.settings-sub{font-size:12px;color:#718082;margin-top:4px}
+.settings-group{margin-bottom:14px}
+.settings-group-title{font-size:12px;color:#98a2a0;font-weight:600;padding:0 4px 8px}
+.settings-item{display:flex;align-items:center;gap:12px;padding:14px 16px;background:#fff;border-radius:12px;margin-bottom:1px}
+.settings-item:first-child{border-radius:12px 12px 0 0}
+.settings-item:last-child{border-radius:0 0 12px 12px}
+.settings-item:only-child{border-radius:12px}
+.settings-item__icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.settings-item__label{flex:1;font-size:14px;font-weight:500}
+.settings-item__value{font-size:13px;color:#98a2a0}
+.settings-item__arrow{color:#c8d0cf;font-size:14px}
+
+/* ===== Report ===== */
+.report-content{flex:1;padding:16px;overflow-y:auto}
+.report-reasons{display:flex;flex-direction:column;gap:1px}
+.report-reason{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#fff;font-size:14px;font-weight:500}
+.report-reason:first-child{border-radius:12px 12px 0 0}
+.report-reason:last-child{border-radius:0 0 12px 12px}
+.report-reason.selected{color:#1f7a74;font-weight:700}
+.report-reason.selected::after{content:'✓';color:#1f7a74}
+.report-desc{margin-top:14px}
+.report-desc textarea{width:100%;min-height:80px;padding:14px;background:#fff;border:1px solid #e6e4dc;border-radius:12px;font-size:14px;line-height:1.5}
+
+/* ===== Invite ===== */
+.invite-content{flex:1;padding:16px;overflow-y:auto}
+.invite-card{background:linear-gradient(135deg,#1f7a74,#2a9d98);border-radius:18px;padding:24px;color:#fff;text-align:center;margin-bottom:16px}
+.invite-card .title{font-size:18px;font-weight:700;margin-bottom:8px}
+.invite-card .desc{font-size:13px;opacity:.85;line-height:1.6}
+.invite-code-box{margin-top:16px;padding:12px 20px;background:rgba(255,255,255,.15);border-radius:12px;display:flex;align-items:center;justify-content:space-between}
+.invite-code-box .code{font-size:20px;font-weight:800;letter-spacing:2px}
+.invite-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px}
+.invite-stat{background:#fff;border-radius:12px;padding:14px;text-align:center}
+.invite-stat .num{font-size:20px;font-weight:700;color:#1f7a74}
+.invite-stat .lbl{font-size:10px;color:#718082;margin-top:2px}
+
+/* ===== Blacklist ===== */
+.blacklist-content{flex:1;padding:0 16px 16px;overflow-y:auto}
+.blacklist-item{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid #f0eee8}
+.blacklist-item__avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff}
+.blacklist-item__name{flex:1;font-size:14px;font-weight:600}
+
+/* ===== Edit Profile ===== */
+.edit-content{flex:1;padding:16px;overflow-y:auto}
+.edit-avatar-section{display:flex;flex-direction:column;align-items:center;padding:20px 0}
+.edit-avatar{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:#fff;margin-bottom:8px}
+.edit-avatar-change{font-size:13px;color:#1f7a74;font-weight:600}
+.edit-field{margin-bottom:16px}
+.edit-field label{display:block;font-size:12px;color:#718082;font-weight:600;margin-bottom:6px}
+.edit-field input,.edit-field textarea{width:100%;padding:12px 14px;background:#fff;border:1px solid #e6e4dc;border-radius:12px;font-size:14px}
+.edit-field textarea{min-height:60px;line-height:1.5}
+.edit-field .hint{font-size:11px;color:#98a2a0;margin-top:4px}
+
+/* ===== Account Delete ===== */
+.delete-content{flex:1;padding:16px;overflow-y:auto}
+.delete-warn{background:rgba(231,76,60,.06);border-radius:12px;padding:16px;margin-bottom:16px}
+.delete-warn h3{font-size:14px;font-weight:700;color:#e74c3c;margin-bottom:10px}
+.delete-warn ul{list-style:none;padding:0}
+.delete-warn li{font-size:13px;color:#718082;line-height:2;padding-left:16px;position:relative}
+.delete-warn li::before{content:'•';position:absolute;left:0;color:#e74c3c}
+.delete-confirm-box{margin:16px 0}
+.delete-confirm-box label{display:flex;align-items:center;gap:8px;font-size:14px;color:#718082}
+
+/* ===== Spinner (loading) ===== */
+.loading-spinner{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px}
+.loading-spinner .dots{display:flex;gap:6px}
+.loading-spinner .dots span{width:8px;height:8px;border-radius:50%;background:#1f7a74;animation:bounce 1.4s infinite ease-in-out both}
+.loading-spinner .dots span:nth-child(1){animation-delay:-.32s}
+.loading-spinner .dots span:nth-child(2){animation-delay:-.16s}
+@keyframes bounce{0%,80%,100%{transform:scale(0)}40%{transform:scale(1)}}
+
+/* ===== Utility ===== */
+.hidden{display:none!important}
+.text-center{text-align:center}
+.mt-12{margin-top:12px}
+.mt-16{margin-top:16px}
+.mb-12{margin-bottom:12px}
+.pb-20{padding-bottom:20px}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Status Bar -->
+  <div class="status-bar" id="statusBar">
+    <span id="statusTime">00:00</span>
+    <div class="status-bar__icons">
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="0.5"/><rect x="4" y="5" width="3" height="6" rx="0.5"/><rect x="8" y="2" width="3" height="9" rx="0.5"/><rect x="12" y="0" width="3" height="11" rx="0.5"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor"><path d="M8 2.5c2.1 0 4 .8 5.5 2.1l1.4-1.6C13.1 1.3 10.6.4 8 .4S2.9 1.3 1.1 3L2.5 4.6C4 3.3 5.9 2.5 8 2.5zm0 4c1 0 1.9.4 2.6 1l1.4-1.6C11 4.8 9.6 4.3 8 4.3s-3 .5-4 1.6L5.4 7.5c.7-.6 1.6-1 2.6-1zm0 4l2.5-2.8C9.7 7.2 8.9 6.9 8 6.9s-1.7.3-2.5.8L8 10.5z"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x="1" y="1" width="20" height="9" rx="2.5" stroke="currentColor" stroke-opacity=".4" stroke-width="1"/><rect x="2.5" y="2.5" width="17" height="6" rx="1" fill="currentColor"/><rect x="22" y="3.5" width="1.5" height="4" rx="0.5" fill="currentColor" fill-opacity=".4"/></svg>
+    </div>
+  </div>
+
+  <!-- ===== PAGE: Login ===== -->
+  <div class="page" id="page-login">
+    <div class="auth-page">
+      <div class="brand-lockup" style="margin-bottom:4px">
+        <div class="brand-mark"><div class="brand-wave"></div></div>
+        <div><span class="brand-name">漂流大厅</span><span class="brand-caption">DRIFT ISLAND</span></div>
+      </div>
+      <div class="auth-art">
+        <svg viewBox="0 0 360 165" style="width:100%;height:100%" preserveAspectRatio="xMidYMid slice">
+          <circle cx="280" cy="45" r="28" fill="#dfa948" opacity=".75"/>
+          <path d="M0 140 Q60 120 120 138 T240 135 T360 138 L360 165 L0 165 Z" fill="#1f7a74" opacity=".18"/>
+          <path d="M0 148 Q70 132 140 146 T280 144 T360 147 L360 165 L0 165 Z" fill="#1f7a74" opacity=".28"/>
+          <ellipse cx="180" cy="148" rx="40" ry="9" fill="#1f7a74" opacity=".15"/>
+          <g transform="translate(160,95) rotate(-12)">
+            <path d="M0 0 L40 0 L40 28 Q40 35 33 35 L7 35 Q0 35 0 28 Z" fill="rgba(255,255,255,.75)" stroke="#1f7a74" stroke-width="1.5"/>
+            <path d="M0 0 L40 0 L36 7 L4 7 Z" fill="#1f7a74" opacity=".2"/>
+            <rect x="15" y="8" width="10" height="3" rx="1" fill="#1f7a74" opacity=".3"/>
+          </g>
+        </svg>
+      </div>
+      <div id="auth-phone-step" class="form-stack">
+        <div>
+          <label class="field-label">手机号码</label>
+          <div class="input-wrap">
+            <span class="prefix">+86</span>
+            <input class="plain-input" type="tel" maxlength="11" placeholder="请输入 11 位手机号" id="phoneInput" />
+          </div>
+        </div>
+        <div class="legal-list">
+          <label class="legal"><input type="checkbox" id="cb-agreement" /><span>我已阅读并同意<a href="javascript:void(0)" onclick="showAgreement('user')">《用户协议》</a></span></label>
+          <label class="legal"><input type="checkbox" id="cb-privacy" /><span>我已阅读并同意<a href="javascript:void(0)" onclick="showAgreement('privacy')">《隐私政策》</a></span></label>
+          <label class="legal"><input type="checkbox" id="cb-adult" /><span>我确认已年满 18 周岁</span></label>
+        </div>
+        <button class="primary-button" id="sendCodeBtn">获取验证码</button>
+        <span class="auth-note">未注册的手机号验证后将自动创建账号</span>
+      </div>
+      <div id="auth-code-step" class="form-stack hidden">
+        <div>
+          <label class="field-label" id="codeSentLabel">短信验证码已发送至</label>
+          <div class="input-wrap code-input">
+            <input class="plain-input" type="tel" maxlength="6" placeholder="••••••" id="codeInput" />
+          </div>
+        </div>
+        <div class="code-actions">
+          <span class="demo-code" id="devCodeHint"></span>
+          <button class="text-button" id="resendBtn">重新发送</button>
+        </div>
+        <button class="primary-button" id="loginBtn">验证并登录</button>
+        <button class="text-button" id="changePhoneBtn" style="text-align:center">更换手机号</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PAGE: Role Select ===== -->
+  <div class="page" id="page-role">
+    <div class="role-page">
+      <div class="brand-lockup" style="margin-bottom:4px">
+        <div class="brand-mark"><div class="brand-wave"></div></div>
+        <div><span class="brand-name">漂流大厅</span><span class="brand-caption">DRIFT ISLAND</span></div>
+      </div>
+      <div class="role-header">
+        <span class="eyebrow">最后一步</span>
+        <span class="title">选择你的角色</span>
+        <span class="description">这会帮助陌生人更好地认识你，请根据真实情况选择。</span>
+      </div>
+      <div class="role-grid">
+        <button class="role-card" data-role="male" id="roleMale">
+          <div class="role-check">✓</div>
+          <div class="role-portrait role-portrait--male">♂</div>
+          <span class="role-title">男生</span>
+          <span class="role-sub">成为一座沉静的岛</span>
+        </button>
+        <button class="role-card" data-role="female" id="roleFemale">
+          <div class="role-check">✓</div>
+          <div class="role-portrait role-portrait--female">♀</div>
+          <span class="role-title">女生</span>
+          <span class="role-sub">成为一片温柔的海</span>
+        </button>
+      </div>
+      <div class="role-warn">角色确认后将永久绑定，不能修改</div>
+      <div style="margin-top:20px">
+        <button class="primary-button" id="roleConfirmBtn" disabled>确认选择</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PAGE: Home ===== -->
+  <div class="page" id="page-home">
+    <div class="home-content">
+      <div class="home-top">
+        <div class="home-avatar" id="homeAvatar"></div>
+        <div class="home-greeting">
+          <div class="name" id="homeName"></div>
+          <div class="sub" id="homeSub"></div>
+        </div>
+        <div class="home-coin-pill" onclick="navigate('coin-center')">
+          <div class="coin-icon">币</div>
+          <span class="amount" id="homeCoins">0</span>
+        </div>
+      </div>
+      <div class="hero-card" onclick="navigate('lobby')">
+        <div class="hero-title">漂流大厅</div>
+        <div class="hero-desc">浏览来自海岛的漂流瓶，发现有趣的灵魂</div>
+        <div class="hero-btn">进入大厅 →</div>
+      </div>
+      <div class="home-section">
+        <div class="home-section-title">连续签到</div>
+        <div class="card">
+          <div class="checkin-card">
+            <div class="checkin-days" id="checkinDays"></div>
+          </div>
+          <div style="text-align:center;margin-top:10px;font-size:12px;color:#718082" id="checkinInfo"></div>
+        </div>
+      </div>
+      <div class="home-section">
+        <div class="home-section-title">今日小岛</div>
+        <div class="card" style="display:flex;align-items:center;gap:12px">
+          <div style="width:40px;height:40px;border-radius:12px;background:rgba(31,122,116,.1);display:flex;align-items:center;justify-content:center;font-size:20px">🏝️</div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:600" id="homeDayTitle"></div>
+            <div style="font-size:12px;color:#718082" id="homeDayDesc"></div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:12px 0;text-align:center">
+        <button class="text-button" id="logoutBtn" style="color:#e74c3c">退出登录</button>
+      </div>
+    </div>
+    <div class="tab-bar" id="tabbar-home"></div>
+  </div>
+
+  <!-- ===== PAGE: Lobby ===== -->
+  <div class="page" id="page-lobby">
+    <div class="nav-bar">
+      <div class="nav-bar__back" onclick="navigateBack()">←</div>
+      <div class="nav-bar__title">漂流大厅</div>
+      <div class="lobby-coin" onclick="navigate('coin-center')">
+        <span>🪙</span><span id="lobbyCoins">0</span>
+      </div>
+    </div>
+    <div class="lobby-content">
+      <div class="lobby-tabs">
+        <button class="lobby-tab active" data-tab="all" onclick="lobbyTab('all')">全部</button>
+        <button class="lobby-tab" data-tab="male" onclick="lobbyTab('male')">男生</button>
+        <button class="lobby-tab" data-tab="female" onclick="lobbyTab('female')">女生</button>
+      </div>
+      <div id="lobbyList"></div>
+    </div>
+    <button onclick="navigate('publish')" style="position:absolute;bottom:24px;right:20px;width:56px;height:56px;border-radius:50%;background:#1f7a74;color:#fff;font-size:24px;box-shadow:0 6px 16px rgba(31,122,116,.3);display:flex;align-items:center;justify-content:center;z-index:10">✎</button>
+  </div>
+
+  <!-- ===== PAGE: Publish ===== -->
+  <div class="page" id="page-publish">
+    <div class="nav-bar">
+      <div class="nav-bar__back" onclick="navigateBack()">←</div>
+      <div class="nav-bar__title">写漂流瓶</div>
+      <div class="nav-bar__spacer"></div>
+    </div>
+    <div class="publish-content">
+      <div class="publish-editor">
+        <textarea class="publish-textarea" id="publishText" placeholder="写下你想对陌生人说的话..." maxlength="300"></textarea>
+        <div class="publish-counter"><span id="publishCount">0</span>/300</div>
+      </div>
+      <div class="publish-info">
+        <div class="publish-info__row"><span class="label">当前余额</span><span class="value" id="publishBalance">0 枚</span></div>
+        <div class="publish-info__row"><span class="label">发布费用</span><span class="value">2 枚漂流币</span></div>
+        <div class="publish-info__row"><span class="label">展示时长</span><span class="value">48 小时</span></div>
+      </div>
+      <div class="publish-warn">发布本条漂流瓶需要消耗 2 枚漂流币，内容将在大厅展示 48 小时</div>
+      <button class="primary-button" id="publishBtn">投入大海</button>
+    </div>
+  </div>
+
+  <!-- ===== PAGE: My Bottles ===== -->
+  <div class="page" id="page-mine-bottles">
+    <div class="nav-bar">
+      <div class="nav-bar__back" onclick="navigateBack()">←</div>
+      <div class="nav-bar__title">我的漂流瓶</div>
+      <div class="nav-bar__spacer"></div>
+    </div>
+    <div class="lobby-content" style="padding-top:12px">
+      <div id="mineBottlesList"></div>
+    </div>
+  </div>
+
+  <!-- ===== PAGE: Profile ===== -->
+  <div class="page" id="page-profile">
+    <div class="nav-bar">
+      <div class="nav-bar__back" onclick="navigateBack()">←</div>
+      <div class="nav-bar__title">个人资料</div>
+      <div class="nav-bar__spacer"></div>
+    </div>
+    <div class="profile-content" id="profileContent"></div>
+  </div>
+
+  <!-- ===== PAGE: Chat ===== -->
+  <div class="page" id="page-chat">
+    <div class="nav-bar" id="chatNavBar">
+      <div class="nav-bar__back" onclick="navigateBack()">←</div>
+      <div class="nav-bar__title" id="chatTitle">聊天</div>
+      <div class="nav-bar__spacer"></div>
+    </div>
+    <div class="chat-page" id="chatPage"></div>
+  </div>
+
+  <!-- ===== PAGE: Messages ===== -->
+  <div class="page" id="page-messages">
+    <div class="nav-bar">
+      <div class="nav-bar__title" style="position:static;transform:none">消息</div>
+      <div class="nav-bar__spacer"></div>
+    </div>
+    <div class="messages-content" id="messagesList"></div>
+    <div class="tab-bar" id="tabbar-messages"></div>
+  </div>
+
+  <!-- ===== PAGE: Coin Center ===== -->
+  <div class="page" id="page-coin-center">
+    <div class="nav-bar">
+      <div class="nav-bar__back" onclick="navigateBack()">←</div>
+      <div class="nav-bar__title">漂流币中心</div>
+      <div class="nav-bar__spacer"></div>
+    </div>
+    <div class="coin-content" id="coinCenterContent"></div>
+  </div>
+
+  <!-- ===== PAGE: Recharge ===== -->
+  <div class="page" id="page-recharge">
+    <div class="nav-bar">
+      <div class="nav-bar__back" onclick="navigateBack()">←</div>
+      <div class="nav-bar__title">充值漂流币</div>
+      <div class="nav-bar__spacer"></div>
+    </div>
+    <div class="recharge-content" id="rechargeContent"></div>
+  </div>
+
+  <!-- ===== PAGE: Invite ===== -->
+  <div class="page" id="page-invite">
+    <div class="nav-bar">
+      <div class="nav-bar__back" onclick="navigateBack()">←</div>
+      <div class="nav-bar__title">邀请好友</div>
+      <div class="nav-bar__spacer"></div>
+    </div>
+    <div class="invite-content" id="inviteContent"></div>
+  </div>
+
+  <!-- ===== PAGE: Blacklist ===== -->
+  <div class="page" id="page-blacklist">
+    <div class="nav-bar">
+      <div class="nav-bar__back" onclick="navigateBack()">←</div>
+      <div class="nav-bar__title">黑名单</div>
+      <div class="nav-bar__spacer"></div>
+    </div>
+    <div class="blacklist-content" id="blacklistContent"></div>
+  </div>
+
+  <!-- ===== PAGE: Report ===== -->
+  <div class="page" id="page-report">
+    <div class="nav-bar">
+      <div class="nav-bar__back" onclick="navigateBack()">←</div>
+      <div class="nav-bar__title">举报</div>
+      <div class="nav-bar__spacer"></div>
+    </div>
+    <div class="report-content" id="reportContent"></div>
+  </div>
+
+  <!-- ===== PAGE: Settings ===== -->
+  <div class="page" id="page-settings">
+    <div class="nav-bar">
+      <div class="nav-bar__title" style="position:static;transform:none">我的</div>
+      <div class="nav-bar__spacer"></div>
+    </div>
+    <div class="settings-content" id="settingsContent"></div>
+    <div class="tab-bar" id="tabbar-settings"></div>
+  </div>
+
+  <!-- ===== PAGE: Edit Profile ===== -->
+  <div class="page" id="page-edit-profile">
+    <div class="nav-bar">
+      <div class="nav-bar__back" onclick="navigateBack()">←</div>
+      <div class="nav-bar__title">编辑资料</div>
+      <div class="nav-bar__spacer"></div>
+    </div>
+    <div class="edit-content" id="editProfileContent"></div>
+  </div>
+
+  <!-- ===== PAGE: Account Delete ===== -->
+  <div class="page" id="page-account-delete">
+    <div class="nav-bar">
+      <div class="nav-bar__back" onclick="navigateBack()">←</div>
+      <div class="nav-bar__title">注销账号</div>
+      <div class="nav-bar__spacer"></div>
+    </div>
+    <div class="delete-content" id="deleteContent"></div>
+  </div>
+
+  <!-- ===== PAGE: Agreement ===== -->
+  <div class="page" id="page-agreement">
+    <div class="nav-bar">
+      <div class="nav-bar__back" onclick="navigateBack()">←</div>
+      <div class="nav-bar__title" id="agreementTitle">用户协议</div>
+      <div class="nav-bar__spacer"></div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px;line-height:1.8;font-size:14px;color:#333" id="agreementBody"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Modal -->
+<div id="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-card__title" id="modalTitle"></div>
+    <div class="modal-card__body" id="modalBody"></div>
+    <div class="modal-card__actions" id="modalActions"></div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   API CLIENT
+   ================================================================ */
+const API_BASE = window.DRIFT_API_BASE || '/api';
+const TOKEN_KEY = 'drift_island_token';
+
+function getToken() { return localStorage.getItem(TOKEN_KEY); }
+function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
+function clearToken() { localStorage.removeItem(TOKEN_KEY); }
+
+async function api(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  const token = getToken();
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  try {
+    const res = await fetch(API_BASE + path, { ...options, headers });
+    const data = await res.json();
+    if (res.status === 401) {
+      clearToken();
+      navigateTo('login', true);
+      throw new Error(data.error || '请重新登录');
+    }
+    return data;
+  } catch (e) {
+    if (e.message.includes('Failed to fetch')) {
+      showToast('网络连接失败，请检查网络');
+    }
+    throw e;
+  }
+}
+
+/* ================================================================
+   STATE
+   ================================================================ */
+let currentUser = null;
+let navStack = [];
+let currentPage = null;
+let ws = null;
+let currentChatSessionId = null;
+let lobbyFilter = 'all';
+
+/* ================================================================
+   UTILITIES
+   ================================================================ */
+function $(id) { return document.getElementById(id); }
+function showToast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timer); t._timer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+function showModal(title, body, actions) {
+  $('modalTitle').textContent = title;
+  $('modalBody').innerHTML = body;
+  const ac = $('modalActions'); ac.innerHTML = '';
+  actions.forEach(a => {
+    const btn = document.createElement('div');
+    btn.className = 'modal-card__btn ' + (a.danger ? 'modal-card__btn--danger' : a.cancel ? 'modal-card__btn--cancel' : 'modal-card__btn--confirm');
+    btn.textContent = a.text;
+    btn.onclick = () => { if (a.onClick) a.onClick(); if (!a.keepOpen) hideModal(); };
+    ac.appendChild(btn);
+  });
+  $('modal-overlay').classList.add('show');
+}
+function hideModal() { $('modal-overlay').classList.remove('show'); }
+function avatarColor(name) {
+  const colors = ['#1f7a74','#ef7b62','#dfa948','#5b8def','#9b6dd7','#3aa9a0'];
+  let h = 0; for (const c of (name || '?')) h = h * 31 + c.charCodeAt(0);
+  return colors[Math.abs(h) % colors.length];
+}
+function avatarInitial(name) { return (name || '?')[0].toUpperCase(); }
+function formatTime(ts) {
+  const d = new Date(ts); const now = new Date();
+  const diff = (now - d) / 1000;
+  if (diff < 60) return '刚刚';
+  if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
+  if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
+  if (diff < 86400 * 7) return Math.floor(diff / 86400) + '天前';
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+function formatDateTime(ts) {
+  const d = new Date(ts);
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function statusLabel(status) {
+  const m = { displaying:'展示中', expired:'已过期', deleted:'已删除', active:'限时中', permanent:'永久', pending_permanent:'等待续聊确认', blocked:'已拉黑' };
+  return m[status] || status;
+}
+function statusTagClass(status) {
+  const m = { active:'tag-active', expired:'tag-expired', permanent:'tag-permanent', pending_permanent:'tag-pending', blocked:'tag-expired' };
+  return m[status] || 'tag-active';
+}
+
+/* ================================================================
+   NAVIGATION
+   ================================================================ */
+function navigateTo(pageId, replace) {
+  const page = $('page-' + pageId);
+  if (!page) return;
+  if (currentPage && !replace) navStack.push(currentPage);
+  if (replace) navStack = [];
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  page.classList.add('active');
+  currentPage = pageId;
+  onPageEnter(pageId);
+  page.scrollTop = 0;
+}
+function navigate(pageId) { navigateTo(pageId, false); }
+function navigateBack() {
+  if (navStack.length > 0) { navigateTo(navStack.pop(), true); }
+  else { navigateTo('home', true); }
+}
+function redirectTo(pageId) { navigateTo(pageId, true); }
+function onPageEnter(pageId) {
+  if (pageId === 'login') {}
+  if (pageId === 'home') renderHome();
+  if (pageId === 'lobby') renderLobby();
+  if (pageId === 'publish') renderPublish();
+  if (pageId === 'mine-bottles') renderMineBottles();
+  if (pageId === 'messages') renderMessages();
+  if (pageId === 'coin-center') renderCoinCenter();
+  if (pageId === 'recharge') renderRecharge();
+  if (pageId === 'invite') renderInvite();
+  if (pageId === 'blacklist') renderBlacklist();
+  if (pageId === 'settings') renderSettings();
+  if (pageId === 'edit-profile') renderEditProfile();
+  if (pageId === 'account-delete') renderAccountDelete();
+}
+
+/* ================================================================
+   TAB BAR
+   ================================================================ */
+function renderTabBar(containerId, active) {
+  const tabs = [
+    { id: 'home', label: '首页', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>' },
+    { id: 'lobby', label: '大厅', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></svg>' },
+    { id: 'messages', label: '消息', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>' },
+    { id: 'settings', label: '我的', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a6 6 0 016-6h4a6 6 0 016 6v2"/></svg>' }
+  ];
+  const c = $(containerId); if (!c) return;
+  c.innerHTML = tabs.map(t => `<div class="tab-item ${active===t.id?'active':''}" onclick="navigate('${t.id}')">${t.icon}<span>${t.label}</span></div>`).join('');
+}
+
+/* ================================================================
+   LOGIN PAGE
+   ================================================================ */
+let loginPhone = '';
+let countdownTimer = null;
+
+$('sendCodeBtn').onclick = async function() {
+  const phone = $('phoneInput').value.trim();
+  if (!/^1[3-9]\d{9}$/.test(phone)) { showToast('请输入正确的手机号'); return; }
+  if (!$('cb-agreement').checked) { showToast('请先同意《用户协议》'); return; }
+  if (!$('cb-privacy').checked) { showToast('请先同意《隐私政策》'); return; }
+  if (!$('cb-adult').checked) { showToast('请确认已年满18周岁'); return; }
+  
+  this.innerHTML = '<span class="spinner"></span>'; this.disabled = true;
+  try {
+    const res = await api('/auth/sms/send', { method: 'POST', body: JSON.stringify({ phone }) });
+    if (res.success) {
+      loginPhone = phone;
+      $('auth-phone-step').classList.add('hidden');
+      $('auth-code-step').classList.remove('hidden');
+      $('codeSentLabel').textContent = `短信验证码已发送至 ${phone}`;
+      if (res.devCode) {
+        $('devCodeHint').textContent = `开发模式验证码：${res.devCode}`;
+      } else {
+        $('devCodeHint').textContent = '';
+      }
+      startCountdown();
+    } else {
+      showToast(res.error || '发送失败');
+    }
+  } catch (e) { showToast('发送失败，请重试'); }
+  this.innerHTML = '获取验证码'; this.disabled = false;
+};
+
+function startCountdown() {
+  let sec = 60;
+  const btn = $('resendBtn');
+  btn.disabled = true;
+  btn.style.opacity = '.4';
+  countdownTimer = setInterval(() => {
+    sec--;
+    btn.textContent = `${sec}s 后重发`;
+    if (sec <= 0) {
+      clearInterval(countdownTimer);
+      btn.textContent = '重新发送';
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
+  }, 1000);
+}
+
+$('resendBtn').onclick = async function() {
+  if (this.disabled) return;
+  const res = await api('/auth/sms/send', { method: 'POST', body: JSON.stringify({ phone: loginPhone }) });
+  if (res.success) {
+    showToast('验证码已重新发送');
+    if (res.devCode) $('devCodeHint').textContent = `开发模式验证码：${res.devCode}`;
+    startCountdown();
+  } else {
+    showToast(res.error || '发送失败');
+  }
+};
+
+$('loginBtn').onclick = async function() {
+  const code = $('codeInput').value.trim();
+  if (!code || code.length !== 6) { showToast('请输入6位验证码'); return; }
+  this.innerHTML = '<span class="spinner"></span>'; this.disabled = true;
+  try {
+    const res = await api('/auth/login', { method: 'POST', body: JSON.stringify({ phone: loginPhone, code }) });
+    if (res.success) {
+      setToken(res.token);
+      currentUser = res.user;
+      if (countdownTimer) clearInterval(countdownTimer);
+      if (res.user.isNewUser || !res.user.role) {
+        navigateTo('role', true);
+      } else {
+        navigateTo('home', true);
+      }
+    } else {
+      showToast(res.error || '登录失败');
+    }
+  } catch (e) { showToast('登录失败，请重试'); }
+  this.innerHTML = '验证并登录'; this.disabled = false;
+};
+
+$('changePhoneBtn').onclick = function() {
+  $('auth-code-step').classList.add('hidden');
+  $('auth-phone-step').classList.remove('hidden');
+  if (countdownTimer) clearInterval(countdownTimer);
+};
+
+/* ================================================================
+   ROLE SELECT
+   ================================================================ */
+let selectedRole = null;
+$('roleMale').onclick = function() {
+  selectedRole = 'male';
+  $('roleMale').classList.add('selected');
+  $('roleFemale').classList.remove('selected');
+  $('roleConfirmBtn').disabled = false;
+};
+$('roleFemale').onclick = function() {
+  selectedRole = 'female';
+  $('roleFemale').classList.add('selected');
+  $('roleMale').classList.remove('selected');
+  $('roleConfirmBtn').disabled = false;
+};
+$('roleConfirmBtn').onclick = async function() {
+  if (!selectedRole) return;
+  showModal('确认角色', `你选择了「${selectedRole === 'male' ? '男生' : '女生'}」<br>角色确认后将永久绑定，不能修改`, [
+    { text: '再想想', cancel: true },
+    { text: '确认', onClick: async () => {
+      const res = await api('/auth/role', { method: 'POST', body: JSON.stringify({ role: selectedRole }) });
+      if (res.success) {
+        showToast('角色设置成功，获得 20 枚漂流币');
+        navigateTo('home', true);
+      } else { showToast(res.error || '设置失败'); }
+    }}
+  ]);
+};
+
+/* ================================================================
+   HOME PAGE
+   ================================================================ */
+async function renderHome() {
+  try {
+    const res = await api('/coins/balance');
+    if (res.success) {
+      const u = currentUser || {};
+      const name = u.nickname || u.phone ? (u.nickname || u.phone.slice(-4) + '号岛民') : '岛民';
+      const color = avatarColor(name);
+      $('homeAvatar').style.background = color;
+      $('homeAvatar').textContent = avatarInitial(name);
+      $('homeName').textContent = name;
+      const hour = new Date().getHours();
+      $('homeSub').textContent = hour < 6 ? '夜深了，注意休息' : hour < 12 ? '早上好' : hour < 18 ? '下午好' : '晚上好';
+      $('homeCoins').textContent = res.balance;
+      
+      // Checkin progress
+      const consecutive = res.checkin.consecutive || 0;
+      const canCheckin = res.checkin.canCheckin;
+      let daysHtml = '';
+      for (let i = 1; i <= 7; i++) {
+        const done = i <= consecutive;
+        const today = i === consecutive + 1 && canCheckin;
+        daysHtml += `<div class="checkin-day"><div class="checkin-dot ${done?'done':''} ${today?'today':''}">${done?'✓':i}</div><div class="checkin-label">${i===3?'+1':i===7?'+2':'日'}</div></div>`;
+      }
+      $('checkinDays').innerHTML = daysHtml;
+      $('checkinInfo').innerHTML = canCheckin
+        ? `<button class="text-button" onclick="doCheckin()">点击签到</button>`
+        : `今日已签到（连续${consecutive}天）`;
+      
+      // Daily island
+      const titles = ['新的一天，新的漂流','今天会有什么故事呢？','写下你的心情','海的那边有人在等你','每个漂流瓶都是一次相遇'];
+      const descs = ['快来大厅看看吧','投入一个漂流瓶试试','也许有人正在等你','勇敢迈出第一步','保持善意，保持好奇'];
+      const idx = new Date().getDate() % titles.length;
+      $('homeDayTitle').textContent = titles[idx];
+      $('homeDayDesc').textContent = descs[idx];
+      
+      renderTabBar('tabbar-home', 'home');
+    }
+  } catch (e) {}
+}
+
+async function doCheckin() {
+  try {
+    const res = await api('/coins/checkin', { method: 'POST' });
+    if (res.success) {
+      showToast(`签到成功！获得 ${res.bonus} 枚漂流币`);
+      renderHome();
+    } else {
+      showToast(res.error || '签到失败');
+    }
+  } catch (e) { showToast('签到失败'); }
+}
+
+$('logoutBtn').onclick = function() {
+  showModal('退出登录', '确定要退出登录吗？', [
+    { text: '取消', cancel: true },
+    { text: '退出', danger: true, onClick: () => {
+      clearToken();
+      currentUser = null;
+      if (ws) { ws.close(); ws = null; }
+      navigateTo('login', true);
+    }}
+  ]);
+};
+
+/* ================================================================
+   LOBBY
+   ================================================================ */
+async function renderLobby() {
+  $('lobbyList').innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
+  try {
+    const res = await api('/bottles?gender=' + lobbyFilter);
+    if (res.success && res.bottles.length > 0) {
+      $('lobbyCoins').textContent = currentUser?.coins || 0;
+      $('lobbyList').innerHTML = '<div class="bottle-list">' + res.bottles.map(b => {
+        const name = b.authorNickname || '匿名';
+        const color = avatarColor(name);
+        const isSelf = b.authorId === currentUser?.id;
+        return `<div class="bottle-card">
+          <div class="bottle-card__head">
+            <div class="bottle-card__avatar" style="background:${color}">${avatarInitial(name)}</div>
+            <div>
+              <div class="bottle-card__name">${name}${isSelf?' (我)':''}</div>
+              <div class="bottle-card__role">${b.authorGender==='male'?'男生':'女生'}</div>
+            </div>
+            <div class="bottle-card__time">${formatTime(b.createdAt)}</div>
+          </div>
+          <div class="bottle-card__content">${b.content}</div>
+          <div class="bottle-card__footer">
+            <div class="bottle-card__status">${statusLabel(b.status)}</div>
+            <div class="bottle-card__actions">
+              ${isSelf ? '' : `<button class="bottle-card__chat-btn chat-btn-primary" onclick="startChat('${b.authorId}','${b.content.slice(0,20)}...')">聊聊</button>`}
+              <button class="bottle-card__report" onclick="navigate('report'); window._reportTarget={type:'bottle',id:'${b.id}'}">举报</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('') + '</div>';
+    } else {
+      $('lobbyList').innerHTML = `<div class="empty-state"><div class="empty-state__icon">🌊</div><div class="empty-state__title">海面平静</div><div class="empty-state__desc">还没有漂流瓶，投入一个试试吧</div></div>`;
+    }
+  } catch (e) { $('lobbyList').innerHTML = '<div class="empty-state"><div class="empty-state__icon">📡</div><div class="empty-state__title">加载失败</div><div class="empty-state__desc">请检查网络后重试</div></div>'; }
+}
+
+function lobbyTab(tab) {
+  lobbyFilter = tab;
+  document.querySelectorAll('.lobby-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  renderLobby();
+}
+
+/* ================================================================
+   PUBLISH
+   ================================================================ */
+function renderPublish() {
+  $('publishBalance').textContent = (currentUser?.coins || 0) + ' 枚';
+  $('publishCount').textContent = '0';
+  $('publishText').value = '';
+}
+$('publishText').addEventListener('input', function() { $('publishCount').textContent = this.value.length; });
+$('publishBtn').onclick = async function() {
+  const content = $('publishText').value.trim();
+  if (!content) { showToast('请写点什么吧'); return; }
+  this.innerHTML = '<span class="spinner"></span>'; this.disabled = true;
+  try {
+    const res = await api('/bottles', { method: 'POST', body: JSON.stringify({ content }) });
+    if (res.success) {
+      showToast('漂流瓶已投入大海！');
+      currentUser.coins = res.coins;
+      navigateBack();
+    } else {
+      if (res.needRecharge) {
+        showModal('漂流币不足', '发布漂流瓶需要 2 枚漂流币<br>当前余额不足，去充值？', [
+          { text: '取消', cancel: true },
+          { text: '去充值', onClick: () => navigate('recharge') }
+        ]);
+      } else {
+        showToast(res.error || '发布失败');
+      }
+    }
+  } catch (e) { showToast('发布失败，请重试'); }
+  this.innerHTML = '投入大海'; this.disabled = false;
+};
+
+/* ================================================================
+   MY BOTTLES
+   ================================================================ */
+async function renderMineBottles() {
+  $('mineBottlesList').innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
+  try {
+    const res = await api('/bottles/my/list');
+    if (res.success && res.bottles.length > 0) {
+      $('mineBottlesList').innerHTML = '<div class="bottle-list">' + res.bottles.map(b => `
+        <div class="bottle-card">
+          <div class="bottle-card__content">${b.content}</div>
+          <div class="bottle-card__footer">
+            <div class="bottle-card__status">${statusLabel(b.status)} · ${formatTime(b.createdAt)}</div>
+            ${b.status === 'displaying' || b.status === 'expired' ? `<button class="bottle-card__chat-btn chat-btn-self" onclick="deleteBottle('${b.id}')">删除</button>` : ''}
+          </div>
+        </div>`).join('') + '</div>';
+    } else {
+      $('mineBottlesList').innerHTML = `<div class="empty-state"><div class="empty-state__icon">🍾</div><div class="empty-state__title">还没有漂流瓶</div><div class="empty-state__desc">去大厅投入第一个漂流瓶吧</div></div>`;
+    }
+  } catch (e) {}
+}
+
+async function deleteBottle(id) {
+  showModal('删除漂流瓶', '确定删除这条漂流瓶吗？删除后不可恢复', [
+    { text: '取消', cancel: true },
+    { text: '删除', danger: true, onClick: async () => {
+      const res = await api('/bottles/' + id, { method: 'DELETE' });
+      if (res.success) { showToast('已删除'); renderMineBottles(); }
+      else showToast(res.error || '删除失败');
+    }}
+  ]);
+}
+
+/* ================================================================
+   MESSAGES
+   ================================================================ */
+async function renderMessages() {
+  $('messagesList').innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
+  try {
+    const res = await api('/chat/sessions');
+    if (res.success && res.sessions.length > 0) {
+      $('messagesList').innerHTML = res.sessions.map(s => {
+        const name = s.otherNickname || '未知';
+        const color = avatarColor(name);
+        return `<div class="message-item" onclick="openChat('${s.id}')">
+          <div class="message-item__avatar" style="background:${color}">${avatarInitial(name)}</div>
+          <div class="message-item__body">
+            <div class="message-item__top">
+              <div class="message-item__name">${name}</div>
+              <div class="message-item__time">${s.lastMessageAt ? formatTime(s.lastMessageAt) : formatTime(s.startedAt)}</div>
+            </div>
+            <div class="message-item__preview">${s.lastMessage ? s.lastMessage.content : '开始聊天吧'}</div>
+          </div>
+          <div class="message-item__badge">
+            <span class="message-status-tag ${statusTagClass(s.status)}">${statusLabel(s.status)}</span>
+          </div>
+        </div>`;
+      }).join('');
+    } else {
+      $('messagesList').innerHTML = `<div class="empty-state"><div class="empty-state__icon">💬</div><div class="empty-state__title">还没有消息</div><div class="empty-state__desc">去大厅和感兴趣的人聊聊吧</div></div>`;
+    }
+  } catch (e) {}
+  renderTabBar('tabbar-messages', 'messages');
+}
+
+/* ================================================================
+   CHAT
+   ================================================================ */
+async function startChat(targetUserId, firstMsg) {
+  try {
+    const res = await api('/chat/start', { method: 'POST', body: JSON.stringify({ targetUserId, firstMessage: firstMsg || null }) });
+    if (res.success) {
+      if (res.coins !== undefined) currentUser.coins = res.coins;
+      openChat(res.session.id);
+    } else {
+      if (res.needRecharge) {
+        showModal('漂流币不足', '发起聊天需要 1 枚漂流币<br>去充值？', [
+          { text: '取消', cancel: true },
+          { text: '去充值', onClick: () => navigate('recharge') }
+        ]);
+      } else {
+        showToast(res.error || '无法发起聊天');
+      }
+    }
+  } catch (e) { showToast('操作失败'); }
+}
+
+async function openChat(sessionId) {
+  currentChatSessionId = sessionId;
+  navigate('chat');
+  try {
+    const res = await api('/chat/sessions/' + sessionId + '/messages');
+    if (res.success) {
+      renderChatPage(res.session, res.messages);
+      connectWS();
+    }
+  } catch (e) { showToast('加载失败'); }
+}
+
+function renderChatPage(session, messages) {
+  const otherName = session.otherNickname || '对方';
+  const otherColor = avatarColor(otherName);
+  $('chatTitle').textContent = otherName;
+  
+  let html = `<div class="chat-header">
+    <div class="chat-header__avatar" style="background:${otherColor}">${avatarInitial(otherName)}</div>
+    <div class="chat-header__info">
+      <div class="chat-header__name">${otherName}</div>`;
+  
+  if (session.status === 'active') {
+    const remaining = Math.max(0, session.expiresAt - Date.now());
+    const hours = Math.floor(remaining / 3600000);
+    const mins = Math.floor((remaining % 3600000) / 60000);
+    html += `<div class="chat-header__status timer">限时聊天 ${hours}h ${mins}m</div>`;
+  } else if (session.status === 'expired') {
+    html += `<div class="chat-header__status expired">已过期</div>`;
+  } else if (session.status === 'permanent') {
+    html += `<div class="chat-header__status permanent">永久好友</div>`;
+  } else if (session.status === 'pending_permanent') {
+    html += `<div class="chat-header__status timer">续聊请求中</div>`;
+  }
+  html += `</div></div><div class="chat-messages" id="chatMessages">`;
+  
+  if (messages && messages.length > 0) {
+    messages.forEach(m => {
+      const isMine = m.senderId === currentUser.id;
+      html += `<div class="msg-bubble ${isMine?'msg-bubble--mine':'msg-bubble--other'}">${m.content}</div>`;
+    });
+  } else {
+    html += `<div class="msg-time">开始你们的对话吧</div>`;
+  }
+  
+  html += `</div>`;
+  
+  // Bottom area
+  if (session.status === 'active' || session.status === 'permanent') {
+    html += `<div class="chat-input-bar">
+      <input type="text" id="chatInput" placeholder="输入消息..." onkeydown="if(event.key==='Enter')sendChatMsg()">
+      <button class="chat-send-btn" onclick="sendChatMsg()">↑</button>
+    </div>`;
+  } else if (session.status === 'expired') {
+    const isRequester = session.permanentRequestedBy === currentUser.id;
+    if (isRequester) {
+      html += `<div class="chat-pending-banner"><p>续聊请求已发送，等待对方确认...</p></div>`;
+    } else {
+      html += `<div class="chat-expired-banner">
+        <p>会话已过期，是否续聊为永久好友？<br>对方需支付 2 枚漂流币</p>
+        <div class="chat-invite-actions">
+          <button class="ghost-button" onclick="respondPermanent(false)">拒绝</button>
+          <button class="primary-button" style="flex:1" onclick="respondPermanent(true)">接受续聊</button>
+        </div>
+      </div>`;
+    }
+    // Allow requesting permanent
+    if (!session.permanentRequested) {
+      html += `<div class="chat-expired-banner">
+        <p>会话已过期，发起永久续聊（2枚漂流币）</p>
+        <button class="primary-button" onclick="requestPermanent()">发起续聊</button>
+      </div>`;
+    }
+  } else if (session.status === 'pending_permanent') {
+    const isRequester = session.permanentRequestedBy === currentUser.id;
+    if (isRequester) {
+      html += `<div class="chat-pending-banner"><p>续聊请求已发送，等待对方确认...<br>24小时内未确认将自动退款</p></div>`;
+    } else {
+      html += `<div class="chat-expired-banner">
+        <p>对方请求永久续聊<br>接受后将成为永久好友</p>
+        <div class="chat-invite-actions">
+          <button class="ghost-button" onclick="respondPermanent(false)">拒绝</button>
+          <button class="primary-button" style="flex:1" onclick="respondPermanent(true)">接受</button>
+        </div>
+      </div>`;
+    }
+  }
+  
+  $('chatPage').innerHTML = html;
+  // Scroll to bottom
+  const cm = $('chatMessages');
+  if (cm) cm.scrollTop = cm.scrollHeight;
+}
+
+async function sendChatMsg() {
+  const input = $('chatInput');
+  if (!input) return;
+  const content = input.value.trim();
+  if (!content) return;
+  input.value = '';
+  
+  // Send via WebSocket
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify({ type: 'chat_message', data: { sessionId: currentChatSessionId, content } }));
+  } else {
+    // Fallback: use API
+    try {
+      const res = await api('/chat/start', { method: 'POST', body: JSON.stringify({ targetUserId: null, firstMessage: content }) });
+    } catch (e) {}
+  }
+}
+
+async function requestPermanent() {
+  try {
+    const res = await api('/chat/sessions/' + currentChatSessionId + '/request-permanent', { method: 'POST' });
+    if (res.success) {
+      showToast('续聊请求已发送');
+      currentUser.coins = res.coins;
+      openChat(currentChatSessionId);
+    } else {
+      if (res.needRecharge) {
+        showModal('漂流币不足', '永久续聊需要 2 枚漂流币<br>去充值？', [
+          { text: '取消', cancel: true },
+          { text: '去充值', onClick: () => navigate('recharge') }
+        ]);
+      } else {
+        showToast(res.error || '请求失败');
+      }
+    }
+  } catch (e) {}
+}
+
+async function respondPermanent(accept) {
+  try {
+    const res = await api('/chat/sessions/' + currentChatSessionId + '/respond-permanent', { method: 'POST', body: JSON.stringify({ accept }) });
+    if (res.success) {
+      showToast(accept ? '已接受续聊' : '已拒绝续聊');
+      openChat(currentChatSessionId);
+    } else { showToast(res.error || '操作失败'); }
+  } catch (e) {}
+}
+
+/* ================================================================
+   WEBSOCKET
+   ================================================================ */
+function connectWS() {
+  if (ws && ws.readyState <= 1) return;
+  const token = getToken();
+  if (!token) return;
+  const wsHost = window.DRIFT_WS_HOST || location.host;
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${wsHost}/ws?token=${token}`);
+  
+  ws.onmessage = function(event) {
+    try {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'message_sent') {
+        appendMessage(msg.data, true);
+      } else if (msg.type === 'message_received') {
+        appendMessage(msg.data, false);
+        if (currentPage !== 'chat') showToast('收到新消息');
+      } else if (msg.type === 'permanent_chat_request') {
+        showToast('收到续聊请求');
+        if (currentPage === 'chat') openChat(currentChatSessionId);
+      } else if (msg.type === 'permanent_chat_response') {
+        showToast(msg.data.accepted ? '续聊已接受' : '续聊被拒绝');
+        if (currentPage === 'chat') openChat(currentChatSessionId);
+      } else if (msg.type === 'error') {
+        showToast(msg.error);
+      }
+    } catch (e) {}
+  };
+  
+  ws.onclose = function() { ws = null; };
+  ws.onerror = function() { ws = null; };
+}
+
+function appendMessage(msg, isMine) {
+  const cm = $('chatMessages');
+  if (!cm) return;
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble ' + (isMine ? 'msg-bubble--mine' : 'msg-bubble--other');
+  bubble.textContent = msg.content;
+  cm.appendChild(bubble);
+  cm.scrollTop = cm.scrollHeight;
+}
+
+/* ================================================================
+   COIN CENTER
+   ================================================================ */
+async function renderCoinCenter() {
+  $('coinCenterContent').innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
+  try {
+    const [balRes, txRes] = await Promise.all([
+      api('/coins/balance'),
+      api('/coins/transactions?limit=50')
+    ]);
+    if (balRes.success) {
+      currentUser.coins = balRes.balance;
+      const credits = txRes.transactions.filter(t => t.amount > 0).reduce((s,t) => s + t.amount, 0);
+      const debits = txRes.transactions.filter(t => t.amount < 0).reduce((s,t) => s + Math.abs(t.amount), 0);
+      
+      let html = `<div class="coin-balance-card">
+        <div class="label">当前余额</div>
+        <div class="balance">${balRes.balance}</div>
+        <div class="recharge-btn" onclick="navigate('recharge')">充值</div>
+      </div>
+      <div class="coin-stats">
+        <div class="coin-stat"><div class="num">${credits}</div><div class="lbl">累计获得</div></div>
+        <div class="coin-stat"><div class="num">${debits}</div><div class="lbl">累计消耗</div></div>
+        <div class="coin-stat"><div class="num">${balRes.checkin.consecutive || 0}</div><div class="lbl">连续签到</div></div>
+      </div>`;
+      
+      if (txRes.transactions.length > 0) {
+        html += `<div class="coin-section-title">收支明细</div>`;
+        html += txRes.transactions.map(t => `
+          <div class="ledger-item">
+            <div class="ledger-item__info">
+              <div class="type">${t.description}</div>
+              <div class="time">${formatDateTime(t.createdAt)}</div>
+            </div>
+            <div class="ledger-item__amount ${t.amount > 0 ? 'plus' : 'minus'}">${t.amount > 0 ? '+' : ''}${t.amount}</div>
+          </div>`).join('');
+      }
+      
+      $('coinCenterContent').innerHTML = html;
+    }
+  } catch (e) {}
+}
+
+/* ================================================================
+   RECHARGE
+   ================================================================ */
+let selectedPkg = null;
+async function renderRecharge() {
+  try {
+    const [pkgRes, balRes] = await Promise.all([
+      api('/recharge/packages'),
+      api('/coins/balance')
+    ]);
+    if (pkgRes.success) {
+      selectedPkg = null;
+      let html = `<div class="recharge-balance">
+        <div class="label">当前余额</div>
+        <div class="amount">${balRes.balance} 枚</div>
+      </div>
+      <div class="coin-section-title">选择充值套餐</div>
+      <div class="recharge-packages">`;
+      html += pkgRes.packages.map(p => `
+        <div class="recharge-pkg" onclick="selectPkg('${p.id}',this)">
+          <div class="recharge-pkg__coins">${p.coins + (p.coinsBonus || 0)} 枚${p.coinsBonus ? `<small>（含赠${p.coinsBonus}）</small>` : ''}</div>
+          <div class="recharge-pkg__price">¥${p.price}</div>
+        </div>`).join('');
+      html += `</div>
+      <button class="primary-button" id="rechargeBtn" disabled onclick="doRecharge()">立即支付</button>
+      <div style="text-align:center;margin-top:14px;font-size:12px;color:#98a2a0">1元 = ${pkgRes.rate}枚漂流币</div>`;
+      
+      // Order history
+      const ordersRes = await api('/recharge/orders');
+      if (ordersRes.success && ordersRes.orders.length > 0) {
+        html += `<div class="coin-section-title" style="margin-top:20px">充值记录</div>`;
+        html += ordersRes.orders.slice(0, 10).map(o => `
+          <div class="ledger-item">
+            <div class="ledger-item__info">
+              <div class="type">充值 ${o.coins} 枚</div>
+              <div class="time">${formatDateTime(o.createdAt)} · ${o.status === 'paid' ? '已支付' : o.status === 'refunded' ? '已退款' : '待支付'}</div>
+            </div>
+            <div class="ledger-item__amount">¥${o.amount}</div>
+          </div>`).join('');
+      }
+      
+      $('rechargeContent').innerHTML = html;
+    }
+  } catch (e) {}
+}
+
+function selectPkg(id, el) {
+  selectedPkg = id;
+  document.querySelectorAll('.recharge-pkg').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  $('rechargeBtn').disabled = false;
+}
+
+async function doRecharge() {
+  if (!selectedPkg) return;
+  const btn = $('rechargeBtn');
+  btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
+  try {
+    const orderRes = await api('/recharge/order', { method: 'POST', body: JSON.stringify({ packageId: selectedPkg }) });
+    if (orderRes.success) {
+      // Dev mode: confirm immediately
+      const confirmRes = await api('/recharge/order/' + orderRes.orderId + '/confirm', { method: 'POST', body: JSON.stringify({}) });
+      if (confirmRes.success) {
+        showToast(`充值成功！获得 ${confirmRes.coins} 枚漂流币`);
+        currentUser.coins = confirmRes.balance;
+        renderRecharge();
+      } else {
+        showToast(confirmRes.error || '支付失败');
+      }
+    } else {
+      showToast(orderRes.error || '创建订单失败');
+    }
+  } catch (e) { showToast('充值失败，请重试'); }
+  btn.innerHTML = '立即支付'; btn.disabled = false;
+}
+
+/* ================================================================
+   INVITE
+   ================================================================ */
+async function renderInvite() {
+  try {
+    const res = await api('/invite/info');
+    if (res.success) {
+      $('inviteContent').innerHTML = `
+        <div class="invite-card">
+          <div class="title">邀请好友，各得 ${res.inviteBonus} 枚</div>
+          <div class="desc">分享你的邀请码，好友注册后双方各获得 ${res.inviteBonus} 枚漂流币</div>
+          <div class="invite-code-box">
+            <span class="code">${res.inviteCode}</span>
+            <button class="text-button" style="color:#fff" onclick="copyCode('${res.inviteCode}')">复制</button>
+          </div>
+        </div>
+        <div class="invite-stats">
+          <div class="invite-stat"><div class="num">${res.totalInvited}</div><div class="lbl">累计邀请</div></div>
+          <div class="invite-stat"><div class="num">${res.monthInvited}</div><div class="lbl">本月邀请</div></div>
+          <div class="invite-stat"><div class="num">${res.monthlyLimit - res.monthInvited}</div><div class="lbl">剩余名额</div></div>
+        </div>
+        <button class="primary-button" onclick="simulateInvite()">模拟邀请好友 (+${res.inviteBonus}币)</button>
+        <div style="text-align:center;margin-top:10px;font-size:12px;color:#98a2a0">每月最多邀请 ${res.monthlyLimit} 人</div>`;
+    }
+  } catch (e) {}
+}
+
+function copyCode(code) {
+  navigator.clipboard.writeText(code).then(() => showToast('邀请码已复制'));
+}
+
+async function simulateInvite() {
+  try {
+    const res = await api('/invite/simulate', { method: 'POST' });
+    if (res.success) {
+      showToast(`邀请成功！获得 ${res.bonus} 枚漂流币`);
+      currentUser.coins = res.coins;
+      renderInvite();
+    } else { showToast(res.error || '邀请失败'); }
+  } catch (e) {}
+}
+
+/* ================================================================
+   BLACKLIST
+   ================================================================ */
+async function renderBlacklist() {
+  try {
+    const res = await api('/blacklist');
+    if (res.success && res.blacklist.length > 0) {
+      $('blacklistContent').innerHTML = res.blacklist.map(b => {
+        const color = avatarColor(b.blockedNickname);
+        return `<div class="blacklist-item">
+          <div class="blacklist-item__avatar" style="background:${color}">${avatarInitial(b.blockedNickname)}</div>
+          <div class="blacklist-item__name">${b.blockedNickname}</div>
+          <button class="text-button" onclick="unblockUser('${b.blockedId}')">解除</button>
+        </div>`;
+      }).join('');
+    } else {
+      $('blacklistContent').innerHTML = `<div class="empty-state"><div class="empty-state__icon">🚫</div><div class="empty-state__title">黑名单为空</div><div class="empty-state__desc">你还没有拉黑任何用户</div></div>`;
+    }
+  } catch (e) {}
+}
+
+async function unblockUser(userId) {
+  const res = await api('/blacklist/unblock', { method: 'POST', body: JSON.stringify({ targetUserId: userId }) });
+  if (res.success) { showToast('已解除拉黑'); renderBlacklist(); }
+  else showToast(res.error || '操作失败');
+}
+
+/* ================================================================
+   REPORT
+   ================================================================ */
+const REPORT_REASONS = ['色情低俗','政治敏感','诈骗欺诈','骚扰谩骂','广告引流','违法信息','侵犯隐私','人身攻击','其他'];
+let selectedReason = null;
+
+function renderReport() {
+  selectedReason = null;
+  $('reportContent').innerHTML = `
+    <div class="coin-section-title">选择举报原因</div>
+    <div class="report-reasons" id="reportReasons">
+      ${REPORT_REASONS.map(r => `<div class="report-reason" onclick="selectReason('${r}',this)">${r}</div>`).join('')}
+    </div>
+    <div class="report-desc">
+      <label class="field-label">补充说明（可选）</label>
+      <textarea id="reportDesc" placeholder="请描述具体情况..."></textarea>
+    </div>
+    <button class="primary-button" id="submitReportBtn" disabled onclick="submitReport()">提交举报</button>`;
+}
+
+function selectReason(reason, el) {
+  selectedReason = reason;
+  document.querySelectorAll('.report-reason').forEach(r => r.classList.remove('selected'));
+  el.classList.add('selected');
+  $('submitReportBtn').disabled = false;
+}
+
+async function submitReport() {
+  if (!selectedReason) return;
+  const desc = $('reportDesc').value.trim();
+  const target = window._reportTarget || { type: 'user', id: 'unknown' };
+  try {
+    const res = await api('/reports', { method: 'POST', body: JSON.stringify({
+      targetType: target.type, targetId: target.id, reason: selectedReason, description: desc
+    }) });
+    if (res.success) {
+      showToast('举报已提交，我们会尽快处理');
+      window._reportTarget = null;
+      navigateBack();
+    } else { showToast(res.error || '提交失败'); }
+  } catch (e) {}
+}
+
+/* ================================================================
+   SETTINGS
+   ================================================================ */
+async function renderSettings() {
+  try {
+    const meRes = await api('/auth/me');
+    if (meRes) {
+      currentUser = { ...currentUser, ...meRes };
+      const name = meRes.nickname || (meRes.phone ? meRes.phone.slice(-4) + '号岛民' : '岛民');
+      const color = avatarColor(name);
+      $('settingsContent').innerHTML = `
+        <div class="settings-header">
+          <div class="settings-avatar" style="background:${color}">${avatarInitial(name)}</div>
+          <div class="settings-name">${name}</div>
+          <div class="settings-sub">${meRes.gender === 'male' ? '男生' : '女生'} · ${meRes.coins} 枚漂流币</div>
+        </div>
+        <div class="settings-group">
+          <div class="settings-item" onclick="navigate('edit-profile')">
+            <div class="settings-item__icon" style="background:rgba(31,122,116,.1)">✏️</div>
+            <div class="settings-item__label">编辑资料</div>
+            <div class="settings-item__arrow">›</div>
+          </div>
+          <div class="settings-item" onclick="navigate('coin-center')">
+            <div class="settings-item__icon" style="background:rgba(223,169,72,.12)">🪙</div>
+            <div class="settings-item__label">漂流币</div>
+            <div class="settings-item__value">${meRes.coins} 枚</div>
+            <div class="settings-item__arrow">›</div>
+          </div>
+          <div class="settings-item" onclick="navigate('recharge')">
+            <div class="settings-item__icon" style="background:rgba(239,123,98,.12)">💰</div>
+            <div class="settings-item__label">充值</div>
+            <div class="settings-item__arrow">›</div>
+          </div>
+          <div class="settings-item" onclick="navigate('invite')">
+            <div class="settings-item__icon" style="background:rgba(91,141,239,.12)">👥</div>
+            <div class="settings-item__label">邀请好友</div>
+            <div class="settings-item__arrow">›</div>
+          </div>
+          <div class="settings-item" onclick="navigate('mine-bottles')">
+            <div class="settings-item__icon" style="background:rgba(31,122,116,.1)">🍾</div>
+            <div class="settings-item__label">我的漂流瓶</div>
+            <div class="settings-item__arrow">›</div>
+          </div>
+        </div>
+        <div class="settings-group">
+          <div class="settings-item" onclick="navigate('blacklist')">
+            <div class="settings-item__icon" style="background:rgba(231,76,60,.08)">🚫</div>
+            <div class="settings-item__label">黑名单</div>
+            <div class="settings-item__arrow">›</div>
+          </div>
+          <div class="settings-item" onclick="showAgreement('user')">
+            <div class="settings-item__icon" style="background:rgba(0,0,0,.04)">📄</div>
+            <div class="settings-item__label">用户协议</div>
+            <div class="settings-item__arrow">›</div>
+          </div>
+          <div class="settings-item" onclick="showAgreement('privacy')">
+            <div class="settings-item__icon" style="background:rgba(0,0,0,.04)">🔒</div>
+            <div class="settings-item__label">隐私政策</div>
+            <div class="settings-item__arrow">›</div>
+          </div>
+          <div class="settings-item" onclick="showToast('如遇问题请联系客服：support@driftisland.app')">
+            <div class="settings-item__icon" style="background:rgba(0,0,0,.04)">❓</div>
+            <div class="settings-item__label">帮助与反馈</div>
+            <div class="settings-item__arrow">›</div>
+          </div>
+          <div class="settings-item" onclick="window.open('/admin.html','_blank')">
+            <div class="settings-item__icon" style="background:rgba(31,122,116,.1)">⚙️</div>
+            <div class="settings-item__label">管理后台</div>
+            <div class="settings-item__arrow">›</div>
+          </div>
+        </div>
+        <div class="settings-group">
+          <div class="settings-item" onclick="navigate('account-delete')">
+            <div class="settings-item__icon" style="background:rgba(231,76,60,.08)">🗑️</div>
+            <div class="settings-item__label" style="color:#e74c3c">注销账号</div>
+            <div class="settings-item__arrow">›</div>
+          </div>
+        </div>`;
+    }
+  } catch (e) {}
+  renderTabBar('tabbar-settings', 'settings');
+}
+
+/* ================================================================
+   EDIT PROFILE
+   ================================================================ */
+function renderEditProfile() {
+  const u = currentUser || {};
+  const name = u.nickname || '';
+  const color = avatarColor(name || '岛民');
+  $('editProfileContent').innerHTML = `
+    <div class="edit-avatar-section">
+      <div class="edit-avatar" style="background:${color}">${avatarInitial(name || '?')}</div>
+      <div class="edit-avatar-change">头像不可修改</div>
+    </div>
+    <div class="edit-field">
+      <label>昵称</label>
+      <input type="text" id="editNickname" value="${name}" maxlength="20" placeholder="设置一个昵称">
+      <div class="hint">最多20字</div>
+    </div>
+    <div class="edit-field">
+      <label>个性签名</label>
+      <textarea id="editBio" maxlength="100" placeholder="写点什么介绍自己...">${u.bio || ''}</textarea>
+      <div class="hint">最多100字</div>
+    </div>
+    <button class="primary-button" onclick="saveProfile()">保存</button>`;
+}
+
+async function saveProfile() {
+  const nickname = $('editNickname').value.trim();
+  const bio = $('editBio').value.trim();
+  try {
+    const res = await api('/profile/edit', { method: 'POST', body: JSON.stringify({ nickname, bio }) });
+    if (res.success) {
+      showToast('保存成功');
+      currentUser.nickname = nickname;
+      currentUser.bio = bio;
+      navigateBack();
+    } else { showToast(res.error || '保存失败'); }
+  } catch (e) {}
+}
+
+/* ================================================================
+   ACCOUNT DELETE
+   ================================================================ */
+function renderAccountDelete() {
+  $('deleteContent').innerHTML = `
+    <div class="delete-warn">
+      <h3>⚠️ 注销账号将导致以下后果</h3>
+      <ul>
+        <li>账号无法恢复，所有数据将被删除</li>
+        <li>漂流瓶将被全部删除</li>
+        <li>聊天记录将被清除</li>
+        <li>剩余漂流币将被清零，不予退还</li>
+        <li>邀请关系将被解除</li>
+      </ul>
+    </div>
+    <div class="delete-confirm-box">
+      <label><input type="checkbox" id="deleteConfirm1"> 我已了解注销后果</label>
+    </div>
+    <div class="delete-confirm-box">
+      <label><input type="checkbox" id="deleteConfirm2"> 我确认要永久注销账号</label>
+    </div>
+    <button class="primary-button" id="deleteBtn" disabled style="background:#e74c3c;box-shadow:0 8px 16px rgba(231,76,60,.15)" onclick="deleteAccount()">确认注销</button>`;
+  
+  $('deleteConfirm1').onchange = function() { $('deleteBtn').disabled = !($('deleteConfirm1').checked && $('deleteConfirm2').checked); };
+  $('deleteConfirm2').onchange = function() { $('deleteBtn').disabled = !($('deleteConfirm1').checked && $('deleteConfirm2').checked); };
+}
+
+async function deleteAccount() {
+  showModal('最终确认', '此操作不可撤销！<br>确定要永久注销账号吗？', [
+    { text: '取消', cancel: true },
+    { text: '确认注销', danger: true, onClick: async () => {
+      try {
+        const res = await api('/profile/delete', { method: 'POST' });
+        if (res.success) {
+          showToast('账号已注销');
+          clearToken();
+          currentUser = null;
+          if (ws) { ws.close(); ws = null; }
+          navigateTo('login', true);
+        } else { showToast(res.error || '注销失败'); }
+      } catch (e) {}
+    }}
+  ]);
+}
+
+/* ================================================================
+   PROFILE PUBLIC
+   ================================================================ */
+async function renderProfile(userId) {
+  try {
+    const res = await api('/profile/' + userId);
+    if (res.success) {
+      const p = res.profile;
+      const color = avatarColor(p.nickname || '?');
+      $('profileContent').innerHTML = `
+        <div class="profile-header">
+          <div class="profile-avatar" style="background:${color}">${avatarInitial(p.nickname)}</div>
+          <div class="profile-name">${p.nickname}</div>
+          <div class="profile-role">${p.gender === 'male' ? '男生' : '女生'}</div>
+          ${p.bio ? `<div class="profile-bio">${p.bio}</div>` : ''}
+          <div class="profile-meta">加入于 ${formatTime(p.createdAt)}</div>
+        </div>
+        <div class="profile-actions">
+          <button class="primary-button profile-action-btn" onclick="startChat('${p.id}',null);navigateBack()">聊聊</button>
+          <button class="ghost-button profile-action-btn" onclick="navigate('report');window._reportTarget={type:'user',id:'${p.id}'}">举报</button>
+        </div>`;
+    }
+  } catch (e) {}
+}
+
+/* ================================================================
+   AGREEMENT
+   ================================================================ */
+function showAgreement(type) {
+  if (type === 'user') {
+    $('agreementTitle').textContent = '用户协议';
+    $('agreementBody').innerHTML = `<p>欢迎使用漂流大厅（以下简称"本应用"）。使用本应用即表示您同意以下条款：</p>
+    <br><p><b>1. 服务内容</b></p><p>本应用提供漂流瓶发布、浏览、匿名聊天等社交功能。</p>
+    <br><p><b>2. 用户行为规范</b></p><p>用户不得发布违法、色情、暴力、骚扰等内容。违规内容将被删除，严重违规者将被封禁账号。</p>
+    <br><p><b>3. 虚拟货币</b></p><p>漂流币为虚拟货币，可通过签到、邀请等方式免费获取，也可通过充值购买。充值后不支持退款，注销账号后余额清零。</p>
+    <br><p><b>4. 隐私保护</b></p><p>我们保护您的个人隐私，详见《隐私政策》。</p>
+    <br><p><b>5. 免责声明</b></p><p>本应用不对用户发布的内容负责。因用户行为产生的纠纷，由用户自行承担。</p>
+    <br><p><b>6. 条款修改</b></p><p>我们保留修改本协议的权利，修改后将在应用内通知。</p>`;
+  } else {
+    $('agreementTitle').textContent = '隐私政策';
+    $('agreementBody').innerHTML = `<p>本隐私政策说明漂流大厅如何收集、使用和保护您的个人信息：</p>
+    <br><p><b>1. 信息收集</b></p><p>我们收集您的手机号码用于注册登录，收集昵称、性别等您主动填写的信息。</p>
+    <br><p><b>2. 信息使用</b></p><p>收集的信息仅用于提供应用功能、身份验证和防滥用。我们不会向第三方出售您的信息。</p>
+    <br><p><b>3. 信息安全</b></p><p>我们采取技术措施保护您的信息安全，手机号加密存储。</p>
+    <br><p><b>4. 信息删除</b></p><p>您可以随时注销账号，注销后所有个人数据将被删除。</p>
+    <br><p><b>5. Cookie</b></p><p>本应用使用 localStorage 存储 JWT 令牌，不使用跟踪 Cookie。</p>`;
+  }
+  navigate('agreement');
+}
+
+/* ================================================================
+   STATUS BAR CLOCK
+   ================================================================ */
+function updateClock() {
+  const d = new Date();
+  $('statusTime').textContent = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+setInterval(updateClock, 30000);
+updateClock();
+
+/* ================================================================
+   INITIALIZATION
+   ================================================================ */
+async function init() {
+  const token = getToken();
+  if (token) {
+    try {
+      const res = await api('/auth/me');
+      if (res && res.id) {
+        currentUser = res;
+        if (!res.role) {
+          navigateTo('role', true);
+        } else {
+          navigateTo('home', true);
+          connectWS();
+        }
+        return;
+      }
+    } catch (e) { clearToken(); }
+  }
+  navigateTo('login', true);
+}
+
+init();
+</script>
+</body>
+</html>

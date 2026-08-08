@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>漂流大厅 · 管理后台</title>
+<script src="config.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#f0f2f5;color:#1a1a1a}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,textarea,select{font-family:inherit;outline:none;resize:none}
+
+/* Layout */
+.admin-layout{display:flex;min-height:100vh}
+.sidebar{width:220px;background:#1a2332;color:#fff;flex-shrink:0;display:flex;flex-direction:column;position:fixed;height:100vh;overflow-y:auto;z-index:100}
+.sidebar__logo{padding:20px;font-size:18px;font-weight:700;border-bottom:1px solid rgba(255,255,255,.1)}
+.sidebar__nav{flex:1;padding:12px 0}
+.sidebar__item{display:flex;align-items:center;gap:10px;padding:12px 20px;color:rgba(255,255,255,.6);font-size:14px;cursor:pointer;transition:all .2s}
+.sidebar__item:hover{color:#fff;background:rgba(255,255,255,.05)}
+.sidebar__item.active{color:#fff;background:rgba(31,122,116,.3);border-left:3px solid #1f7a74}
+.sidebar__badge{margin-left:auto;background:#ef7b62;color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;font-weight:700}
+.main{flex:1;margin-left:220px;padding:24px;min-width:0}
+.main__header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.main__title{font-size:22px;font-weight:700}
+.main__user{display:flex;align-items:center;gap:10px;font-size:13px;color:#666}
+
+/* Login */
+.login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1a2332,#1f7a74)}
+.login-card{width:360px;background:#fff;border-radius:16px;padding:32px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.login-card h1{font-size:20px;font-weight:700;margin-bottom:6px}
+.login-card p{font-size:13px;color:#888;margin-bottom:24px}
+.login-field{margin-bottom:16px}
+.login-field label{display:block;font-size:12px;color:#666;font-weight:600;margin-bottom:6px}
+.login-field input{width:100%;padding:12px 14px;border:1px solid #ddd;border-radius:10px;font-size:14px}
+.login-btn{width:100%;padding:14px;background:#1f7a74;color:#fff;border-radius:10px;font-size:15px;font-weight:700;margin-top:8px}
+.login-btn:active{opacity:.88}
+
+/* Cards */
+.card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:16px}
+.card__title{font-size:16px;font-weight:700;margin-bottom:16px}
+
+/* Stats Grid */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.stat-card__label{font-size:12px;color:#888;margin-bottom:8px}
+.stat-card__value{font-size:28px;font-weight:800;color:#1f7a74}
+.stat-card__value.danger{color:#e74c3c}
+.stat-card__value.warning{color:#dfa948}
+
+/* Tables */
+.table{width:100%;border-collapse:collapse;font-size:13px}
+.table th{text-align:left;padding:10px 12px;border-bottom:2px solid #f0f0f0;color:#666;font-weight:600;white-space:nowrap}
+.table td{padding:10px 12px;border-bottom:1px solid #f5f5f5}
+.table tr:hover{background:#fafafa}
+.table__actions{display:flex;gap:6px}
+.btn-sm{padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600}
+.btn-primary{background:#1f7a74;color:#fff}
+.btn-danger{background:#e74c3c;color:#fff}
+.btn-warning{background:#dfa948;color:#fff}
+.btn-ghost{background:#f0f0f0;color:#333}
+.btn-success{background:#27ae60;color:#fff}
+
+/* Search */
+.search-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.search-bar input,.search-bar select{padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px}
+.search-bar input{flex:1;min-width:200px}
+
+/* Badges */
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.badge-active{background:#e8f5e9;color:#27ae60}
+.badge-restricted{background:#fff3e0;color:#f57c00}
+.badge-frozen{background:#e3f2fd;color:#1976d2}
+.badge-banned{background:#ffebee;color:#c62828}
+.badge-pending{background:#fff8e1;color:#f57c00}
+.badge-paid{background:#e8f5e9;color:#27ae60}
+.badge-refunded{background:#fce4ec;color:#c62828}
+
+/* Pagination */
+.pagination{display:flex;gap:6px;justify-content:center;margin-top:16px}
+.pagination button{padding:6px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px}
+.pagination button.active{background:#1f7a74;color:#fff;border-color:#1f7a74}
+.pagination button:disabled{opacity:.4}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:12px;width:600px;max-height:80vh;overflow-y:auto;max-width:90vw}
+.modal__header{padding:16px 20px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
+.modal__title{font-size:16px;font-weight:700}
+.modal__close{font-size:20px;color:#999;cursor:pointer}
+.modal__body{padding:20px}
+.modal__footer{padding:12px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:8px}
+
+/* Forms */
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;color:#666;font-weight:600;margin-bottom:6px}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px}
+.form-row{display:flex;gap:12px}
+.form-row .form-group{flex:1}
+
+/* Toast */
+#toast{position:fixed;top:20px;right:20px;background:rgba(0,0,0,.8);color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;z-index:9999;opacity:0;transition:opacity .3s;max-width:300px}
+#toast.show{opacity:1}
+
+/* Config form */
+.config-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.config-item{display:flex;flex-direction:column;gap:4px}
+.config-item label{font-size:12px;color:#666;font-weight:600}
+.config-item input{padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px}
+
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- Login Page -->
+<div id="loginPage" class="login-page">
+  <div class="login-card">
+    <h1>漂流大厅 · 管理后台</h1>
+    <p>请登录管理员账号</p>
+    <div class="login-field">
+      <label>账号</label>
+      <input type="text" id="adminUser" value="admin" placeholder="管理员账号">
+    </div>
+    <div class="login-field">
+      <label>密码</label>
+      <input type="password" id="adminPass" value="admin123" placeholder="管理员密码">
+    </div>
+    <button class="login-btn" id="adminLoginBtn">登录</button>
+  </div>
+</div>
+
+<!-- Admin Panel -->
+<div id="adminPanel" class="admin-layout hidden">
+  <div class="sidebar">
+    <div class="sidebar__logo">🏝️ 漂流大厅</div>
+    <div class="sidebar__nav">
+      <div class="sidebar__item active" onclick="switchTab('dashboard')">📊 数据概览</div>
+      <div class="sidebar__item" onclick="switchTab('users')">👥 用户管理</div>
+      <div class="sidebar__item" onclick="switchTab('bottles')">🍾 漂流瓶管理</div>
+      <div class="sidebar__item" onclick="switchTab('coins')">🪙 漂流币管理</div>
+      <div class="sidebar__item" onclick="switchTab('orders')">💰 充值订单</div>
+      <div class="sidebar__item" onclick="switchTab('reports')">⚠️ 举报管理 <span class="sidebar__badge hidden" id="reportBadge"></span></div>
+      <div class="sidebar__item" onclick="switchTab('config')">⚙️ 业务配置</div>
+      <div class="sidebar__item" onclick="switchTab('audit')">📋 审计日志</div>
+    </div>
+    <div style="padding:16px 20px;border-top:1px solid rgba(255,255,255,.1)">
+      <button onclick="adminLogout()" style="color:rgba(255,255,255,.6);font-size:13px">退出登录</button>
+    </div>
+  </div>
+  <div class="main">
+    <div class="main__header">
+      <div class="main__title" id="pageTitle">数据概览</div>
+      <div class="main__user" id="adminInfo"></div>
+    </div>
+    <div id="pageContent"></div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal__header">
+      <div class="modal__title" id="modalTitle"></div>
+      <div class="modal__close" onclick="closeModal()">×</div>
+    </div>
+    <div class="modal__body" id="modalBody"></div>
+    <div class="modal__footer" id="modalFooter"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+const API = (window.DRIFT_API_BASE || '/api') + '/admin';
+let adminToken = localStorage.getItem('drift_admin_token');
+let currentTab = 'dashboard';
+let pagination = { page: 1, pageSize: 20, total: 0 };
+
+/* ===== API Helper ===== */
+async function api(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  if (adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
+  const res = await fetch(API + path, { ...options, headers });
+  const data = await res.json();
+  if (res.status === 401) { adminToken = null; localStorage.removeItem('drift_admin_token'); showLogin(); throw new Error('未登录'); }
+  return data;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timer); t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function showLogin() {
+  document.getElementById('loginPage').classList.remove('hidden');
+  document.getElementById('adminPanel').classList.add('hidden');
+}
+function showPanel() {
+  document.getElementById('loginPage').classList.add('hidden');
+  document.getElementById('adminPanel').classList.remove('hidden');
+}
+
+function openModal(title, bodyHtml, footerHtml) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = bodyHtml;
+  document.getElementById('modalFooter').innerHTML = footerHtml || '';
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
+
+function badgeClass(status) {
+  const m = { active:'badge-active', restricted:'badge-restricted', frozen:'badge-frozen', banned:'badge-banned',
+    pending:'badge-pending', paid:'badge-paid', refunded:'badge-refunded', deleted:'badge-banned',
+    displaying:'badge-active', expired:'badge-restricted', resolved:'badge-active', dismissed:'badge-restricted' };
+  return m[status] || 'badge-active';
+}
+function formatTime(ts) {
+  if (!ts) return '-';
+  const d = new Date(ts);
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+/* ===== Login ===== */
+document.getElementById('adminLoginBtn').onclick = async function() {
+  const username = document.getElementById('adminUser').value.trim();
+  const password = document.getElementById('adminPass').value.trim();
+  if (!username || !password) { showToast('请输入账号和密码'); return; }
+  this.textContent = '登录中...'; this.disabled = true;
+  try {
+    const res = await api('/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+    if (res.success) {
+      adminToken = res.token;
+      localStorage.setItem('drift_admin_token', adminToken);
+      document.getElementById('adminInfo').textContent = `管理员: ${res.admin.username}`;
+      showPanel();
+      switchTab('dashboard');
+    } else { showToast(res.error || '登录失败'); }
+  } catch (e) { showToast('登录失败'); }
+  this.textContent = '登录'; this.disabled = false;
+};
+document.getElementById('adminPass').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('adminLoginBtn').click(); });
+
+function adminLogout() {
+  adminToken = null;
+  localStorage.removeItem('drift_admin_token');
+  showLogin();
+}
+
+/* ===== Tab Switching ===== */
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.sidebar__item').forEach((el, i) => {
+    const tabs = ['dashboard','users','bottles','coins','orders','reports','config','audit'];
+    el.classList.toggle('active', tabs[i] === tab);
+  });
+  const titles = { dashboard:'数据概览', users:'用户管理', bottles:'漂流瓶管理', coins:'漂流币管理', orders:'充值订单', reports:'举报管理', config:'业务配置', audit:'审计日志' };
+  document.getElementById('pageTitle').textContent = titles[tab];
+  pagination = { page: 1, pageSize: 20, total: 0 };
+  renderTab();
+}
+
+async function renderTab() {
+  const c = document.getElementById('pageContent');
+  c.innerHTML = '<div style="text-align:center;padding:40px;color:#999">加载中...</div>';
+  try {
+    if (currentTab === 'dashboard') await renderDashboard();
+    else if (currentTab === 'users') await renderUsers();
+    else if (currentTab === 'bottles') await renderBottles();
+    else if (currentTab === 'coins') await renderCoins();
+    else if (currentTab === 'orders') await renderOrders();
+    else if (currentTab === 'reports') await renderReports();
+    else if (currentTab === 'config') await renderConfig();
+    else if (currentTab === 'audit') await renderAudit();
+  } catch (e) { c.innerHTML = '<div style="text-align:center;padding:40px;color:#e74c3c">加载失败，请重试</div>'; }
+}
+
+/* ===== Dashboard ===== */
+async function renderDashboard() {
+  const res = await api('/dashboard');
+  if (!res.success) return;
+  const s = res.stats;
+  const c = document.getElementById('pageContent');
+  c.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-card__label">总注册用户</div><div class="stat-card__value">${s.totalUsers}</div></div>
+      <div class="stat-card"><div class="stat-card__label">日活用户</div><div class="stat-card__value">${s.dailyActive}</div></div>
+      <div class="stat-card"><div class="stat-card__label">漂流瓶总量</div><div class="stat-card__value">${s.totalBottles}</div></div>
+      <div class="stat-card"><div class="stat-card__label">聊天会话</div><div class="stat-card__value">${s.totalSessions}</div></div>
+      <div class="stat-card"><div class="stat-card__label">充值总额</div><div class="stat-card__value">¥${s.totalRecharged}</div></div>
+      <div class="stat-card"><div class="stat-card__label">漂流币流通</div><div class="stat-card__value">${s.totalCoinsInCirculation}</div></div>
+      <div class="stat-card"><div class="stat-card__label">待处理举报</div><div class="stat-card__value warning">${s.pendingReports}</div></div>
+      <div class="stat-card"><div class="stat-card__label">处罚账号</div><div class="stat-card__value danger">${s.penalizedAccounts}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="card">
+        <div class="card__title">最近注册用户</div>
+        <table class="table">
+          <thead><tr><th>手机号</th><th>昵称</th><th>状态</th><th>注册时间</th></tr></thead>
+          <tbody>${res.recentUsers.map(u => `<tr><td>${u.phone}</td><td>${u.nickname}</td><td><span class="badge ${badgeClass(u.status)}">${u.status}</span></td><td>${formatTime(u.createdAt)}</td></tr>`).join('')}</tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card__title">最近举报</div>
+        <table class="table">
+          <thead><tr><th>类型</th><th>原因</th><th>状态</th><th>时间</th></tr></thead>
+          <tbody>${res.recentReports.map(r => `<tr><td>${r.targetType}</td><td>${r.reason}</td><td><span class="badge ${badgeClass(r.status)}">${r.status}</span></td><td>${formatTime(r.createdAt)}</td></tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+  
+  // Update report badge
+  const badge = document.getElementById('reportBadge');
+  if (s.pendingReports > 0) { badge.textContent = s.pendingReports; badge.classList.remove('hidden'); }
+  else badge.classList.add('hidden');
+}
+
+/* ===== Users ===== */
+let userSearch = '', userStatus = 'all';
+async function renderUsers() {
+  const res = await api(`/users?search=${encodeURIComponent(userSearch)}&status=${userStatus}&page=${pagination.page}&pageSize=${pagination.pageSize}`);
+  if (!res.success) return;
+  pagination.total = res.total;
+  const c = document.getElementById('pageContent');
+  c.innerHTML = `
+    <div class="search-bar">
+      <input type="text" placeholder="搜索昵称/手机号/ID" value="${userSearch}" oninput="userSearch=this.value;pagination.page=1" onkeydown="if(event.key==='Enter')renderUsers()">
+      <select onchange="userStatus=this.value;pagination.page=1;renderUsers()">
+        <option value="all" ${userStatus==='all'?'selected':''}>全部状态</option>
+        <option value="active" ${userStatus==='active'?'selected':''}>正常</option>
+        <option value="restricted" ${userStatus==='restricted'?'selected':''}>受限</option>
+        <option value="frozen" ${userStatus==='frozen'?'selected':''}>冻结</option>
+        <option value="banned" ${userStatus==='banned'?'selected':''}>封禁</option>
+      </select>
+      <button class="btn-sm btn-primary" onclick="pagination.page=1;renderUsers()">搜索</button>
+    </div>
+    <div class="card">
+      <table class="table">
+        <thead><tr><th>ID</th><th>手机号</th><th>昵称</th><th>性别</th><th>漂流币</th><th>状态</th><th>注册时间</th><th>操作</th></tr></thead>
+        <tbody>
+          ${res.users.map(u => `<tr>
+            <td style="font-size:11px;color:#999">${u.id.slice(0,12)}...</td>
+            <td>${u.phone}</td>
+            <td>${u.nickname}</td>
+            <td>${u.gender==='male'?'男':u.gender==='female'?'女':'-'}</td>
+            <td>${u.coins}</td>
+            <td><span class="badge ${badgeClass(u.status)}">${u.status}</span></td>
+            <td>${formatTime(u.createdAt)}</td>
+            <td class="table__actions">
+              <button class="btn-sm btn-ghost" onclick="viewUser('${u.id}')">详情</button>
+              <button class="btn-sm btn-warning" onclick="showPenalize('${u.id}','${u.nickname}','${u.status}')">处罚</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      ${renderPagination()}
+    </div>`;
+}
+
+async function viewUser(id) {
+  const res = await api(`/users/${id}`);
+  if (!res.success) return;
+  const u = res.user;
+  openModal('用户详情', `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div><b>手机号:</b> ${u.phone}</div>
+      <div><b>昵称:</b> ${u.nickname || '未设置'}</div>
+      <div><b>性别:</b> ${u.gender || '未设置'}</div>
+      <div><b>状态:</b> <span class="badge ${badgeClass(u.status)}">${u.status}</span></div>
+      <div><b>漂流币:</b> ${u.coins}</div>
+      <div><b>累计充值:</b> ¥${u.totalRecharged || 0}</div>
+      <div><b>累计邀请:</b> ${u.totalInvited || 0}</div>
+      <div><b>注册时间:</b> ${formatTime(u.createdAt)}</div>
+      <div><b>最后登录:</b> ${formatTime(u.lastLoginAt)}</div>
+      <div><b>限制发布:</b> ${u.restrictions?.publish ? '是' : '否'}</div>
+      <div><b>限制聊天:</b> ${u.restrictions?.chat ? '是' : '否'}</div>
+    </div>
+    <h4 style="margin:16px 0 8px">漂流瓶 (${u.bottles?.length || 0})</h4>
+    <div style="max-height:200px;overflow-y:auto">${(u.bottles||[]).slice(-10).map(b => `<div style="padding:8px;border-bottom:1px solid #eee;font-size:13px"><span class="badge ${badgeClass(b.status)}">${b.status}</span> ${b.content.slice(0,50)}...</div>`).join('') || '<div style="color:#999">无</div>'}</div>
+    <h4 style="margin:16px 0 8px">漂流币明细 (最近20条)</h4>
+    <div style="max-height:200px;overflow-y:auto">${(u.transactions||[]).slice(-20).reverse().map(t => `<div style="padding:6px 0;border-bottom:1px solid #f5f5f5;font-size:13px;display:flex;justify-content:space-between"><span>${t.description}</span><span style="color:${t.amount>0?'#27ae60':'#e74c3c'};font-weight:700">${t.amount>0?'+':''}${t.amount}</span></div>`).join('') || '<div style="color:#999">无</div>'}</div>
+  `);
+}
+
+function showPenalize(id, name, currentStatus) {
+  openModal('处罚用户 - ' + name, `
+    <div class="form-group">
+      <label>处罚操作</label>
+      <select id="penalizeAction" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px">
+        <option value="restrict_publish">限制发布</option>
+        <option value="restrict_chat">限制聊天</option>
+        <option value="freeze">冻结账号</option>
+        <option value="ban">封禁账号</option>
+        <option value="restore">恢复正常</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>处罚原因</label>
+      <textarea id="penalizeReason" style="width:100%;min-height:80px;padding:10px;border:1px solid #ddd;border-radius:8px" placeholder="请填写处罚原因..."></textarea>
+    </div>
+  `, `<button class="btn-sm btn-ghost" onclick="closeModal()">取消</button><button class="btn-sm btn-danger" onclick="doPenalize('${id}')">确认处罚</button>`);
+}
+
+async function doPenalize(id) {
+  const action = document.getElementById('penalizeAction').value;
+  const reason = document.getElementById('penalizeReason').value.trim();
+  const res = await api(`/users/${id}/penalize`, { method: 'POST', body: JSON.stringify({ action, reason }) });
+  if (res.success) { showToast('操作成功'); closeModal(); renderUsers(); }
+  else showToast(res.error || '操作失败');
+}
+
+/* ===== Bottles ===== */
+let bottleSearch = '', bottleStatus = 'all';
+async function renderBottles() {
+  const res = await api(`/bottles?search=${encodeURIComponent(bottleSearch)}&status=${bottleStatus}&page=${pagination.page}&pageSize=${pagination.pageSize}`);
+  if (!res.success) return;
+  pagination.total = res.total;
+  const c = document.getElementById('pageContent');
+  c.innerHTML = `
+    <div class="search-bar">
+      <input type="text" placeholder="搜索内容" value="${bottleSearch}" onkeydown="if(event.key==='Enter'){bottleSearch=this.value;pagination.page=1;renderBottles()}">
+      <select onchange="bottleStatus=this.value;pagination.page=1;renderBottles()">
+        <option value="all" ${bottleStatus==='all'?'selected':''}>全部</option>
+        <option value="displaying" ${bottleStatus==='displaying'?'selected':''}>展示中</option>
+        <option value="expired" ${bottleStatus==='expired'?'selected':''}>已过期</option>
+        <option value="deleted" ${bottleStatus==='deleted'?'selected':''}>已删除</option>
+      </select>
+    </div>
+    <div class="card">
+      <table class="table">
+        <thead><tr><th>内容</th><th>作者</th><th>性别</th><th>状态</th><th>发布时间</th><th>操作</th></tr></thead>
+        <tbody>
+          ${res.bottles.map(b => `<tr>
+            <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.content}</td>
+            <td>${b.authorNickname || '匿名'}</td>
+            <td>${b.authorGender==='male'?'男':'女'}</td>
+            <td><span class="badge ${badgeClass(b.status)}">${b.status}</span></td>
+            <td>${formatTime(b.createdAt)}</td>
+            <td>${b.status!=='deleted' ? `<button class="btn-sm btn-danger" onclick="deleteBottle('${b.id}')">删除</button>` : '-'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      ${renderPagination()}
+    </div>`;
+}
+
+async function deleteBottle(id) {
+  if (!confirm('确定删除这条漂流瓶？')) return;
+  const res = await api(`/bottles/${id}`, { method: 'DELETE' });
+  if (res.success) { showToast('已删除'); renderBottles(); }
+  else showToast(res.error || '删除失败');
+}
+
+/* ===== Coins ===== */
+async function renderCoins() {
+  const res = await api('/coins/stats');
+  if (!res.success) return;
+  const c = document.getElementById('pageContent');
+  const typeNames = { new_user_bonus:'新用户赠送', checkin:'签到', invite:'邀请', recharge:'充值', bottle_publish:'发布漂流瓶', chat_session:'聊天会话', permanent_chat:'永久续聊', admin_adjust:'管理员调整', refund:'退款' };
+  c.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-card__label">累计发放</div><div class="stat-card__value">${res.credits}</div></div>
+      <div class="stat-card"><div class="stat-card__label">累计消耗</div><div class="stat-card__value danger">${res.debits}</div></div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card__title">人工调整漂流币</div>
+      <div class="form-row">
+        <div class="form-group"><label>用户ID</label><input type="text" id="adjustUserId" placeholder="用户ID"></div>
+        <div class="form-group"><label>数量（正数增加/负数扣除）</label><input type="number" id="adjustAmount" placeholder="如 10 或 -5"></div>
+        <div class="form-group"><label>原因</label><input type="text" id="adjustReason" placeholder="调整原因"></div>
+        <div class="form-group" style="display:flex;align-items:flex-end"><button class="btn-sm btn-primary" style="padding:10px 20px" onclick="adjustCoins()">确认调整</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card__title">最近人工调整</div>
+      <table class="table">
+        <thead><tr><th>用户ID</th><th>数量</th><th>说明</th><th>时间</th></tr></thead>
+        <tbody>${(res.adminAdjusts||[]).map(t => `<tr><td style="font-size:11px">${t.userId.slice(0,12)}...</td><td style="color:${t.amount>0?'#27ae60':'#e74c3c'};font-weight:700">${t.amount>0?'+':''}${t.amount}</td><td>${t.description}</td><td>${formatTime(t.createdAt)}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:#999">暂无记录</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+
+async function adjustCoins() {
+  const userId = document.getElementById('adjustUserId').value.trim();
+  const amount = parseInt(document.getElementById('adjustAmount').value);
+  const reason = document.getElementById('adjustReason').value.trim();
+  if (!userId || isNaN(amount)) { showToast('请填写完整信息'); return; }
+  const res = await api('/coins/adjust', { method: 'POST', body: JSON.stringify({ userId, amount, reason }) });
+  if (res.success) { showToast('调整成功'); renderCoins(); }
+  else showToast(res.error || '调整失败');
+}
+
+/* ===== Orders ===== */
+let orderStatus = 'all';
+async function renderOrders() {
+  const res = await api(`/orders?status=${orderStatus}&page=${pagination.page}&pageSize=${pagination.pageSize}`);
+  if (!res.success) return;
+  pagination.total = res.total;
+  const c = document.getElementById('pageContent');
+  c.innerHTML = `
+    <div class="search-bar">
+      <select onchange="orderStatus=this.value;pagination.page=1;renderOrders()">
+        <option value="all" ${orderStatus==='all'?'selected':''}>全部</option>
+        <option value="pending" ${orderStatus==='pending'?'selected':''}>待支付</option>
+        <option value="paid" ${orderStatus==='paid'?'selected':''}>已支付</option>
+        <option value="refunded" ${orderStatus==='refunded'?'selected':''}>已退款</option>
+      </select>
+    </div>
+    <div class="card">
+      <table class="table">
+        <thead><tr><th>订单号</th><th>用户</th><th>手机号</th><th>金额</th><th>漂流币</th><th>状态</th><th>时间</th><th>操作</th></tr></thead>
+        <tbody>
+          ${res.orders.map(o => `<tr>
+            <td style="font-size:11px">${o.orderId.slice(0,16)}...</td>
+            <td>${o.userNickname || '未知'}</td>
+            <td>${o.userPhone || '-'}</td>
+            <td>¥${o.amount}</td>
+            <td>${o.coins}</td>
+            <td><span class="badge ${badgeClass(o.status)}">${o.status}</span></td>
+            <td>${formatTime(o.createdAt)}</td>
+            <td>${o.status==='paid' ? `<button class="btn-sm btn-danger" onclick="refundOrder('${o.id}')">退款</button>` : '-'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      ${renderPagination()}
+    </div>`;
+}
+
+async function refundOrder(id) {
+  const reason = prompt('请输入退款原因：');
+  if (!reason) return;
+  const res = await api(`/orders/${id}/refund`, { method: 'POST', body: JSON.stringify({ reason }) });
+  if (res.success) { showToast('退款成功'); renderOrders(); }
+  else showToast(res.error || '退款失败');
+}
+
+/* ===== Reports ===== */
+let reportStatus = 'pending';
+async function renderReports() {
+  const res = await api(`/reports?status=${reportStatus}&page=${pagination.page}&pageSize=${pagination.pageSize}`);
+  if (!res.success) return;
+  pagination.total = res.total;
+  const c = document.getElementById('pageContent');
+  c.innerHTML = `
+    <div class="search-bar">
+      <select onchange="reportStatus=this.value;pagination.page=1;renderReports()">
+        <option value="pending" ${reportStatus==='pending'?'selected':''}>待处理</option>
+        <option value="resolved" ${reportStatus==='resolved'?'selected':''}>已处置</option>
+        <option value="dismissed" ${reportStatus==='dismissed'?'selected':''}>已驳回</option>
+        <option value="all" ${reportStatus==='all'?'selected':''}>全部</option>
+      </select>
+    </div>
+    <div class="card">
+      <table class="table">
+        <thead><tr><th>举报类型</th><th>目标ID</th><th>原因</th><th>说明</th><th>状态</th><th>时间</th><th>操作</th></tr></thead>
+        <tbody>
+          ${res.reports.map(r => `<tr>
+            <td>${r.targetType}</td>
+            <td style="font-size:11px">${r.targetId.slice(0,12)}...</td>
+            <td>${r.reason}</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${r.description || '-'}</td>
+            <td><span class="badge ${badgeClass(r.status)}">${r.status}</span></td>
+            <td>${formatTime(r.createdAt)}</td>
+            <td>${r.status==='pending' ? `<button class="btn-sm btn-success" onclick="handleReport('${r.id}','resolved')">处置</button><button class="btn-sm btn-ghost" onclick="handleReport('${r.id}','dismissed')">驳回</button>` : '-'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      ${renderPagination()}
+    </div>`;
+}
+
+async function handleReport(id, result) {
+  const note = prompt('处理备注：') || '';
+  const res = await api(`/reports/${id}/handle`, { method: 'POST', body: JSON.stringify({ result, note }) });
+  if (res.success) { showToast('处理成功'); renderReports(); }
+  else showToast(res.error || '处理失败');
+}
+
+/* ===== Config ===== */
+async function renderConfig() {
+  const res = await api('/config');
+  if (!res.success) return;
+  const c = res.config;
+  document.getElementById('pageContent').innerHTML = `
+    <div class="card">
+      <div class="card__title">业务参数配置</div>
+      <div class="config-grid">
+        <div class="config-item"><label>新用户赠币</label><input type="number" id="cfg_new_user_bonus" value="${c.new_user_bonus}"></div>
+        <div class="config-item"><label>每日登录奖励</label><input type="number" id="cfg_daily_login_bonus" value="${c.daily_login_bonus}"></div>
+        <div class="config-item"><label>连续3天额外奖励</label><input type="number" id="cfg_consecutive_day3_bonus" value="${c.consecutive_day3_bonus}"></div>
+        <div class="config-item"><label>连续7天额外奖励</label><input type="number" id="cfg_consecutive_day7_bonus" value="${c.consecutive_day7_bonus}"></div>
+        <div class="config-item"><label>邀请奖励</label><input type="number" id="cfg_invite_bonus" value="${c.invite_bonus}"></div>
+        <div class="config-item"><label>每月邀请上限</label><input type="number" id="cfg_invite_monthly_limit" value="${c.invite_monthly_limit}"></div>
+        <div class="config-item"><label>漂流瓶发布费用</label><input type="number" id="cfg_bottle_publish_cost" value="${c.bottle_publish_cost}"></div>
+        <div class="config-item"><label>漂流瓶展示时长(小时)</label><input type="number" id="cfg_bottle_display_hours" value="${c.bottle_display_hours}"></div>
+        <div class="config-item"><label>聊天会话费用</label><input type="number" id="cfg_chat_session_cost" value="${c.chat_session_cost}"></div>
+        <div class="config-item"><label>聊天会话时长(小时)</label><input type="number" id="cfg_chat_session_hours" value="${c.chat_session_hours}"></div>
+        <div class="config-item"><label>永久续聊费用</label><input type="number" id="cfg_permanent_chat_cost" value="${c.permanent_chat_cost}"></div>
+        <div class="config-item"><label>充值比例(币/元)</label><input type="number" id="cfg_recharge_rate" value="${c.recharge_rate}"></div>
+      </div>
+      <div class="config-item" style="margin-top:12px"><label>系统公告</label><input type="text" id="cfg_system_announcement" value="${c.system_announcement || ''}" style="width:100%"></div>
+      <div class="config-item" style="margin-top:12px"><label><input type="checkbox" id="cfg_maintenance_mode" ${c.maintenance_mode?'checked':''}> 维护模式（开启后用户无法使用）</label></div>
+      <button class="btn-sm btn-primary" style="margin-top:16px;padding:10px 24px" onclick="saveConfig()">保存配置</button>
+    </div>`;
+}
+
+async function saveConfig() {
+  const updates = {
+    new_user_bonus: parseInt(document.getElementById('cfg_new_user_bonus').value),
+    daily_login_bonus: parseInt(document.getElementById('cfg_daily_login_bonus').value),
+    consecutive_day3_bonus: parseInt(document.getElementById('cfg_consecutive_day3_bonus').value),
+    consecutive_day7_bonus: parseInt(document.getElementById('cfg_consecutive_day7_bonus').value),
+    invite_bonus: parseInt(document.getElementById('cfg_invite_bonus').value),
+    invite_monthly_limit: parseInt(document.getElementById('cfg_invite_monthly_limit').value),
+    bottle_publish_cost: parseInt(document.getElementById('cfg_bottle_publish_cost').value),
+    bottle_display_hours: parseInt(document.getElementById('cfg_bottle_display_hours').value),
+    chat_session_cost: parseInt(document.getElementById('cfg_chat_session_cost').value),
+    chat_session_hours: parseInt(document.getElementById('cfg_chat_session_hours').value),
+    permanent_chat_cost: parseInt(document.getElementById('cfg_permanent_chat_cost').value),
+    recharge_rate: parseInt(document.getElementById('cfg_recharge_rate').value),
+    system_announcement: document.getElementById('cfg_system_announcement').value,
+    maintenance_mode: document.getElementById('cfg_maintenance_mode').checked
+  };
+  const res = await api('/config', { method: 'POST', body: JSON.stringify(updates) });
+  if (res.success) showToast('配置已保存');
+  else showToast(res.error || '保存失败');
+}
+
+/* ===== Audit ===== */
+async function renderAudit() {
+  const res = await api(`/audit?page=${pagination.page}&pageSize=${pagination.pageSize}`);
+  if (!res.success) return;
+  pagination.total = res.total;
+  document.getElementById('pageContent').innerHTML = `
+    <div class="card">
+      <table class="table">
+        <thead><tr><th>管理员</th><th>操作</th><th>目标</th><th>说明</th><th>时间</th></tr></thead>
+        <tbody>
+          ${res.logs.map(l => `<tr>
+            <td>${l.adminId}</td>
+            <td><span class="badge badge-active">${l.action}</span></td>
+            <td style="font-size:11px">${l.target}</td>
+            <td>${l.description}</td>
+            <td>${formatTime(l.createdAt)}</td>
+          </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:#999">暂无日志</td></tr>'}
+        </tbody>
+      </table>
+      ${renderPagination()}
+    </div>`;
+}
+
+/* ===== Pagination ===== */
+function renderPagination() {
+  const pages = Math.ceil(pagination.total / pagination.pageSize);
+  if (pages <= 1) return '';
+  let html = '<div class="pagination">';
+  html += `<button ${pagination.page<=1?'disabled':''} onclick="pagination.page--;renderTab()">上一页</button>`;
+  for (let i = 1; i <= Math.min(pages, 10); i++) {
+    html += `<button class="${i===pagination.page?'active':''}" onclick="pagination.page=${i};renderTab()">${i}</button>`;
+  }
+  html += `<button ${pagination.page>=pages?'disabled':''} onclick="pagination.page++;renderTab()">下一页</button>`;
+  html += `</div><div style="text-align:center;font-size:12px;color:#999;margin-top:8px">共 ${pagination.total} 条</div>`;
+  return html;
+}
+
+/* ===== Init ===== */
+if (adminToken) {
+  showPanel();
+  switchTab('dashboard');
+} else {
+  showLogin();
+}
+</script>
+</body>
+</html>
