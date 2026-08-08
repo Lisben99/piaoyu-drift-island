@@ -29,6 +29,14 @@ services:
         generateValue: true
       - key: SMS_PROVIDER
         value: dev
+      - key: ALIYUN_SMS_KEY
+        sync: false
+      - key: ALIYUN_SMS_SECRET
+        sync: false
+      - key: ALIYUN_SMS_SIGN
+        sync: false
+      - key: ALIYUN_SMS_TEMPLATE
+        sync: false
       - key: PAYMENT_PROVIDER
         value: dev
       - key: MODERATION_PROVIDER

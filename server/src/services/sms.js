@@ -7,7 +7,7 @@
  * To enable production SMS:
  * 1. Set SMS_PROVIDER=aliyun in environment
  * 2. Set ALIYUN_SMS_KEY, ALIYUN_SMS_SECRET, ALIYUN_SMS_SIGN, ALIYUN_SMS_TEMPLATE
- * 3. Install @alicloud/sms20170525 or use HTTP API directly
+ * 3. Uses @alicloud/pop-core (RPC client) — already in package.json
  */
 
 const SMS_PROVIDER = process.env.SMS_PROVIDER || 'dev'; // 'dev' or 'aliyun'
@@ -20,19 +20,55 @@ function generateCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-function sendSMS(phone, code) {
+/**
+ * Send SMS via Aliyun (production).
+ * Reads credentials from env vars; throws if not fully configured.
+ */
+async function sendSMSAliyun(phone, code) {
+  const accessKeyId = process.env.ALIYUN_SMS_KEY;
+  const accessKeySecret = process.env.ALIYUN_SMS_SECRET;
+  const signName = process.env.ALIYUN_SMS_SIGN;
+  const templateCode = process.env.ALIYUN_SMS_TEMPLATE;
+
+  if (!accessKeyId || !accessKeySecret || !signName || !templateCode) {
+    throw new Error('阿里云短信未配置完整（请设置 ALIYUN_SMS_KEY / SECRET / SIGN / TEMPLATE）');
+  }
+
+  // Lazy require so dev mode never needs the SDK loaded at startup
+  const Core = require('@alicloud/pop-core');
+  const client = new Core({
+    accessKeyId,
+    accessKeySecret,
+    endpoint: 'https://dysmsapi.aliyuncs.com',
+    apiVersion: '2017-05-25'
+  });
+
+  const params = {
+    PhoneNumbers: phone,
+    SignName: signName,
+    TemplateCode: templateCode,
+    TemplateParam: JSON.stringify({ code })
+  };
+
+  const resp = await client.request('SendSms', params, { method: 'POST', format: 'JSON' });
+  if (resp.Code !== 'OK') {
+    throw new Error('短信发送失败: ' + (resp.Message || resp.Code));
+  }
+  return { success: true };
+}
+
+async function sendSMS(phone, code) {
   if (SMS_PROVIDER === 'aliyun') {
-    // Production: call Aliyun SMS API
-    // const { sendSms } = require('./aliyun-sms');
-    // return sendSms(phone, code);
-    
-    // Placeholder - implement with real SDK when credentials are available
-    console.log(`[SMS] To: ${phone}, Code: ${code} (Aliyun SMS - configure credentials)`);
-    return Promise.resolve({ success: true });
+    try {
+      return await sendSMSAliyun(phone, code);
+    } catch (e) {
+      console.error('[SMS][ALIYUN] 发送失败:', e.message);
+      return { success: false, error: '短信发送失败：' + e.message };
+    }
   } else {
-    // Development mode: just log the code
+    // Development mode: just log the code (returned to client for testing)
     console.log(`[SMS][DEV] To: ${phone}, Code: ${code}`);
-    return Promise.resolve({ success: true, devCode: code });
+    return { success: true, devCode: code };
   }
 }
 
@@ -66,9 +102,9 @@ async function sendVerificationCode(phone) {
   
   // Send SMS
   const result = await sendSMS(phone, code);
-  
+
   if (!result.success) {
-    return { success: false, error: '短信发送失败，请稍后重试' };
+    return { success: false, error: result.error || '短信发送失败，请稍后重试' };
   }
   
   const response = { success: true };
