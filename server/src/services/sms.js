@@ -77,12 +77,12 @@ async function sendSMSAliyun(phone) {
   if (!body) {
     throw new Error('阿里云返回空响应');
   }
-  if (body.Code && body.Code !== 'OK') {
-    throw new Error(`阿里云错误 Code=${body.Code} Message=${body.Message || ''} RequestId=${body.RequestId || ''}`);
+  // 注意：阿里云该接口返回的是小写字段 code/message/success（非大写的 Code）
+  const ok = body.success === true || body.code === 'OK';
+  if (!ok) {
+    throw new Error(`阿里云错误 code=${body.code} message=${body.message || ''} requestId=${body.requestId || ''}`);
   }
-  // SendSmsVerifyCode 成功时 body.Code 应为 'OK'；部分场景用 BizCode 表示下发结果
-  const delivered = body.Code === 'OK' || body.BizCode === 'OK' || body.BizCode === '1' || body.BizCode === 'true';
-  return { success: true, detail: body, delivered };
+  return { success: true, detail: body, delivered: true };
 }
 
 // 是否启用阿里云真实短信：需 SMS_PROVIDER=aliyun 且 KEY/SECRET 齐备；
