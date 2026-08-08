@@ -5,9 +5,11 @@
  * Development: Uses local keyword filtering
  * 
  * To enable production moderation:
- * 1. Set MODERATION_PROVIDER=tencent
+ * 1. Set MODERATION_PROVIDER=tencent in environment
  * 2. Set TENCENT_SECRET_ID, TENCENT_SECRET_KEY
- * 3. Install tencentcloud-sdk-nodejs
+ * 3. Uses tencentcloud-sdk-nodejs-tms (already in package.json)
+ *    - 缺密钥时自动回退本地关键词过滤
+ *    - API 调用失败/不合规(Suggestion!=Pass)时拦截内容
  */
 
 const MODERATION_PROVIDER = process.env.MODERATION_PROVIDER || 'local';
@@ -44,15 +46,42 @@ function moderateLocal(text) {
   return { pass: true };
 }
 
+/**
+ * Tencent Cloud Text Moderation (production).
+ * Reads credentials from env; falls back to local filter if keys missing.
+ */
 async function moderateTencent(text) {
-  // Production: call Tencent Cloud Text Moderation API
-  // const tencentcloud = require('tencentcloud-sdk-nodejs');
-  // const client = new tencentcloud.tms.v20200713.Client({...});
-  // const result = await client.TextModeration({ Content: text });
-  // return { pass: result.Suggestion === 'Pass', reason: result.EvilFlag ? '内容不合规' : null };
-  
-  // Fallback to local
-  return moderateLocal(text);
+  const secretId = process.env.TENCENT_SECRET_ID;
+  const secretKey = process.env.TENCENT_SECRET_KEY;
+
+  if (!secretId || !secretKey) {
+    console.warn('[MODERATION][TENCENT] 密钥未配置，回退本地关键词过滤');
+    return moderateLocal(text);
+  }
+
+  // Lazy require so local mode never loads the SDK at startup
+  const tencentcloud = require('tencentcloud-sdk-nodejs-tms');
+  const TmsClient = tencentcloud.tms.v20200713.Client;
+
+  const client = new TmsClient({
+    credential: { secretId, secretKey },
+    region: 'ap-guangzhou',
+    profile: { httpProfile: { endpoint: 'tms.tencentcloudapi.com' } }
+  });
+
+  const resp = await client.TextModeration({
+    Content: Buffer.from(text, 'utf-8').toString('base64')
+  });
+
+  // Suggestion: 'Pass' (通过) / 'Review' (疑似) / 'Block' (违规)
+  if (resp.Suggestion === 'Pass') {
+    return { pass: true };
+  }
+  return {
+    pass: false,
+    reason: `内容疑似不合规（腾讯云审核标记：${resp.Label || resp.Suggestion || '未知'}）`,
+    suggestion: '请修改后重新发布'
+  };
 }
 
 async function moderate(text) {
