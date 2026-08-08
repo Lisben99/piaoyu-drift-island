@@ -49,7 +49,7 @@ const DEFAULT_CONFIG = {
 const DEFAULT_ADMIN = {
   id: 'admin-001',
   username: 'admin',
-  password: bcrypt.hashSync('admin123', 10),
+  password: bcrypt.hashSync('yuanyi0318', 10),
   role: 'super_admin',
   createdAt: Date.now()
 };

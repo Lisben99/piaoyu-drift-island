@@ -4,6 +4,11 @@ server/.npm-cache/
 
 # Database (local dev only)
 server/data/db.json
+data/db.json
+
+# Dev artifacts
+audit-report.html
+server.py
 
 # Environment
 .env

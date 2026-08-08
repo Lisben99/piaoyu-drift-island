@@ -6,7 +6,7 @@ const router = express.Router();
 const { adminAuth } = require('../middleware/auth');
 const { db, save, genId, findUserById, findBottleById, addCoinTransaction, addAuditLog, findAdminById } = require('../db');
 const { signAdminToken } = require('../utils/jwt');
-const { comparePassword } = require('../utils/crypto');
+const { comparePassword, hashPassword } = require('../utils/crypto');
 const { PACKAGES, refundOrder } = require('../services/payment');
 
 // Admin login
@@ -31,6 +31,31 @@ router.post('/login', (req, res) => {
     token,
     admin: { id: admin.id, username: admin.username, role: admin.role }
   });
+});
+
+// Change admin password (must be logged in and provide current password)
+router.post('/change-password', adminAuth, (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ success: false, error: '请提供当前密码和新密码' });
+  }
+  if (newPassword.length < 6) {
+    return res.status(400).json({ success: false, error: '新密码至少 6 位' });
+  }
+
+  const admin = db().admins.find(a => a.id === req.admin.id);
+  if (!admin) {
+    return res.status(404).json({ success: false, error: '管理员不存在' });
+  }
+  if (!comparePassword(currentPassword, admin.password)) {
+    return res.status(401).json({ success: false, error: '当前密码错误' });
+  }
+
+  admin.password = hashPassword(newPassword);
+  admin.passwordChangedAt = Date.now();
+  addAuditLog(admin.id, 'change_password', admin.id, '管理员修改登录密码');
+  save();
+  res.json({ success: true, message: '密码修改成功' });
 });
 
 // Dashboard stats
