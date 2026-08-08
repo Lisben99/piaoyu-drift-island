@@ -128,18 +128,21 @@ npm start                             # = node src/index.js
 2. 添加权限，搜索 `dypns`，授予 **`AliyunDypnsFullAccess`**（号码认证服务完全访问）。
 3. 等待策略生效（通常分钟级）。
 
-**第二步：在 Render 填入密钥**
-到 Render Dashboard → `drift-island-api` → Environment，新增/修改以下变量（均为私密，建议 `sync:false`）：
+**第二步：在 Render 填入 2 个密钥（其余已内置，无需手填）**
+到 Render Dashboard → `drift-island-api` → Environment，新增以下**两个私密变量**（`sync:false`，加密存储，不进 git）：
 
 | Key | Value |
 | --- | --- |
 | `ALIYUN_SMS_KEY` | `<阿里云 AccessKey ID>`（见下方安全说明，勿写入本仓库） |
 | `ALIYUN_SMS_SECRET` | `<阿里云 AccessKey Secret>` |
-| `ALIYUN_SMS_SIGN` | `信趣男女` |
-| `ALIYUN_SMS_TEMPLATE` | `100001` |
-| `SMS_PROVIDER` | 由 `dev` 改为 `aliyun` |
 
-> 🔒 **密钥存放原则**：`ALIYUN_SMS_KEY` / `ALIYUN_SMS_SECRET` 是凭证，**只填在 Render 控制台 Environment（加密存储，不进 git）**。请勿把真实值写进仓库文件——GitHub 推送保护会直接拦截，且公开仓库泄露凭证风险极高。真实值请从你的阿里云控制台或本项目沟通记录中获取后，粘贴到 Render 的对应变量里。
+> 以下两项已作为代码默认值内置（个人实名账号「系统赠送」配置），**无需在 Render 填写**：
+> - `ALIYUN_SMS_SIGN` = `信趣男女`
+> - `ALIYUN_SMS_TEMPLATE` = `100001`
+>
+> `SMS_PROVIDER` 已在 `render.yaml` 中设为 `aliyun`（非密，随代码提交），部署即生效，也**无需手动改**。
+
+> 🔒 **密钥存放原则**：`ALIYUN_SMS_KEY` / `ALIYUN_SMS_SECRET` 是凭证，**只填在 Render 控制台 Environment（加密存储，不进 git）**。请勿把真实值写进仓库文件——GitHub 推送保护会直接拦截，且公开仓库泄露凭证风险极高。真实值请从你的阿里云控制台或本项目沟通记录中获取后，粘贴到 Render 的对应变量里。激活并验证通过后，建议到阿里云 RAM 控制台**轮换**该 AccessKey（明文曾在聊天出现）。
 
 保存后 Render 自动重新部署。
 

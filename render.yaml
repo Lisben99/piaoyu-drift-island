@@ -28,7 +28,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: SMS_PROVIDER
-        value: dev
+        value: aliyun
       - key: ALIYUN_SMS_KEY
         sync: false
       - key: ALIYUN_SMS_SECRET
