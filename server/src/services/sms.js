@@ -11,7 +11,7 @@
  *   SMS_PROVIDER         aliyun | dev（默认 dev；render.yaml 生产设为 aliyun）
  *   ALIYUN_SMS_KEY       阿里云 AccessKeyId（必填，生产必需）
  *   ALIYUN_SMS_SECRET    阿里云 AccessKeySecret（必填，生产必需）
- *   ALIYUN_SMS_SIGN      签名名称（默认值：信趣男女，可经环境变量覆盖）
+ *   ALIYUN_SMS_SIGN      签名名称（默认值：恒创联众，可经环境变量覆盖）
  *   ALIYUN_SMS_TEMPLATE  模板编号（默认值：100001，可经环境变量覆盖）
  *   注：KEY/SECRET 缺失时，即使 SMS_PROVIDER=aliyun 也会自动回退 dev 模式。
  */
@@ -19,7 +19,7 @@
 const SMS_PROVIDER = process.env.SMS_PROVIDER || 'dev'; // 'dev' | 'aliyun'
 const CODE_EXPIRE_MINUTES = 5;
 // 非密配置默认值（个人实名账号「系统赠送」的签名与模板，可经环境变量覆盖）
-const ALIYUN_SMS_SIGN_DEFAULT = '信趣男女';
+const ALIYUN_SMS_SIGN_DEFAULT = '恒创联众';
 const ALIYUN_SMS_TEMPLATE_DEFAULT = '100001';
 const SEND_INTERVAL_SECONDS = 60;
 
