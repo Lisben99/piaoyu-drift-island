@@ -18,13 +18,13 @@ router.post('/sms/send', async (req, res) => {
 });
 
 // Login with phone + code
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { phone, code } = req.body;
   if (!phone || !code) {
     return res.json({ success: false, error: '请输入手机号和验证码' });
   }
   
-  const verifyResult = verifyCode(phone, code);
+  const verifyResult = await verifyCode(phone, code);
   if (!verifyResult.success) {
     return res.json(verifyResult);
   }
