@@ -61,9 +61,11 @@ async function sendSMSAliyun(phone) {
     templateCode,
     codeType: 1,             // 1 = 数字
     codeLength: 6,
-    validTime: CODE_EXPIRE_MINUTES,
+    validTime: CODE_EXPIRE_MINUTES * 60,   // 注意：该接口单位是秒
     interval: SEND_INTERVAL_SECONDS,
-    countryCode: 'CN',
+    countryCode: '86',       // 该接口仅支持国内号码，固定 86
+    // 系统生成验证码模式：##code## 由阿里云按规则生成并下发，且阿里云可校验
+    templateParam: JSON.stringify({ code: '##code##', min: String(CODE_EXPIRE_MINUTES) }),
     outId: 'drift-' + Date.now()
   });
   const RuntimeOptions = require('@alicloud/tea-util').RuntimeOptions;
@@ -126,7 +128,7 @@ async function verifyCode(phone, code) {
       const req = new Dypnsapi.CheckSmsVerifyCodeRequest({
         phoneNumber: phone,
         verifyCode: code,
-        countryCode: 'CN',
+        countryCode: '86',
         caseAuthPolicy: 0
       });
       const RuntimeOptions = require('@alicloud/tea-util').RuntimeOptions;
