@@ -72,10 +72,17 @@ async function sendSMSAliyun(phone) {
   const RuntimeOptions = require('@alicloud/tea-util').RuntimeOptions;
   const resp = await client.sendSmsVerifyCodeWithOptions(req, new RuntimeOptions());
   const body = resp && resp.body;
-  if (body && body.Code && body.Code !== 'OK') {
-    throw new Error(body.Message || body.Code);
+  // 记录完整原始响应，便于排查「接口成功但用户收不到」类问题
+  console.error('[SMS][ALIYUN] SendSmsVerifyCode raw response:', JSON.stringify(body));
+  if (!body) {
+    throw new Error('阿里云返回空响应');
   }
-  return { success: true };
+  if (body.Code && body.Code !== 'OK') {
+    throw new Error(`阿里云错误 Code=${body.Code} Message=${body.Message || ''} RequestId=${body.RequestId || ''}`);
+  }
+  // SendSmsVerifyCode 成功时 body.Code 应为 'OK'；部分场景用 BizCode 表示下发结果
+  const delivered = body.Code === 'OK' || body.BizCode === 'OK' || body.BizCode === '1' || body.BizCode === 'true';
+  return { success: true, detail: body, delivered };
 }
 
 // 是否启用阿里云真实短信：需 SMS_PROVIDER=aliyun 且 KEY/SECRET 齐备；
@@ -124,7 +131,8 @@ async function sendVerificationCode(phone) {
   try {
     const r = await sendSMSAliyun(phone);
     if (!r.success) return { success: false, error: r.error || '短信发送失败，请稍后重试' };
-    return { success: true };
+    // 透传阿里云原始响应，便于前端/排查确认是否真正下发
+    return { success: true, aliyun: r.detail, delivered: r.delivered };
   } catch (e) {
     lastSendAt.delete(phone); // 发送失败不占用发送间隔
     console.error('[SMS][ALIYUN] 发送失败:', e.message);
