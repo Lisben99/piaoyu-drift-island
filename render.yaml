@@ -22,8 +22,9 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
-        fromDatabase: drift-island-db
-        property: connectionString
+        fromDatabase:
+          name: drift-island-db
+          property: connectionString
       - key: JWT_SECRET
         generateValue: true
       - key: SMS_PROVIDER
