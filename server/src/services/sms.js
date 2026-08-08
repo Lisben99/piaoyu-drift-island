@@ -7,16 +7,20 @@
  *   生产校验：CheckSmsVerifyCode（异步，调用方需 await）
  *   开发模式：本地生成 + 控制台打印 + 返回 devCode（前端显示用）
  *
- * 环境变量（在 Render 控制台填写，render.yaml 中 sync:false）：
- *   SMS_PROVIDER      aliyun | dev
- *   ALIYUN_SMS_KEY    阿里云 AccessKeyId
- *   ALIYUN_SMS_SECRET 阿里云 AccessKeySecret
- *   ALIYUN_SMS_SIGN   控制台「系统赠送」的签名名称
- *   ALIYUN_SMS_TEMPLATE 控制台「系统赠送」的验证码模板编号
+ * 环境变量（密钥类在 Render 控制台填写，render.yaml 中 sync:false）：
+ *   SMS_PROVIDER         aliyun | dev（默认 dev；render.yaml 生产设为 aliyun）
+ *   ALIYUN_SMS_KEY       阿里云 AccessKeyId（必填，生产必需）
+ *   ALIYUN_SMS_SECRET    阿里云 AccessKeySecret（必填，生产必需）
+ *   ALIYUN_SMS_SIGN      签名名称（默认值：信趣男女，可经环境变量覆盖）
+ *   ALIYUN_SMS_TEMPLATE  模板编号（默认值：100001，可经环境变量覆盖）
+ *   注：KEY/SECRET 缺失时，即使 SMS_PROVIDER=aliyun 也会自动回退 dev 模式。
  */
 
 const SMS_PROVIDER = process.env.SMS_PROVIDER || 'dev'; // 'dev' | 'aliyun'
 const CODE_EXPIRE_MINUTES = 5;
+// 非密配置默认值（个人实名账号「系统赠送」的签名与模板，可经环境变量覆盖）
+const ALIYUN_SMS_SIGN_DEFAULT = '信趣男女';
+const ALIYUN_SMS_TEMPLATE_DEFAULT = '100001';
 const SEND_INTERVAL_SECONDS = 60;
 
 const db = require('../db');
@@ -48,11 +52,8 @@ function getClient() {
 }
 
 async function sendSMSAliyun(phone) {
-  const signName = process.env.ALIYUN_SMS_SIGN;
-  const templateCode = process.env.ALIYUN_SMS_TEMPLATE;
-  if (!signName || !templateCode) {
-    throw new Error('阿里云短信未配置完整（请在 Render 设置 ALIYUN_SMS_SIGN / ALIYUN_SMS_TEMPLATE）');
-  }
+  const signName = process.env.ALIYUN_SMS_SIGN || ALIYUN_SMS_SIGN_DEFAULT;
+  const templateCode = process.env.ALIYUN_SMS_TEMPLATE || ALIYUN_SMS_TEMPLATE_DEFAULT;
   const client = getClient();
   const Dypnsapi = require('@alicloud/dypnsapi20170525');
   const req = new Dypnsapi.SendSmsVerifyCodeRequest({
@@ -77,6 +78,18 @@ async function sendSMSAliyun(phone) {
   return { success: true };
 }
 
+// 是否启用阿里云真实短信：需 SMS_PROVIDER=aliyun 且 KEY/SECRET 齐备；
+// 开关是 aliyun 但密钥缺失时自动回退 dev，避免部署间隙发信硬报错。
+function aliyunEnabled() {
+  const hasCreds = !!(process.env.ALIYUN_SMS_KEY && process.env.ALIYUN_SMS_SECRET);
+  if (SMS_PROVIDER === 'aliyun') {
+    if (hasCreds) return true;
+    console.warn('[SMS] SMS_PROVIDER=aliyun 但 ALIYUN_SMS_KEY/SECRET 缺失，临时回退 dev 模式');
+    return false;
+  }
+  return false;
+}
+
 async function sendVerificationCode(phone) {
   // 发送间隔控制
   const last = lastSendAt.get(phone);
@@ -90,7 +103,7 @@ async function sendVerificationCode(phone) {
   lastSendAt.set(phone, Date.now());
 
   // 开发模式：本地生成并存储验证码
-  if (SMS_PROVIDER !== 'aliyun') {
+  if (!aliyunEnabled()) {
     const code = generateCode();
     const database = db.db();
     if (!database.smsCodes) database.smsCodes = [];
@@ -121,7 +134,7 @@ async function sendVerificationCode(phone) {
 
 async function verifyCode(phone, code) {
   // 生产模式：交给阿里云校验（闭环）
-  if (SMS_PROVIDER === 'aliyun') {
+  if (aliyunEnabled()) {
     try {
       const client = getClient();
       const Dypnsapi = require('@alicloud/dypnsapi20170525');
