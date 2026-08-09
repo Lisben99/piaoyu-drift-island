@@ -44,7 +44,29 @@ const DEFAULT_CONFIG = {
   recharge_rate: 10,
   min_recharge: 1,
   system_announcement: '',
-  maintenance_mode: false
+  maintenance_mode: false,
+  // ===== Feature Flags (AGENTS §21) — all toggleable in admin backend =====
+  enable_bot: true,
+  enable_ai_reply: false,            // template-first by default; AI only if a provider key is present
+  enable_bot_public_post: true,
+  enable_bot_private_chat: false,
+  enable_ads: false,
+  enable_recharge: false,
+  enable_daily_reward: true,
+  enable_phone_login: true,
+  enable_content_moderation: true,
+  // ===== Bot tuning (AGENTS §23 / §11) — all editable in admin backend =====
+  bot_reply_delay_min_seconds: 30,
+  bot_reply_delay_max_seconds: 90,
+  bot_only_reply_when_no_human_reply: true,
+  bot_max_replies_per_message: 1,
+  bot_public_post_enabled: true,
+  bot_public_post_interval_minutes: 20,
+  bot_active_weight: 1.0,            // overall activity multiplier
+  bot_daily_max_posts: 12,
+  bot_daily_max_replies: 200,
+  csi_low_threshold: 5,              // CSI below -> high bot activity
+  csi_high_threshold: 50             // CSI above -> bots stand down
 };
 
 const DEFAULT_ADMIN = {

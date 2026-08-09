@@ -831,6 +831,36 @@ async function renderConfig() {
       <div class="config-item" style="margin-top:12px"><label>收款提示文字</label><input type="text" id="cfg_paymentQR_note" value="${c.paymentQRNote || ''}" placeholder="如：微信扫码付款，转账备注填你的手机号" style="width:100%" /></div>
       <div class="config-item" style="margin-top:12px"><label>系统公告</label><input type="text" id="cfg_system_announcement" value="${c.system_announcement || ''}" style="width:100%"></div>
       <div class="config-item" style="margin-top:12px"><label><input type="checkbox" id="cfg_maintenance_mode" ${c.maintenance_mode?'checked':''}> 维护模式（开启后用户无法使用）</label></div>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <div class="card__title">功能开关（Feature Flags）</div>
+      <div class="config-grid">
+        <div class="config-item"><label><input type="checkbox" id="cfg_enable_bot" ${c.enable_bot?'checked':''}> 启用机器人(Bot)引擎</label></div>
+        <div class="config-item"><label><input type="checkbox" id="cfg_enable_ai_reply" ${c.enable_ai_reply?'checked':''}> 启用 AI 回复（需配置 AI Key）</label></div>
+        <div class="config-item"><label><input type="checkbox" id="cfg_enable_bot_public_post" ${c.enable_bot_public_post?'checked':''}> 允许机器人主动发帖</label></div>
+        <div class="config-item"><label><input type="checkbox" id="cfg_enable_bot_private_chat" ${c.enable_bot_private_chat?'checked':''}> 允许机器人私聊</label></div>
+        <div class="config-item"><label><input type="checkbox" id="cfg_enable_ads" ${c.enable_ads?'checked':''}> 开启广告</label></div>
+        <div class="config-item"><label><input type="checkbox" id="cfg_enable_recharge" ${c.enable_recharge?'checked':''}> 开启充值</label></div>
+        <div class="config-item"><label><input type="checkbox" id="cfg_enable_daily_reward" ${c.enable_daily_reward?'checked':''}> 每日登录奖励</label></div>
+        <div class="config-item"><label><input type="checkbox" id="cfg_enable_phone_login" ${c.enable_phone_login?'checked':''}> 手机号登录</label></div>
+        <div class="config-item" style="grid-column:1 / -1"><label><input type="checkbox" id="cfg_enable_content_moderation" ${c.enable_content_moderation?'checked':''}> 内容审核（关闭后用户内容不经审核直接发布）</label></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <div class="card__title">机器人调参</div>
+      <div class="config-grid">
+        <div class="config-item"><label>回复延迟下限(秒)</label><input type="number" id="cfg_bot_reply_delay_min_seconds" value="${c.bot_reply_delay_min_seconds}"></div>
+        <div class="config-item"><label>回复延迟上限(秒)</label><input type="number" id="cfg_bot_reply_delay_max_seconds" value="${c.bot_reply_delay_max_seconds}"></div>
+        <div class="config-item"><label>每条最多 Bot 回复数</label><input type="number" id="cfg_bot_max_replies_per_message" value="${c.bot_max_replies_per_message}"></div>
+        <div class="config-item"><label>主动发帖间隔(分钟)</label><input type="number" id="cfg_bot_public_post_interval_minutes" value="${c.bot_public_post_interval_minutes}"></div>
+        <div class="config-item"><label>每日最多发帖</label><input type="number" id="cfg_bot_daily_max_posts" value="${c.bot_daily_max_posts}"></div>
+        <div class="config-item"><label>每日最多回复</label><input type="number" id="cfg_bot_daily_max_replies" value="${c.bot_daily_max_replies}"></div>
+        <div class="config-item"><label>CSI 低阈值</label><input type="number" id="cfg_csi_low_threshold" value="${c.csi_low_threshold}"></div>
+        <div class="config-item"><label>CSI 高阈值</label><input type="number" id="cfg_csi_high_threshold" value="${c.csi_high_threshold}"></div>
+        <div class="config-item"><label>整体活跃权重(0~2)</label><input type="number" step="0.1" id="cfg_bot_active_weight" value="${c.bot_active_weight}"></div>
+      </div>
       <button class="btn-sm btn-primary" style="margin-top:16px;padding:10px 24px" onclick="saveConfig()">保存配置</button>
     </div>`;
 }
@@ -853,7 +883,25 @@ async function saveConfig() {
     system_announcement: document.getElementById('cfg_system_announcement').value,
     maintenance_mode: document.getElementById('cfg_maintenance_mode').checked,
     paymentQR: window.pendingPaymentQR || '',
-    paymentQRNote: document.getElementById('cfg_paymentQR_note').value
+    paymentQRNote: document.getElementById('cfg_paymentQR_note').value,
+    enable_bot: document.getElementById('cfg_enable_bot').checked,
+    enable_ai_reply: document.getElementById('cfg_enable_ai_reply').checked,
+    enable_bot_public_post: document.getElementById('cfg_enable_bot_public_post').checked,
+    enable_bot_private_chat: document.getElementById('cfg_enable_bot_private_chat').checked,
+    enable_ads: document.getElementById('cfg_enable_ads').checked,
+    enable_recharge: document.getElementById('cfg_enable_recharge').checked,
+    enable_daily_reward: document.getElementById('cfg_enable_daily_reward').checked,
+    enable_phone_login: document.getElementById('cfg_enable_phone_login').checked,
+    enable_content_moderation: document.getElementById('cfg_enable_content_moderation').checked,
+    bot_reply_delay_min_seconds: parseInt(document.getElementById('cfg_bot_reply_delay_min_seconds').value),
+    bot_reply_delay_max_seconds: parseInt(document.getElementById('cfg_bot_reply_delay_max_seconds').value),
+    bot_max_replies_per_message: parseInt(document.getElementById('cfg_bot_max_replies_per_message').value),
+    bot_public_post_interval_minutes: parseInt(document.getElementById('cfg_bot_public_post_interval_minutes').value),
+    bot_daily_max_posts: parseInt(document.getElementById('cfg_bot_daily_max_posts').value),
+    bot_daily_max_replies: parseInt(document.getElementById('cfg_bot_daily_max_replies').value),
+    csi_low_threshold: parseInt(document.getElementById('cfg_csi_low_threshold').value),
+    csi_high_threshold: parseInt(document.getElementById('cfg_csi_high_threshold').value),
+    bot_active_weight: parseFloat(document.getElementById('cfg_bot_active_weight').value)
   };
   const res = await api('/config', { method: 'POST', body: JSON.stringify(updates) });
   if (res.success) showToast('配置已保存');
