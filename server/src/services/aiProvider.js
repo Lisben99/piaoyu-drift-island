@@ -11,6 +11,7 @@
  *
  * Configure via environment variables (secrets stay out of db.json):
  *   AI_PROVIDER   deepseek | openai | qwen | glm | moonshot | openai-compatible
+ *                 (optional; defaults to 'glm' so a plain AI_API_KEY = 智谱 GLM-4-Flash)
  *   AI_API_KEY    your provider key (required to actually call the model)
  *   AI_BASE_URL   optional override of the API base URL
  *   AI_MODEL      optional override of the model name
@@ -29,8 +30,9 @@ const PROVIDER_DEFAULTS = {
 };
 
 function resolveConfig() {
-  const provider = (process.env.AI_PROVIDER || '').toLowerCase();
-  if (!provider) return null;
+  // Default to 智谱 GLM-4-Flash (permanently free model) when no provider is set,
+  // so a plain AI_API_KEY is enough to enable AI. Set AI_PROVIDER to override.
+  const provider = (process.env.AI_PROVIDER || 'glm').toLowerCase();
   const def = PROVIDER_DEFAULTS[provider];
   if (!def) return null;
   const baseURL = process.env.AI_BASE_URL || def.baseURL;
@@ -156,4 +158,21 @@ function isConfigured() {
   return !!resolveConfig();
 }
 
-module.exports = { generateReply, isConfigured };
+// Human-readable provider label for the admin dashboard (e.g. "智谱 GLM-4-Flash").
+function providerLabel() {
+  const cfg = resolveConfig();
+  if (!cfg) return null;
+  const provider = (process.env.AI_PROVIDER || 'glm').toLowerCase();
+  const names = {
+    glm: '智谱 GLM-4-Flash',
+    deepseek: 'DeepSeek',
+    qwen: '通义千问',
+    openai: 'OpenAI',
+    moonshot: 'Kimi',
+    'openai-compatible': '自定义兼容端点'
+  };
+  const base = names[provider] || provider;
+  return process.env.AI_MODEL ? `${base} (${process.env.AI_MODEL})` : base;
+}
+
+module.exports = { generateReply, isConfigured, providerLabel };

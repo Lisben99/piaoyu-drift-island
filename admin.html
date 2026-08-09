@@ -933,7 +933,7 @@ async function renderBots() {
   const bots = res.bots || [];
   const aiOn = res.aiConfigured;
   const aiBanner = aiOn
-    ? '<div class="badge badge-active" style="margin-left:8px">🤖 AI 已接入（真实大模型回复）</div>'
+    ? `<div class="badge badge-active" style="margin-left:8px">🤖 AI 已接入（${res.aiProvider || '真实大模型'}）</div>`
     : '<div class="badge badge-restricted" style="margin-left:8px">⚠️ AI 未接入（当前为模板回复）</div>';
   const rows = bots.map(b => `
     <tr>

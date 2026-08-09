@@ -405,7 +405,8 @@ function getBotStats() {
     postsToday,
     repliesToday,
     csi: computeCSI().csi,
-    aiConfigured: aiProvider.isConfigured()
+    aiConfigured: aiProvider.isConfigured(),
+    aiProvider: aiProvider.providerLabel()
   };
 }
 
