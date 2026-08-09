@@ -269,6 +269,12 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .tag-pending{background:rgba(223,169,72,.12);color:#8a6d2f}
 .message-item__del{font-size:12px;color:#e74c3c;padding:4px 9px;border:1px solid rgba(231,76,60,.4);border-radius:6px;background:transparent;flex-shrink:0;cursor:pointer}
 .message-item__del:active{background:rgba(231,76,60,.08)}
+.msg-swipe{position:relative;overflow:hidden;background:#fff}
+.msg-swipe__actions{position:absolute;top:0;right:0;height:100%;display:flex}
+.msg-swipe__btn{width:66px;border:0;color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.msg-swipe__btn--hide{background:#c79a3e}
+.msg-swipe__btn--del{background:#e0564b}
+.msg-swipe__content{position:relative;background:#fff;transition:transform .2s;touch-action:pan-y;z-index:1}
 .message-item--select{cursor:pointer}
 .message-item__check{width:22px;height:22px;border-radius:50%;border:2px solid #cdd2d0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0}
 .message-item.is-selected .message-item__check{background:#1f7a74;border-color:#1f7a74}
@@ -1378,6 +1384,57 @@ async function deleteBottle(id) {
 /* ================================================================
    MESSAGES
    ================================================================ */
+// ===== 消息列表左滑手势（展开「隐藏 / 删除」）=====
+let swipeCur = null, swipeStartX = 0, swipeMoved = false, swipeOpenEl = null;
+const SWIPE_MAX = 132;
+
+function onSwipeDown(e, el) {
+  if (chatMultiSelect) return;
+  // 先收起已展开的另一条
+  if (swipeOpenEl && swipeOpenEl !== el) {
+    swipeOpenEl.style.transition = 'transform .2s';
+    swipeOpenEl.style.transform = 'translateX(0)';
+    swipeOpenEl = null;
+  }
+  swipeCur = el;
+  swipeStartX = e.clientX;
+  swipeMoved = false;
+  el.style.transition = 'none';
+  try { el.setPointerCapture(e.pointerId); } catch (_) {}
+}
+
+function onSwipeMove(e) {
+  if (!swipeCur) return;
+  const dx = e.clientX - swipeStartX;
+  if (Math.abs(dx) > 6) swipeMoved = true;
+  let tx = Math.min(0, Math.max(-SWIPE_MAX, dx));
+  if (swipeOpenEl === swipeCur) tx = Math.min(0, Math.max(-SWIPE_MAX, dx - SWIPE_MAX));
+  swipeCur.style.transform = `translateX(${tx}px)`;
+}
+
+function onSwipeUp(e) {
+  if (!swipeCur) return;
+  const el = swipeCur;
+  const dx = e.clientX - swipeStartX;
+  el.style.transition = 'transform .2s';
+  const finalX = dx < -SWIPE_MAX / 2 ? -SWIPE_MAX : 0;
+  el.style.transform = `translateX(${finalX}px)`;
+  if (finalX === -SWIPE_MAX) swipeOpenEl = el;
+  else if (swipeOpenEl === el) swipeOpenEl = null;
+  swipeCur = null;
+}
+
+function onMsgItemClick(el, id) {
+  if (swipeMoved) { swipeMoved = false; return; }   // 刚滑开，不触发打开
+  if (swipeOpenEl === el) {                          // 已展开时轻点 -> 收起
+    el.style.transition = 'transform .2s';
+    el.style.transform = 'translateX(0)';
+    swipeOpenEl = null;
+    return;
+  }
+  openChat(id);
+}
+
 async function renderMessages() {
   $('messagesList').innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
   try {
@@ -1403,17 +1460,27 @@ async function renderMessages() {
             <div class="message-item__badge">${statusTag}</div>
           </div>`;
         }
-        return `<div class="message-item" onclick="openChat('${s.id}')">
-          <div class="message-item__avatar" style="background:${color}">${avatarInitial(name)}</div>
-          <div class="message-item__body">
-            <div class="message-item__top">
-              <div class="message-item__name">${name}</div>
-              <div class="message-item__time">${s.lastMessageAt ? formatTime(s.lastMessageAt) : formatTime(s.startedAt)}</div>
-            </div>
-            <div class="message-item__preview">${preview}</div>
+        return `<div class="msg-swipe" data-id="${s.id}">
+          <div class="msg-swipe__actions">
+            <button class="msg-swipe__btn msg-swipe__btn--hide" type="button" onclick="hideSession('${s.id}')">隐藏</button>
+            <button class="msg-swipe__btn msg-swipe__btn--del" type="button" onclick="deleteSession('${s.id}')">删除</button>
           </div>
-          <div class="message-item__badge">${statusTag}</div>
-          <button class="message-item__del" type="button" onclick="event.stopPropagation();hideSession('${s.id}')">删除</button>
+          <div class="msg-swipe__content message-item"
+               onpointerdown="onSwipeDown(event,this)"
+               onpointermove="onSwipeMove(event)"
+               onpointerup="onSwipeUp(event)"
+               onpointercancel="onSwipeUp(event)"
+               onclick="onMsgItemClick(this,'${s.id}')">
+            <div class="message-item__avatar" style="background:${color}">${avatarInitial(name)}</div>
+            <div class="message-item__body">
+              <div class="message-item__top">
+                <div class="message-item__name">${name}</div>
+                <div class="message-item__time">${s.lastMessageAt ? formatTime(s.lastMessageAt) : formatTime(s.startedAt)}</div>
+              </div>
+              <div class="message-item__preview">${preview}</div>
+            </div>
+            <div class="message-item__badge">${statusTag}</div>
+          </div>
         </div>`;
       }).join('');
     } else {
@@ -1430,7 +1497,7 @@ function renderMessagesNav() {
   if (!el) return;
   if (chatMultiSelect) {
     el.innerHTML = `<button class="nav-text-btn" type="button" onclick="exitMultiSelect()">取消</button>
-      <button class="nav-text-btn danger" type="button" onclick="batchHideSessions()">删除(${selectedSessions.size})</button>`;
+      <button class="nav-text-btn danger" type="button" onclick="batchDeleteSessions()">删除(${selectedSessions.size})</button>`;
   } else {
     el.innerHTML = `<button class="nav-text-btn" type="button" onclick="enterMultiSelect()">管理</button>`;
   }
@@ -1455,11 +1522,28 @@ function toggleSessionSelect(id) {
 }
 
 async function hideSession(id) {
-  showModal('删除对话', '删除后该对话将从你的消息列表中隐藏（对方仍可见，对方发来新消息会重新显示）。确定删除吗？', [
+  showModal('隐藏对话', '隐藏后该对话将从列表移除，对方发来新消息时会自动重新显示。确定隐藏吗？', [
+    { text: '取消', cancel: true },
+    { text: '隐藏', onClick: async () => {
+      try {
+        const res = await api('/chat/sessions/' + id + '/hide', { method: 'POST' });
+        if (res.success) {
+          showToast('已隐藏');
+          renderMessages();
+        } else {
+          showToast(res.error || '操作失败');
+        }
+      } catch (e) { showToast('操作失败'); }
+    } }
+  ]);
+}
+
+async function deleteSession(id) {
+  showModal('删除对话', '删除后该对话将从你的消息列表中移除（对方仍可见，且不会因对方发消息而重新出现）。确定删除吗？', [
     { text: '取消', cancel: true },
     { text: '删除', onClick: async () => {
       try {
-        const res = await api('/chat/sessions/' + id + '/hide', { method: 'POST' });
+        const res = await api('/chat/sessions/' + id + '/delete', { method: 'POST' });
         if (res.success) {
           showToast('已删除');
           renderMessages();
@@ -1471,15 +1555,15 @@ async function hideSession(id) {
   ]);
 }
 
-async function batchHideSessions() {
+async function batchDeleteSessions() {
   if (selectedSessions.size === 0) { showToast('请先选择对话'); return; }
   const ids = Array.from(selectedSessions);
-  showModal('批量删除', `确定删除选中的 ${ids.length} 个对话吗？`, [
+  showModal('批量删除', `确定删除选中的 ${ids.length} 个对话吗？（对方仍可见，且不会因新消息重新出现）`, [
     { text: '取消', cancel: true },
     { text: '删除', onClick: async () => {
       try {
         for (const id of ids) {
-          await api('/chat/sessions/' + id + '/hide', { method: 'POST' });
+          await api('/chat/sessions/' + id + '/delete', { method: 'POST' });
         }
         chatMultiSelect = false;
         selectedSessions = new Set();
