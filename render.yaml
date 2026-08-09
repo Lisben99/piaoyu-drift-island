@@ -28,7 +28,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: SMS_PROVIDER
-        value: dev
+        value: aliyun
       - key: ALIYUN_SMS_KEY
         sync: false
       - key: ALIYUN_SMS_SECRET
@@ -40,7 +40,7 @@ services:
       - key: PAYMENT_PROVIDER
         value: dev
       - key: MODERATION_PROVIDER
-        value: local
+        value: tencent
       - key: TENCENT_SECRET_ID
         sync: false
       - key: TENCENT_SECRET_KEY

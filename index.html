@@ -1440,7 +1440,14 @@ async function renderRecharge() {
         </div>`).join('');
       html += `</div>
       <button class="primary-button" id="rechargeBtn" disabled onclick="doRecharge()">立即支付</button>
-      <div style="text-align:center;margin-top:14px;font-size:12px;color:#98a2a0">1元 = ${pkgRes.rate}枚漂流币</div>`;
+      <div style="text-align:center;margin-top:14px;font-size:12px;color:#98a2a0">1元 = ${pkgRes.rate}枚漂流币</div>
+
+      <div class="coin-section-title" style="margin-top:22px">兑换码充值</div>
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <input id="redeemCodeInput" placeholder="输入兑换码，如 TEST-XXXX-XXXX-XXXX" style="flex:1;padding:12px 14px;border:2px solid #e6e4dc;border-radius:12px;font-size:14px;outline:none" />
+        <button id="redeemBtn" onclick="doRedeem()" style="padding:0 22px;background:#1f7a74;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer">兑换</button>
+      </div>
+      <div style="text-align:center;margin-top:8px;font-size:12px;color:#98a2a0">已购卡密？在此兑换即得漂流币</div>`;
       
       // Order history
       const ordersRes = await api('/recharge/orders');
@@ -1489,6 +1496,25 @@ async function doRecharge() {
     }
   } catch (e) { showToast('充值失败，请重试'); }
   btn.innerHTML = '立即支付'; btn.disabled = false;
+}
+
+async function doRedeem() {
+  const input = $('redeemCodeInput');
+  const code = (input.value || '').trim();
+  if (!code) { showToast('请输入兑换码'); return; }
+  const btn = $('redeemBtn');
+  btn.disabled = true; btn.textContent = '兑换中...';
+  try {
+    const res = await api('/redeem/redeem', { method: 'POST', body: JSON.stringify({ code }) });
+    if (res.success) {
+      showToast(`兑换成功！获得 ${res.coins} 枚漂流币`);
+      if (currentUser) currentUser.coins = res.balance;
+      renderRecharge();
+    } else {
+      showToast(res.error || '兑换失败');
+      btn.disabled = false; btn.textContent = '兑换';
+    }
+  } catch (e) { showToast('兑换失败，请重试'); btn.disabled = false; btn.textContent = '兑换'; }
 }
 
 /* ================================================================

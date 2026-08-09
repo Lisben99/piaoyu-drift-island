@@ -141,6 +141,7 @@ input,textarea,select{font-family:inherit;outline:none;resize:none}
       <div class="sidebar__item" onclick="switchTab('bottles')">🍾 漂流瓶管理</div>
       <div class="sidebar__item" onclick="switchTab('coins')">🪙 漂流币管理</div>
       <div class="sidebar__item" onclick="switchTab('orders')">💰 充值订单</div>
+      <div class="sidebar__item" onclick="switchTab('redeem')">🎟️ 卡密管理</div>
       <div class="sidebar__item" onclick="switchTab('reports')">⚠️ 举报管理 <span class="sidebar__badge hidden" id="reportBadge"></span></div>
       <div class="sidebar__item" onclick="switchTab('config')">⚙️ 业务配置</div>
       <div class="sidebar__item" onclick="switchTab('audit')">📋 审计日志</div>
@@ -254,10 +255,10 @@ function adminLogout() {
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.sidebar__item').forEach((el, i) => {
-    const tabs = ['dashboard','users','bottles','coins','orders','reports','config','audit'];
+    const tabs = ['dashboard','users','bottles','coins','orders','redeem','reports','config','audit'];
     el.classList.toggle('active', tabs[i] === tab);
   });
-  const titles = { dashboard:'数据概览', users:'用户管理', bottles:'漂流瓶管理', coins:'漂流币管理', orders:'充值订单', reports:'举报管理', config:'业务配置', audit:'审计日志' };
+  const titles = { dashboard:'数据概览', users:'用户管理', bottles:'漂流瓶管理', coins:'漂流币管理', orders:'充值订单', redeem:'卡密管理', reports:'举报管理', config:'业务配置', audit:'审计日志' };
   document.getElementById('pageTitle').textContent = titles[tab];
   pagination = { page: 1, pageSize: 20, total: 0 };
   renderTab();
@@ -272,6 +273,7 @@ async function renderTab() {
     else if (currentTab === 'bottles') await renderBottles();
     else if (currentTab === 'coins') await renderCoins();
     else if (currentTab === 'orders') await renderOrders();
+    else if (currentTab === 'redeem') await renderRedeemCodes();
     else if (currentTab === 'reports') await renderReports();
     else if (currentTab === 'config') await renderConfig();
     else if (currentTab === 'audit') await renderAudit();
@@ -491,6 +493,73 @@ async function adjustCoins() {
   const res = await api('/coins/adjust', { method: 'POST', body: JSON.stringify({ userId, amount, reason }) });
   if (res.success) { showToast('调整成功'); renderCoins(); }
   else showToast(res.error || '调整失败');
+}
+
+/* ===== Redeem Codes (卡密充值) ===== */
+let redeemStatus = 'all';
+
+function copyText(t) {
+  navigator.clipboard.writeText(t).then(() => showToast('已复制')).catch(() => showToast('复制失败，请手动复制'));
+}
+
+async function renderRedeemCodes() {
+  const res = await api(`/redeem-codes?status=${redeemStatus}&page=${pagination.page}&pageSize=${pagination.pageSize}`);
+  if (!res.success) return;
+  pagination.total = res.total;
+  const c = document.getElementById('pageContent');
+  c.innerHTML = `
+    <div class="card" style="margin-bottom:16px">
+      <div class="card__title">生成卡密</div>
+      <div class="form-row">
+        <div class="form-group"><label>每份面额（漂流币）</label><input type="number" id="rcCoins" value="10" min="1"></div>
+        <div class="form-group"><label>生成数量</label><input type="number" id="rcCount" value="10" min="1" max="500"></div>
+        <div class="form-group"><label>前缀（可选，≤6位）</label><input type="text" id="rcPrefix" placeholder="如 TEST" maxlength="6"></div>
+        <div class="form-group"><label>备注（可选）</label><input type="text" id="rcNote" placeholder="批次备注"></div>
+        <div class="form-group" style="display:flex;align-items:flex-end"><button class="btn-sm btn-primary" style="padding:10px 20px" onclick="generateRedeemCodes()">生成卡密</button></div>
+      </div>
+      <div style="font-size:12px;color:#98a2a0;margin-top:6px">每张卡密一次性使用，用户端「充值漂流币 → 兑换码充值」粘贴即可到账。</div>
+    </div>
+    <div class="card">
+      <div class="card__title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>卡密列表（共 ${res.total} 张）</span>
+        <select onchange="redeemStatus=this.value;pagination.page=1;renderRedeemCodes()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd">
+          <option value="all" ${redeemStatus==='all'?'selected':''}>全部</option>
+          <option value="unused" ${redeemStatus==='unused'?'selected':''}>未使用</option>
+          <option value="used" ${redeemStatus==='used'?'selected':''}>已使用</option>
+        </select>
+      </div>
+      <table class="table">
+        <thead><tr><th>兑换码</th><th>面额</th><th>状态</th><th>使用人</th><th>生成时间</th></tr></thead>
+        <tbody>
+          ${(res.codes||[]).map(r => `<tr>
+            <td><code style="cursor:pointer;color:#1f7a74" onclick="copyText('${r.code}')" title="点击复制">${r.code}</code></td>
+            <td>${r.coins} 枚</td>
+            <td><span class="badge ${r.status==='used'?'badge-paid':'badge-active'}">${r.status==='used'?'已使用':'未使用'}</span></td>
+            <td>${r.usedByPhone || '-'}</td>
+            <td>${formatTime(r.createdAt)}</td>
+          </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:#999">暂无卡密</td></tr>'}
+        </tbody>
+      </table>
+      ${renderPagination()}
+    </div>`;
+}
+
+async function generateRedeemCodes() {
+  const coins = parseInt(document.getElementById('rcCoins').value, 10);
+  const count = parseInt(document.getElementById('rcCount').value, 10);
+  const prefix = document.getElementById('rcPrefix').value.trim();
+  const note = document.getElementById('rcNote').value.trim();
+  if (!coins || coins < 1) { showToast('面额必须为正整数'); return; }
+  if (!count || count < 1 || count > 500) { showToast('数量需为 1-500'); return; }
+  const res = await api('/redeem-codes/generate', { method: 'POST', body: JSON.stringify({ coins, count, prefix, note }) });
+  if (!res.success) { showToast(res.error || '生成失败'); return; }
+  showToast(`已生成 ${res.count} 张卡密`);
+  const codesText = res.codes.map(x => x.code).join('\n');
+  openModal(`生成成功（${res.count} 张，每张 ${coins} 枚）`,
+    `<div style="font-size:12px;color:#666;margin-bottom:8px">请妥善保存，以下卡密仅显示一次：</div><textarea id="rcCodesBox" readonly style="width:100%;height:180px;font-family:monospace;padding:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box">${codesText}</textarea>`,
+    `<button class="btn-sm btn-ghost" onclick="closeModal()">关闭</button><button class="btn-sm btn-primary" onclick="copyText(document.getElementById('rcCodesBox').value)">复制全部</button>`
+  );
+  renderRedeemCodes();
 }
 
 /* ===== Orders ===== */

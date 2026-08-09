@@ -66,6 +66,7 @@ function createDefaultDB() {
     auditLogs: [],
     inviteCodes: [],
     smsCodes: [],
+    redeemCodes: [],
     blacklist: [],
     config: { ...DEFAULT_CONFIG },
     admins: [DEFAULT_ADMIN]
@@ -335,6 +336,21 @@ function addAuditLog(adminId, action, target, description) {
   return log;
 }
 
+// Redeem code helpers (card-code recharge)
+function addRedeemCode(record) {
+  cache.redeemCodes.push(record);
+  save();
+  return record;
+}
+
+function findRedeemCodeByKey(key) {
+  return cache.redeemCodes.find(r => r.codeKey === key);
+}
+
+function getRedeemCodes() {
+  return cache.redeemCodes;
+}
+
 module.exports = {
   db: () => cache,
   load,
@@ -354,6 +370,9 @@ module.exports = {
   findAdminByUsername,
   findAdminById,
   addAuditLog,
+  addRedeemCode,
+  findRedeemCodeByKey,
+  getRedeemCodes,
   DEFAULT_CONFIG,
   USE_PG
 };

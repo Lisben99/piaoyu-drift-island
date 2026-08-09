@@ -104,20 +104,83 @@ npm start                             # = node src/index.js
 
 ## 6. 生产环境第三方服务配置（重要）
 
-后端目前预留了三个生产服务商开关，但**真实 SDK 对接代码尚未实现（均为占位桩）**。把环境变量切到生产值**不会**自动生效，仅会打印日志 / 回退到本地逻辑。要真正上线，需补齐 SDK 实现（见第 10 节）。
+后端预留了三个生产服务商开关，当前完成情况：
 
-相关环境变量（在 Render Dashboard → 服务 → Environment 中设置，或在 `render.yaml` 中改后推送）：
-
-| 服务 | 开关变量 | 可选值 | 需要的密钥变量 |
+| 服务 | 开关变量 | 状态 | 需要的密钥变量 |
 | --- | --- | --- | --- |
-| 短信 | `SMS_PROVIDER` | `dev` / `aliyun` | `ALIYUN_SMS_KEY`, `ALIYUN_SMS_SECRET`, `ALIYUN_SMS_SIGN`, `ALIYUN_SMS_TEMPLATE` |
-| 支付 | `PAYMENT_PROVIDER` | `dev` / `wechat` | `WECHAT_PAY_MCHID`, `WECHAT_PAY_APPID`, `WECHAT_PAY_SERIAL`, `WECHAT_PAY_PRIVATE_KEY`, `WECHAT_PAY_APIV3` |
-| 内容审核 | `MODERATION_PROVIDER` | `local` / `tencent` | `TENCENT_SECRET_ID`, `TENCENT_SECRET_KEY` |
+| 短信 | `SMS_PROVIDER` | ✅ 已对接（阿里云「短信认证」Dypnsapi；余额耗尽时暂停） | `ALIYUN_SMS_KEY`, `ALIYUN_SMS_SECRET`（SIGN/TEMPLATE 已内置默认值） |
+| 支付 | `PAYMENT_PROVIDER` | ⏳ 占位桩（待对接微信支付） | `WECHAT_PAY_MCHID`, `WECHAT_PAY_APPID`, `WECHAT_PAY_SERIAL`, `WECHAT_PAY_PRIVATE_KEY`, `WECHAT_PAY_APIV3` |
+| 内容审核 | `MODERATION_PROVIDER` | ✅ 已对接（腾讯云 TMS） | `TENCENT_SECRET_ID`, `TENCENT_SECRET_KEY` |
 | 签名 | `JWT_SECRET` | 已自动生成 | — |
 
+相关环境变量在 Render Dashboard → 服务 → Environment 中设置，或在 `render.yaml` 中改后推送（密钥类变量建议 `sync:false`，仅存于 Render，不进 git）。
+
 - **dev 模式短信**：返回 `devCode`，前端直接显示，方便测试，但用户收不到真实短信。
-- **local 审核**：本地关键词过滤（见 `server/src/services/moderation.js` 的敏感词表，可按需扩充）。
+- **local 审核**：本地关键词过滤（见 `server/src/services/moderation.js` 的敏感词表，可按需扩充）；无腾讯密钥时自动回退到 local。
 - **修改环境变量后**：Render 会自动重新部署生效。
+
+### 6.1 激活阿里云短信（个人实名账号 / 短信认证通道）
+
+> 适用场景：无营业执照的**个人实名**账号，无法走标准 `SendSms`（需签名+模板资质审核）。改走「号码认证服务 → 短信认证」通道，免资质、系统赠送签名与模板，由阿里云生成并闭环校验验证码。
+
+**第一步：RAM 授权**
+1. 登录阿里云「访问控制 RAM」控制台 → 用户 → 找到使用的 AccessKey 对应的 RAM 用户。
+2. 添加权限，搜索 `dypns`，授予 **`AliyunDypnsFullAccess`**（号码认证服务完全访问）。
+3. 等待策略生效（通常分钟级）。
+
+**第二步：在 Render 填入 2 个密钥（其余已内置，无需手填）**
+到 Render Dashboard → `drift-island-api` → Environment，新增以下**两个私密变量**（`sync:false`，加密存储，不进 git）：
+
+| Key | Value |
+| --- | --- |
+| `ALIYUN_SMS_KEY` | `<阿里云 AccessKey ID>`（见下方安全说明，勿写入本仓库） |
+| `ALIYUN_SMS_SECRET` | `<阿里云 AccessKey Secret>` |
+
+> 以下两项已作为代码默认值内置（个人实名账号「系统赠送」配置），**无需在 Render 填写**：
+> - `ALIYUN_SMS_SIGN` = `恒创联众`（系统赠送签名；"信趣男女"是短信服务签名，误用于短信认证会报"签名或者模板无效"）
+> - `ALIYUN_SMS_TEMPLATE` = `100001`
+>
+> `SMS_PROVIDER` 已在 `render.yaml` 中设为 `aliyun`（非密，随代码提交），部署即生效，也**无需手动改**。
+
+> 🔒 **密钥存放原则**：`ALIYUN_SMS_KEY` / `ALIYUN_SMS_SECRET` 是凭证，**只填在 Render 控制台 Environment（加密存储，不进 git）**。请勿把真实值写进仓库文件——GitHub 推送保护会直接拦截，且公开仓库泄露凭证风险极高。真实值请从你的阿里云控制台或本项目沟通记录中获取后，粘贴到 Render 的对应变量里。激活并验证通过后，建议到阿里云 RAM 控制台**轮换**该 AccessKey（明文曾在聊天出现）。
+
+保存后 Render 自动重新部署。
+
+**第三步：验证**
+- 访问健康检查 `GET /api/health`，响应里的 `sms_provider` 应为 `aliyun`。
+- 走一次注册/登录获取验证码流程，目标手机会收到真实短信；回填验证码应能校验通过。
+
+**实现要点（维护参考）**：
+- SDK：`@alicloud/dypnsapi20170525`（默认导出 `Client`）。
+- 接口：`SendSmsVerifyCode` / `CheckSmsVerifyCode`（阿里云生成验证码，后端不存储明文 code，闭环校验）。
+- `templateParam` 必须为 `{"code":"##code##","min":"5"}`。
+- `validTime` 单位为**秒**（本系统 = `CODE_EXPIRE_MINUTES * 60`）。
+- `countryCode` 必须为 `"86"`（不是 `"CN"`）。
+- 端点 `dypnsapi.aliyuncs.com`。
+
+> ⚠️ **安全提示**：以上 AccessKey 曾在聊天中明文出现过。建议本服务激活并验证通过后，到阿里云 RAM 控制台**轮换（禁用并重建）该 AccessKey**，避免长期暴露。
+
+### 6.2 启用腾讯云内容审核（个人实名可开通 TMS）
+
+> 适用场景：腾讯云「文本内容安全 TMS」对个人实名账号开放，无需营业执照，按条计费且有免费额度。已集成 `tencentcloud-sdk-nodejs-tms`，**缺密钥时自动回退本地关键词过滤**，不会中断服务。
+
+**第一步（已自动完成）**：`render.yaml` 中 `MODERATION_PROVIDER` 已设为 `tencent`，部署即生效（未填密钥期间自动回退 local，服务不中断）。
+
+**第二步：在 Render 填入 2 个密钥**
+到 Render Dashboard → `drift-island-api` → Environment，新增以下**两个私密变量**（`sync:false`，加密存储，不进 git）：
+
+| Key | Value |
+| --- | --- |
+| `TENCENT_SECRET_ID` | `<腾讯云 SecretId>`（腾讯云控制台「访问管理 → API 密钥管理」获取） |
+| `TENCENT_SECRET_KEY` | `<腾讯云 SecretKey>` |
+
+保存后 Render 自动重新部署。
+
+**第三步：验证**
+- 健康检查 `GET /api/health` 的 `moderation_provider` 应为 `tencent`。
+- 发布一条含明显违规词（如「赌博」「诈骗」）的内容，应被腾讯云拦截并返回不通过；正常内容正常通过。
+
+> 🔒 密钥仅存 Render，不进 git；请勿写入仓库文件。
 
 ---
 
@@ -143,7 +206,7 @@ npm start                             # = node src/index.js
 | 现象 | 原因 / 处理 |
 | --- | --- |
 | 首次访问很慢或 404 | Render 冷启动，重试一次 |
-| 短信收不到 | 当前是 dev 模式，仅返回 `devCode`；aliyun 为占位桩，未真正发送 |
+| 短信收不到 | 若已按 §6.1 配置 `SMS_PROVIDER=aliyun` 且 RAM 已授权，应收到真实短信；仍收不到请检查 RAM 权限（`AliyunDypnsFullAccess`）与 4 个密钥变量是否填对 |
 | 充值后没到账 | dev 模式需在前端点「确认」触发模拟到账；wechat 为占位桩 |
 | WebSocket 连不上 | 地址为 `wss://drift-island-api.onrender.com/ws?token=<用户token>` |
 | 改密码后旧密码还能用 | 应该用 `change-password` 接口改线上库；只改 `db.js` 不影响已存在数据 |
@@ -152,10 +215,47 @@ npm start                             # = node src/index.js
 
 ## 10. 待完成 / 已知缺口
 
-1. **真实对接三大服务商**（当前为占位桩）：
-   - 阿里云短信：需安装 `@alicloud/sms20170525` 或直连 HTTP API，实现 `server/src/services/sms.js` 的 `aliyun` 分支。
-   - 微信支付：需安装微信支付 SDK，实现 `createOrder` / `confirmPayment` / `refundOrder` 的真实调用与回调验签（`server/src/services/payment.js`）。
-   - 腾讯内容审核：需安装 `tencentcloud-sdk-nodejs`，实现 `moderateTencent`（`server/src/services/moderation.js`）。
-2. 微信支付回调地址（`/api/recharge/callback`）需在商户平台配置并补充路由实现。
-3. 生产服务商密钥需由运营方提供后填入 Render 环境变量。
+1. **微信支付对接 — 当前阻塞**（当前为占位桩）：
+   - ⚠️ **关键约束**：微信支付商户号（mchid）需要企业/个体工商户营业执照；用户为**个人实名、无商户号**，真实微信支付**暂不可行**。
+   - 待评估**个人可用的替代充值方案**（如：手动充值/卡密由管理员后台入账、合规聚合支付、或其他免企业资质的方式），再决定 `payment.js` 实现路径。
+   - 若未来有商户号：需安装微信支付 SDK，实现 `createOrder` / `confirmPayment` / `refundOrder` 真实调用与回调验签；回调地址 `/api/recharge/callback` 需在商户平台配置。H5 还是 JSAPI 影响前端跳转与 AppID 配置。
+   - ✅ **卡密兑换（方案 B）已落地**：管理员后台「🎟️ 卡密管理」批量生成一次性兑换码（每份面额 + 数量 + 可选前缀/备注），用户端「充值漂流币 → 兑换码充值」粘贴即到账。完全不依赖支付服务商/商户号，最适合个人账号冷启动。详见 §11。
+2. **已完成的真实对接**（供参考，无需重复实现）：
+   - 阿里云短信：已用「短信认证」Dypnsapi 通道实现 `server/src/services/sms.js` 的 `aliyun` 分支（个人实名账号方案）。
+   - 腾讯内容审核：已用 `tencentcloud-sdk-nodejs-tms` 实现 `server/src/services/moderation.js` 的 `moderateTencent`，无密钥时自动回退 local。
+3. 生产服务商密钥需由运营方提供后填入 Render 环境变量（短信/审核密钥已具备，支付待提供）。
 4. 建议补充：操作日志可视化、定期数据库备份脚本、错误监控（如 Sentry）。
+
+---
+
+## 11. 卡密兑换充值（方案 B，已落地）
+
+> 适用场景：个人实名账号无法接入微信支付的冷启动期。运营方在线下/第三方渠道售出「卡密」后，用户在 App 内粘贴兑换码即得漂流币。无需任何支付服务商或商户号。
+
+### 11.1 工作原理
+- 一张卡密 = 一串**一次性**兑换码（如 `TEST-LTWX-NUDD-BYLS-8GUF`），绑定固定面额（漂流币数）。
+- 兑换码使用密码学随机生成（32 位无歧义字母表，4×4 分组），大小写/空格/连字符不敏感，难以猜测。
+- 用户兑换后该码即标记「已使用」，无法二次兑换；非法/已用码均返回明确错误。
+
+### 11.2 管理后台操作
+1. 登录管理后台 → 侧栏「🎟️ 卡密管理」。
+2. 填写「每份面额（漂流币）」「生成数量」「前缀（可选，≤6 位）」「备注（可选）」→ 点「生成卡密」。
+3. 生成成功弹窗列出全部卡密（仅显示一次），可「复制全部」妥善保存后分发。
+4. 列表支持按「未使用 / 已使用」筛选，并显示使用人手机号与生成时间。
+
+### 11.3 用户端操作
+充值页 →「兑换码充值」→ 粘贴卡密 →「兑换」→ 漂流币立即到账并刷新余额。
+
+### 11.4 接口
+| 方法 | 路径 | 鉴权 | 说明 |
+| --- | --- | --- | --- |
+| POST | `/api/admin/redeem-codes/generate` | 管理员 | 批量生成：`{ coins, count(1-500), prefix?, note? }` → 返回码列表 |
+| GET | `/api/admin/redeem-codes?status=all\|unused\|used` | 管理员 | 卡密列表 |
+| POST | `/api/redeem/redeem` | 用户 | 兑换：`{ code }` → `{ coins, balance }` |
+| GET | `/api/health` | 公开 | 已新增 `redeem_provider: "cardcode"` 字段 |
+
+### 11.5 代码位置
+- 服务：`server/src/services/redeem.js`
+- 路由：`server/src/routes/redeem.js`（`admin` 挂在 `/api/admin`，`user` 挂在 `/api/redeem`）
+- 数据集合：`server/src/db.js` 的 `redeemCodes`（整库 JSON，PostgreSQL 同样适用）
+- 自测：`server/test-redeem.js`（`node server/test-redeem.js`，覆盖发码/兑换/重复使用/非法码/大小写不敏感）

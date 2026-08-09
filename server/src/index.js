@@ -42,6 +42,9 @@ app.use('/api/profile', require('./routes/profile'));
 app.use('/api/reports', require('./routes/report'));
 app.use('/api/blacklist', require('./routes/blacklist'));
 app.use('/api/admin', require('./routes/admin'));
+const redeemRoutes = require('./routes/redeem');
+app.use('/api/admin', redeemRoutes.admin);
+app.use('/api/redeem', redeemRoutes.user);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -50,6 +53,7 @@ app.get('/api/health', (req, res) => {
     timestamp: Date.now(),
     sms_provider: process.env.SMS_PROVIDER || 'dev',
     payment_provider: process.env.PAYMENT_PROVIDER || 'dev',
+    redeem_provider: 'cardcode',
     moderation_provider: process.env.MODERATION_PROVIDER || 'local',
     database: process.env.DATABASE_URL ? 'postgresql' : 'json_file'
   });
