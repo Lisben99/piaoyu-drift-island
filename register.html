@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f7f5ef">
+<title>注册 · 漂流大厅</title>
+<script src="config.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#e8e6df;color:#172b2d;min-height:100vh;display:flex;justify-content:center}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,textarea{font-family:inherit;-webkit-appearance:none;appearance:none;outline:none;resize:none}
+input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height:16px;accent-color:#1f7a74;flex-shrink:0;cursor:pointer}
+
+#app{width:100%;max-width:430px;min-height:100vh;background:#f7f5ef;position:relative;overflow:hidden;box-shadow:0 0 60px rgba(0,0,0,.08);display:flex;flex-direction:column}
+
+.nav-bar{display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 16px;position:relative;flex-shrink:0}
+.nav-bar__back{display:flex;align-items:center;gap:2px;color:#172b2d;font-size:16px;font-weight:500}
+.nav-bar__title{position:absolute;left:50%;transform:translateX(-50%);font-size:16px;font-weight:600;color:#172b2d;white-space:nowrap}
+
+.auth-page{padding:20px 22px 22px;min-height:100vh;display:flex;flex-direction:column}
+.brand-lockup{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+.brand-mark{display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:15px;background:#1f7a74;box-shadow:0 10px 20px rgba(31,122,116,.22)}
+.brand-wave{width:24px;height:9px;border-top:3px solid #fff;border-bottom:3px solid rgba(255,255,255,.7);border-radius:50%;transform:rotate(-8deg)}
+.brand-name{display:block;font-size:18px;font-weight:700;letter-spacing:4px}
+.brand-caption{display:block;margin-top:2px;color:#718082;font-size:9px;letter-spacing:2px}
+.auth-title{margin:4px 0 16px;font-size:22px;font-weight:700;color:#172b2d}
+
+.auth-tabs{display:flex;gap:8px;background:#f1f4f4;border-radius:12px;padding:4px;margin-bottom:16px}
+.auth-tab{flex:1;border:none;background:transparent;padding:10px 0;border-radius:9px;font-size:14px;font-weight:600;color:#718082;cursor:pointer;transition:.15s}
+.auth-tab.active{background:#fff;color:#1f7a74;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+
+.form-stack{display:flex;flex-direction:column;gap:15px}
+.field-label{display:block;margin-bottom:7px;font-size:12px;font-weight:600;color:#718082}
+.input-wrap{display:flex;align-items:center;height:48px;padding:0 14px;background:#fff;border:1px solid #e6e4dc;border-radius:12px}
+.input-wrap:focus-within{border-color:#1f7a74}
+.prefix{margin-right:11px;padding-right:11px;border-right:1px solid #e6e4dc;font-size:14px;font-weight:600}
+.plain-input{flex:1;min-width:0;color:#172b2d;font-size:15px;border:none;background:transparent}
+.plain-input::placeholder{color:#b0b8b7}
+.code-input .plain-input{text-align:center;font-size:18px;font-weight:700;letter-spacing:9px}
+.code-actions{display:flex;align-items:center;justify-content:space-between;min-height:29px}
+.demo-code{color:#ef7b62;font-size:12px;font-weight:700}
+
+.legal-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.legal{display:flex;align-items:center;gap:8px;color:#718082;font-size:12px;cursor:pointer}
+.legal span{flex:1}
+.legal a{color:#1f7a74;font-weight:600;text-decoration:none}
+
+.primary-button{width:100%;min-height:48px;border-radius:14px;background:#1f7a74;box-shadow:0 8px 16px rgba(31,122,116,.15);color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s}
+.primary-button:active{opacity:.88}
+.primary-button:disabled{opacity:.4;box-shadow:none}
+.primary-button .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.text-button{color:#1f7a74;font-size:12px;font-weight:700;padding:6px}
+.auth-note{display:block;color:#98a2a0;font-size:11px;text-align:center;margin-top:2px}
+.auth-foot{margin-top:18px;text-align:center;font-size:13px;color:#718082}
+.auth-link{color:#1f7a74;font-weight:700;text-decoration:none}
+.hidden{display:none!important}
+
+#toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.9);background:rgba(0,0,0,.72);color:#fff;padding:12px 24px;border-radius:14px;font-size:14px;font-weight:500;z-index:9999;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;max-width:280px;text-align:center;line-height:1.5}
+#toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+#modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;display:none;align-items:center;justify-content:center}
+#modal-overlay.show{display:flex}
+.modal-card{width:320px;max-height:75vh;overflow-y:auto;background:#fff;border-radius:16px;padding:22px;animation:modalIn .25s ease}
+@keyframes modalIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+.modal-card__title{font-size:17px;font-weight:700;margin-bottom:12px;text-align:center}
+.modal-card__body{font-size:13px;color:#657476;line-height:1.7;text-align:left}
+.modal-card__actions{display:flex;border-top:1px solid #e6e4dc;margin:18px -22px -22px;margin-top:18px}
+.modal-card__btn{flex:1;padding:14px 0;font-size:16px;font-weight:600;text-align:center;color:#1f7a74}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="nav-bar">
+    <div class="nav-bar__back" onclick="location.href='index.html'">‹ 返回登录</div>
+    <div class="nav-bar__title">注册账号</div>
+  </div>
+
+  <div class="auth-page">
+    <div class="brand-lockup">
+      <div class="brand-mark"><div class="brand-wave"></div></div>
+      <div><span class="brand-name">漂流大厅</span><span class="brand-caption">DRIFT ISLAND</span></div>
+    </div>
+    <h2 class="auth-title">创建你的漂流账号</h2>
+
+    <div class="auth-tabs">
+      <button type="button" class="auth-tab active" id="regPhoneTab">手机注册</button>
+      <button type="button" class="auth-tab" id="regEmailTab">邮箱注册</button>
+    </div>
+
+    <div class="legal-list">
+      <label class="legal"><input type="checkbox" id="cb-agreement" /><span>我已阅读并同意<a href="javascript:void(0)" onclick="showAgreement('user')">《用户协议》</a></span></label>
+      <label class="legal"><input type="checkbox" id="cb-privacy" /><span>我已阅读并同意<a href="javascript:void(0)" onclick="showAgreement('privacy')">《隐私政策》</a></span></label>
+      <label class="legal"><input type="checkbox" id="cb-adult" /><span>我确认已年满 18 周岁</span></label>
+    </div>
+
+    <div id="regPhoneField">
+      <label class="field-label">手机号码</label>
+      <div class="input-wrap">
+        <span class="prefix">+86</span>
+        <input class="plain-input" type="tel" maxlength="11" placeholder="请输入 11 位手机号" id="regPhoneInput" />
+      </div>
+    </div>
+    <div id="regEmailField" class="hidden">
+      <label class="field-label">邮箱地址</label>
+      <div class="input-wrap">
+        <input class="plain-input" type="email" placeholder="请输入邮箱地址" id="regEmailInput" />
+      </div>
+    </div>
+
+    <div class="form-stack" style="margin-top:15px">
+      <button class="primary-button" id="regSendCodeBtn">获取验证码</button>
+      <span class="auth-note">注册即表示同意上方协议，验证通过后将设置登录密码</span>
+    </div>
+
+    <div id="regCodeStep" class="form-stack hidden" style="margin-top:18px">
+      <div>
+        <label class="field-label" id="regCodeLabel">验证码已发送至</label>
+        <div class="input-wrap code-input">
+          <input class="plain-input" type="tel" maxlength="6" placeholder="••••••" id="regCodeInput" />
+        </div>
+      </div>
+      <div class="code-actions">
+        <span class="demo-code" id="regDevCodeHint"></span>
+        <button class="text-button" id="regResendBtn">重新发送</button>
+      </div>
+      <div>
+        <label class="field-label">设置密码</label>
+        <div class="input-wrap">
+          <input class="plain-input" type="password" maxlength="20" placeholder="6-20 位密码" id="regPasswordInput" />
+        </div>
+      </div>
+      <div>
+        <label class="field-label">确认密码</label>
+        <div class="input-wrap">
+          <input class="plain-input" type="password" maxlength="20" placeholder="再次输入密码" id="regConfirmInput" />
+        </div>
+      </div>
+      <button class="primary-button" id="registerBtn">注册并登录</button>
+      <button class="text-button" id="regChangeBtn" style="text-align:center">更换账号</button>
+    </div>
+
+    <div class="auth-foot">
+      已有账号？<a href="index.html" class="auth-link">返回登录</a>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-card__title" id="agreementTitle"></div>
+    <div class="modal-card__body" id="agreementBody"></div>
+    <div class="modal-card__actions"><div class="modal-card__btn" onclick="hideModal()">我知道了</div></div>
+  </div>
+</div>
+
+<script>
+const API_BASE = window.DRIFT_API_BASE || '/api';
+const TOKEN_KEY = 'drift_island_token';
+function getToken() { return localStorage.getItem(TOKEN_KEY); }
+function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
+function $(id) { return document.getElementById(id); }
+function showToast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timer); t._timer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+function showModal(title, bodyHtml) {
+  $('agreementTitle').textContent = title;
+  $('agreementBody').innerHTML = bodyHtml;
+  $('modal-overlay').classList.add('show');
+}
+function hideModal() { $('modal-overlay').classList.remove('show'); }
+
+function showAgreement(type) {
+  if (type === 'user') {
+    $('agreementTitle').textContent = '用户协议';
+    $('agreementBody').innerHTML = '<p>欢迎使用漂流大厅（以下简称"本应用"）。使用本应用即表示您同意以下条款：</p><br>' +
+      '<p><b>1. 服务内容</b></p><p>本应用提供漂流瓶发布、浏览、匿名聊天等社交功能。</p><br>' +
+      '<p><b>2. 用户行为规范</b></p><p>用户不得发布违法、色情、暴力、骚扰等内容。违规内容将被删除，严重违规者将被封禁账号。</p><br>' +
+      '<p><b>3. 虚拟货币</b></p><p>漂流币为虚拟货币，可通过签到、邀请等方式免费获取，也可通过充值购买。充值后不支持退款，注销账号后余额清零。</p><br>' +
+      '<p><b>4. 隐私保护</b></p><p>我们保护您的个人隐私，详见《隐私政策》。</p><br>' +
+      '<p><b>5. 免责声明</b></p><p>本应用不对用户发布的内容负责。因用户行为产生的纠纷，由用户自行承担。</p><br>' +
+      '<p><b>6. 条款修改</b></p><p>我们保留修改本协议的权利，修改后将在应用内通知。</p>';
+  } else {
+    $('agreementTitle').textContent = '隐私政策';
+    $('agreementBody').innerHTML = '<p>本隐私政策说明漂流大厅如何收集、使用和保护您的个人信息：</p><br>' +
+      '<p><b>1. 信息收集</b></p><p>我们收集您的手机号码用于注册登录，收集昵称、性别等您主动填写的信息。</p><br>' +
+      '<p><b>2. 信息使用</b></p><p>收集的信息仅用于提供应用功能、身份验证和防滥用。我们不会向第三方出售您的信息。</p><br>' +
+      '<p><b>3. 信息安全</b></p><p>我们采取技术措施保护您的信息安全，手机号加密存储。</p><br>' +
+      '<p><b>4. 信息删除</b></p><p>您可以随时注销账号，注销后所有个人数据将被删除。</p><br>' +
+      '<p><b>5. Cookie</b></p><p>本应用使用 localStorage 存储 JWT 令牌，不使用跟踪 Cookie。</p>';
+  }
+  $('modal-overlay').classList.add('show');
+}
+
+async function api(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  try {
+    const res = await fetch(API_BASE + path, { ...options, headers });
+    return await res.json();
+  } catch (e) {
+    showToast('网络连接失败，请检查网络');
+    throw e;
+  }
+}
+
+/* ---- state ---- */
+let loginMode = 'phone'; // 'phone' | 'email'
+let loginPhone = '';
+let loginEmail = '';
+let countdownTimer = null;
+
+/* ---- register identifier: 手机 / 邮箱 ---- */
+function switchRegMode(mode) {
+  loginMode = mode;
+  $('regPhoneTab').classList.toggle('active', mode === 'phone');
+  $('regEmailTab').classList.toggle('active', mode === 'email');
+  $('regPhoneField').classList.toggle('hidden', mode !== 'phone');
+  $('regEmailField').classList.toggle('hidden', mode !== 'email');
+}
+
+function checkAgreement() {
+  if (!$('cb-agreement').checked) { showToast('请先同意《用户协议》'); return false; }
+  if (!$('cb-privacy').checked) { showToast('请先同意《隐私政策》'); return false; }
+  if (!$('cb-adult').checked) { showToast('请确认已年满18周岁'); return false; }
+  return true;
+}
+
+function startCountdown() {
+  let sec = 60;
+  const btn = $('regResendBtn');
+  btn.disabled = true; btn.style.opacity = '.4';
+  countdownTimer = setInterval(() => {
+    sec--;
+    btn.textContent = `${sec}s 后重发`;
+    if (sec <= 0) {
+      clearInterval(countdownTimer); countdownTimer = null;
+      btn.textContent = '重新发送'; btn.disabled = false; btn.style.opacity = '1';
+    }
+  }, 1000);
+}
+
+async function doSendCode() {
+  if (!checkAgreement()) return;
+  const isEmail = loginMode === 'email';
+  const inputEl = isEmail ? $('regEmailInput') : $('regPhoneInput');
+  const target = inputEl.value.trim();
+  if (isEmail) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(target)) { showToast('请输入正确的邮箱地址'); return; }
+  } else {
+    if (!/^1[3-9]\d{9}$/.test(target)) { showToast('请输入正确的手机号'); return; }
+  }
+  const btn = $('regSendCodeBtn');
+  btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
+  const endpoint = isEmail ? '/auth/email/send' : '/auth/sms/send';
+  const body = isEmail ? { email: target } : { phone: target };
+  let res;
+  try {
+    res = await api(endpoint, { method: 'POST', body: JSON.stringify(body) });
+  } catch (e) {
+    showToast('发送失败，请重试');
+    btn.innerHTML = '获取验证码'; btn.disabled = false;
+    return;
+  }
+  btn.innerHTML = '获取验证码'; btn.disabled = false;
+  if (res && res.success) {
+    if (isEmail) loginEmail = target; else loginPhone = target;
+    $('regCodeStep').classList.remove('hidden');
+    $('regCodeLabel').textContent = (isEmail ? '验证码已发送至邮箱 ' : '短信验证码已发送至 ') + target;
+    $('regDevCodeHint').textContent = res.devCode ? `开发模式验证码：${res.devCode}` : '';
+    startCountdown();
+  } else {
+    showToast((res && res.error) || '发送失败');
+  }
+}
+
+$('regPhoneTab').onclick = () => switchRegMode('phone');
+$('regEmailTab').onclick = () => switchRegMode('email');
+$('regSendCodeBtn').onclick = () => doSendCode();
+$('regResendBtn').onclick = () => { if (!$('regResendBtn').disabled) doSendCode(); };
+
+$('registerBtn').onclick = async function() {
+  const code = $('regCodeInput').value.trim();
+  const password = $('regPasswordInput').value;
+  const confirm = $('regConfirmInput').value;
+  if (!code || code.length !== 6) { showToast('请输入6位验证码'); return; }
+  if (!password || password.length < 6) { showToast('密码至少 6 位'); return; }
+  if (password !== confirm) { showToast('两次输入的密码不一致'); return; }
+  this.innerHTML = '<span class="spinner"></span>'; this.disabled = true;
+  const isEmail = loginMode === 'email';
+  const payload = { type: isEmail ? 'email' : 'phone', code, password };
+  if (isEmail) payload.email = loginEmail; else payload.phone = loginPhone;
+  try {
+    const res = await api('/auth/register', { method: 'POST', body: JSON.stringify(payload) });
+    if (res.success) {
+      setToken(res.token);
+      showToast('注册成功，正在进入…');
+      setTimeout(() => { location.href = 'index.html'; }, 700);
+      return;
+    } else {
+      showToast(res.error || '注册失败');
+    }
+  } catch (e) { showToast('注册失败，请重试'); }
+  this.innerHTML = '注册并登录'; this.disabled = false;
+};
+
+$('regChangeBtn').onclick = function() {
+  $('regCodeStep').classList.add('hidden');
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+};
+</script>
+</body>
+</html>
