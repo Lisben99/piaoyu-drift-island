@@ -20,7 +20,7 @@
  * @returns {Promise<string|null>} generated text, or null to use templates
  */
 const PROVIDER_DEFAULTS = {
-  deepseek: { baseURL: 'https://api.deepseek.com', model: 'deepseek-chat' },
+  deepseek: { baseURL: 'https://api.deepseek.com', model: 'deepseek-v4-flash' },
   openai: { baseURL: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
   qwen: { baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
   glm: { baseURL: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash' },
