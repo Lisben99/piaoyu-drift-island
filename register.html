@@ -44,10 +44,8 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .code-actions{display:flex;align-items:center;justify-content:space-between;min-height:29px}
 .demo-code{color:#ef7b62;font-size:12px;font-weight:700}
 
-.legal-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
-.legal{display:flex;align-items:center;gap:8px;color:#718082;font-size:12px;cursor:pointer}
-.legal span{flex:1}
-.legal a{color:#1f7a74;font-weight:600;text-decoration:none}
+.auth-legal{margin:0 2px 16px;text-align:center;font-size:11px;color:#9aa3a1;line-height:1.6}
+.auth-legal a{color:#1f7a74;font-weight:600;text-decoration:none}
 
 .primary-button{width:100%;min-height:48px;border-radius:14px;background:#1f7a74;box-shadow:0 8px 16px rgba(31,122,116,.15);color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s}
 .primary-button:active{opacity:.88}
@@ -92,11 +90,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
       <button type="button" class="auth-tab" id="regEmailTab">邮箱注册</button>
     </div>
 
-    <div class="legal-list">
-      <label class="legal"><input type="checkbox" id="cb-agreement" /><span>我已阅读并同意<a href="javascript:void(0)" onclick="showAgreement('user')">《用户协议》</a></span></label>
-      <label class="legal"><input type="checkbox" id="cb-privacy" /><span>我已阅读并同意<a href="javascript:void(0)" onclick="showAgreement('privacy')">《隐私政策》</a></span></label>
-      <label class="legal"><input type="checkbox" id="cb-adult" /><span>我确认已年满 18 周岁</span></label>
-    </div>
+    <p class="auth-legal">注册即表示同意 <a href="javascript:void(0)" onclick="showAgreement('user')">《用户协议》</a> 与 <a href="javascript:void(0)" onclick="showAgreement('privacy')">《隐私政策》</a>，并确认已满 18 周岁</p>
 
     <div id="regPhoneField">
       <label class="field-label">手机号码</label>
@@ -224,13 +218,6 @@ function switchRegMode(mode) {
   $('regEmailField').classList.toggle('hidden', mode !== 'email');
 }
 
-function checkAgreement() {
-  if (!$('cb-agreement').checked) { showToast('请先同意《用户协议》'); return false; }
-  if (!$('cb-privacy').checked) { showToast('请先同意《隐私政策》'); return false; }
-  if (!$('cb-adult').checked) { showToast('请确认已年满18周岁'); return false; }
-  return true;
-}
-
 function startCountdown() {
   let sec = 60;
   const btn = $('regResendBtn');
@@ -246,7 +233,6 @@ function startCountdown() {
 }
 
 async function doSendCode() {
-  if (!checkAgreement()) return;
   const isEmail = loginMode === 'email';
   const inputEl = isEmail ? $('regEmailInput') : $('regPhoneInput');
   const target = inputEl.value.trim();

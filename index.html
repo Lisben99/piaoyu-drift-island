@@ -88,7 +88,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .card{background:#fff;border-radius:16px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,.04)}
 
 /* ===== Login Page ===== */
-.auth-page{padding:28px 22px 22px;min-height:100vh;display:flex;flex-direction:column}
+.auth-page{padding:28px 22px 22px;min-height:100vh;display:flex;flex-direction:column;background:linear-gradient(180deg,#e9f5f3 0%,#ffffff 44%)}
 .auth-title{margin:8px 0 14px;font-size:22px;font-weight:700;color:#172b2d}
 .auth-foot{margin-top:18px;text-align:center;font-size:13px;color:#718082}
 .auth-link{color:#1f7a74;font-weight:700;text-decoration:none}
@@ -102,6 +102,23 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .code-input .plain-input{text-align:center;font-size:18px;font-weight:700;letter-spacing:9px}
 .code-actions{display:flex;align-items:center;justify-content:space-between;min-height:29px}
 .demo-code{color:#ef7b62;font-size:12px;font-weight:700}
+
+/* ===== Welcome / Entry Screen ===== */
+.welcome{flex:1;display:flex;flex-direction:column}
+.welcome-hero{margin-top:15vh;text-align:center}
+.welcome-mark{width:92px;height:92px;border-radius:28px;margin:0 auto 22px;background:linear-gradient(135deg,#1f7a74,#2fa89e);display:flex;align-items:center;justify-content:center;box-shadow:0 14px 34px rgba(31,122,116,.30);position:relative;overflow:hidden}
+.welcome-wave{width:46px;height:46px;border-radius:50%;border:3px solid rgba(255,255,255,.92);border-top-color:transparent;border-right-color:transparent;transform:rotate(45deg)}
+.welcome-name{font-size:30px;font-weight:800;color:#172b2d;letter-spacing:3px;margin:0}
+.welcome-tag{margin:10px 0 0;font-size:14px;color:#718082;letter-spacing:.5px}
+.welcome-actions{margin-top:auto;display:flex;flex-direction:column;gap:12px;padding:0 4px}
+.welcome-legal{margin:16px 6px 0;text-align:center;font-size:11px;color:#9aa3a1;line-height:1.6}
+.welcome-legal a{color:#1f7a74;font-weight:600;text-decoration:none}
+.ghost-button{display:block;text-align:center;padding:14px;border-radius:14px;background:#fff;border:1.5px solid #1f7a74;color:#1f7a74;font-size:16px;font-weight:700;text-decoration:none}
+.back-arrow{width:36px;height:36px;border:none;background:rgba(0,0,0,.05);border-radius:50%;font-size:22px;line-height:1;color:#172b2d;cursor:pointer;margin-bottom:4px}
+.auth-foot-row{margin-top:18px;display:flex;justify-content:space-between;font-size:13px}
+.seg{display:flex;gap:8px;background:#f1f4f4;border-radius:12px;padding:4px;margin-bottom:4px}
+.seg-item{flex:1;border:none;background:transparent;padding:10px 0;border-radius:9px;font-size:14px;font-weight:600;color:#718082;cursor:pointer;transition:.15s}
+.seg-item.active{background:#fff;color:#1f7a74;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 
 /* ===== Role Select ===== */
 .role-page{padding:32px 22px 26px;min-height:100vh}
@@ -384,64 +401,51 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
   <!-- ===== PAGE: Login ===== -->
   <div class="page" id="page-login">
     <div class="auth-page">
-      <div class="brand-lockup" style="margin-bottom:4px">
-        <div class="brand-mark"><div class="brand-wave"></div></div>
-        <div><span class="brand-name">漂流大厅</span><span class="brand-caption">DRIFT ISLAND</span></div>
-      </div>
-      <div class="auth-art">
-        <svg viewBox="0 0 360 165" style="width:100%;height:100%" preserveAspectRatio="xMidYMid slice">
-          <circle cx="280" cy="45" r="28" fill="#dfa948" opacity=".75"/>
-          <path d="M0 140 Q60 120 120 138 T240 135 T360 138 L360 165 L0 165 Z" fill="#1f7a74" opacity=".18"/>
-          <path d="M0 148 Q70 132 140 146 T280 144 T360 147 L360 165 L0 165 Z" fill="#1f7a74" opacity=".28"/>
-          <ellipse cx="180" cy="148" rx="40" ry="9" fill="#1f7a74" opacity=".15"/>
-          <g transform="translate(160,95) rotate(-12)">
-            <path d="M0 0 L40 0 L40 28 Q40 35 33 35 L7 35 Q0 35 0 28 Z" fill="rgba(255,255,255,.75)" stroke="#1f7a74" stroke-width="1.5"/>
-            <path d="M0 0 L40 0 L36 7 L4 7 Z" fill="#1f7a74" opacity=".2"/>
-            <rect x="15" y="8" width="10" height="3" rx="1" fill="#1f7a74" opacity=".3"/>
-          </g>
-        </svg>
-      </div>
-      <h2 class="auth-title">登录漂流大厅</h2>
 
-      <!-- 协议勾选（登录需同意） -->
-      <div class="legal-list">
-        <label class="legal"><input type="checkbox" id="cb-agreement" /><span>我已阅读并同意<a href="javascript:void(0)" onclick="showAgreement('user')">《用户协议》</a></span></label>
-        <label class="legal"><input type="checkbox" id="cb-privacy" /><span>我已阅读并同意<a href="javascript:void(0)" onclick="showAgreement('privacy')">《隐私政策》</a></span></label>
-        <label class="legal"><input type="checkbox" id="cb-adult" /><span>我确认已年满 18 周岁</span></label>
-      </div>
-
-      <!-- ============ 登录面板 ============ -->
-      <div id="loginPanel">
-        <div class="auth-tabs">
-          <button type="button" class="auth-tab active" id="tabCodeLogin">验证码登录</button>
-          <button type="button" class="auth-tab" id="tabPwdLogin">密码登录</button>
+      <!-- 进入 / 欢迎页 -->
+      <div id="welcomeView" class="welcome">
+        <div class="welcome-hero">
+          <div class="welcome-mark"><div class="welcome-wave"></div></div>
+          <h1 class="welcome-name">漂流大厅</h1>
+          <p class="welcome-tag">把心事装进瓶子，交给海风</p>
         </div>
+        <div class="welcome-actions">
+          <button class="primary-button" id="goLoginBtn" type="button">登录</button>
+          <a href="register.html" class="ghost-button">创建账号</a>
+        </div>
+        <p class="welcome-legal">登录即表示同意 <a href="javascript:void(0)" onclick="showAgreement('user')">《用户协议》</a> 与 <a href="javascript:void(0)" onclick="showAgreement('privacy')">《隐私政策》</a>，并确认已满 18 周岁</p>
+      </div>
+
+      <!-- 登录页（点“登录”后展开） -->
+      <div id="loginView" class="hidden">
+        <button class="back-arrow" id="backToWelcome" type="button">‹</button>
+        <h2 class="auth-title">登录</h2>
 
         <!-- 验证码登录 -->
         <div id="codeLoginForm" class="form-stack">
-          <div class="auth-tabs">
-            <button type="button" class="auth-tab active" id="tabPhone">手机</button>
-            <button type="button" class="auth-tab" id="tabEmail">邮箱</button>
+          <div class="seg">
+            <button type="button" class="seg-item active" id="tabPhone">手机</button>
+            <button type="button" class="seg-item" id="tabEmail">邮箱</button>
           </div>
           <div id="phoneField">
-            <label class="field-label">手机号码</label>
+            <label class="field-label">手机号</label>
             <div class="input-wrap">
               <span class="prefix">+86</span>
               <input class="plain-input" type="tel" maxlength="11" placeholder="请输入 11 位手机号" id="phoneInput" />
             </div>
           </div>
           <div id="emailField" class="hidden">
-            <label class="field-label">邮箱地址</label>
+            <label class="field-label">邮箱</label>
             <div class="input-wrap">
               <input class="plain-input" type="email" placeholder="请输入邮箱地址" id="emailInput" />
             </div>
           </div>
           <button class="primary-button" id="sendCodeBtn">获取验证码</button>
-          <span class="auth-note" id="authNote">未注册的手机号验证后将自动创建账号</span>
+          <span class="auth-note" id="authNote">未注册的账号验证后将自动创建</span>
 
           <div id="auth-code-step" class="form-stack hidden">
             <div>
-              <label class="field-label" id="codeSentLabel">短信验证码已发送至</label>
+              <label class="field-label" id="codeSentLabel">验证码已发送至</label>
               <div class="input-wrap code-input">
                 <input class="plain-input" type="tel" maxlength="6" placeholder="••••••" id="codeInput" />
               </div>
@@ -470,13 +474,15 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
             </div>
           </div>
           <button class="primary-button" id="pwdLoginBtn">登录</button>
-          <span class="auth-note">使用注册时设置的密码登录；未设置密码的账号请改用验证码登录</span>
+          <span class="auth-note">未设置密码的账号请使用验证码登录</span>
+        </div>
+
+        <div class="auth-foot-row">
+          <a href="javascript:void(0)" class="auth-link" id="togglePwdLogin">使用密码登录</a>
+          <a href="register.html" class="auth-link">注册账号</a>
         </div>
       </div>
 
-      <div class="auth-foot">
-        还没有账号？<a href="register.html" class="auth-link">立即注册</a>
-      </div>
     </div>
   </div>
 
@@ -893,17 +899,7 @@ function renderTabBar(containerId, active) {
 let loginPhone = '';
 let loginMode = 'phone'; // 'phone' | 'email'
 let loginEmail = '';
-let loginSubMode = 'code'; // 'code' | 'pwd' (login sub tabs)
 let countdownTimer = null;
-
-/* ---- login sub: 验证码 / 密码 ---- */
-function switchLoginSub(mode) {
-  loginSubMode = mode;
-  $('tabCodeLogin').classList.toggle('active', mode === 'code');
-  $('tabPwdLogin').classList.toggle('active', mode === 'pwd');
-  $('codeLoginForm').classList.toggle('hidden', mode !== 'code');
-  $('pwdLoginForm').classList.toggle('hidden', mode !== 'pwd');
-}
 
 /* ---- identifier: 手机 / 邮箱 (code-login) ---- */
 function switchIdentifier(mode) {
@@ -917,16 +913,20 @@ function switchIdentifier(mode) {
     : '未注册的邮箱验证后将自动创建账号';
 }
 
-function checkAgreement() {
-  if (!$('cb-agreement').checked) { showToast('请先同意《用户协议》'); return false; }
-  if (!$('cb-privacy').checked) { showToast('请先同意《隐私政策》'); return false; }
-  if (!$('cb-adult').checked) { showToast('请确认已年满18周岁'); return false; }
-  return true;
+function resetLoginView() {
+  switchIdentifier('phone');
+  $('auth-code-step').classList.add('hidden');
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+  $('codeLoginForm').classList.remove('hidden');
+  $('pwdLoginForm').classList.add('hidden');
+  $('togglePwdLogin').textContent = '使用密码登录';
+  $('phoneInput').value = '';
+  $('emailInput').value = '';
+  $('codeInput').value = '';
 }
 
 /* send-code for login (code mode) */
 async function doSendCode() {
-  if (!checkAgreement()) return;
   const isEmail = loginMode === 'email';
   const inputEl = isEmail ? $('emailInput') : $('phoneInput');
   const target = inputEl.value.trim();
@@ -974,11 +974,17 @@ function startCountdown() {
 }
 
 /* ---- bindings ---- */
-$('tabCodeLogin').onclick = () => switchLoginSub('code');
-$('tabPwdLogin').onclick = () => switchLoginSub('pwd');
 $('tabPhone').onclick = () => switchIdentifier('phone');
 $('tabEmail').onclick = () => switchIdentifier('email');
 $('sendCodeBtn').onclick = () => doSendCode();
+$('goLoginBtn').onclick = () => { resetLoginView(); $('welcomeView').classList.add('hidden'); $('loginView').classList.remove('hidden'); };
+$('backToWelcome').onclick = () => { $('loginView').classList.add('hidden'); $('welcomeView').classList.remove('hidden'); };
+$('togglePwdLogin').onclick = () => {
+  const toPwd = $('pwdLoginForm').classList.contains('hidden');
+  $('pwdLoginForm').classList.toggle('hidden', !toPwd);
+  $('codeLoginForm').classList.toggle('hidden', toPwd);
+  $('togglePwdLogin').textContent = toPwd ? '使用验证码登录' : '使用密码登录';
+};
 $('resendBtn').onclick = () => { if (!$('resendBtn').disabled) doSendCode(); };
 
 $('loginBtn').onclick = async function() {
