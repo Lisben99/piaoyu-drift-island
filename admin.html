@@ -82,6 +82,21 @@ input,textarea,select{font-family:inherit;outline:none;resize:none}
 .pagination button.active{background:#1f7a74;color:#fff;border-color:#1f7a74}
 .pagination button:disabled{opacity:.4}
 
+/* Support tickets */
+.ticket-list{display:flex;flex-direction:column;gap:14px;margin-bottom:16px}
+.ticket-card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);border-left:3px solid #ef7b62}
+.ticket-card__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.ticket-card__type{font-size:14px;font-weight:700;color:#172b2d}
+.ticket-card__meta{font-size:12px;color:#718082;margin-bottom:8px}
+.ticket-card__subject{font-size:14px;font-weight:600;color:#172b2d;margin-bottom:6px}
+.ticket-card__desc{font-size:13px;color:#3c4a4a;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.ticket-card__contact{font-size:12px;color:#718082;margin-top:6px}
+.ticket-card__reply{font-size:13px;color:#1f7a74;line-height:1.6;background:rgba(31,122,116,.06);border-radius:8px;padding:8px 10px;margin-top:8px;white-space:pre-wrap;word-break:break-word}
+.ticket-card__actions{margin-top:10px}
+.ticket-reply-box{margin-top:10px;padding-top:10px;border-top:1px dashed #eee}
+.ticket-reply-box textarea{width:100%;min-height:70px;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:13px;line-height:1.5;resize:vertical}
+.ticket-reply-box__btns{display:flex;gap:10px;margin-top:8px}
+
 /* Modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center}
 .modal-overlay.show{display:flex}
@@ -140,9 +155,10 @@ input,textarea,select{font-family:inherit;outline:none;resize:none}
       <div class="sidebar__item" onclick="switchTab('users')">👥 用户管理</div>
       <div class="sidebar__item" onclick="switchTab('bottles')">🍾 漂流瓶管理</div>
       <div class="sidebar__item" onclick="switchTab('coins')">🪙 漂流币管理</div>
-      <div class="sidebar__item" onclick="switchTab('orders')">💰 充值订单</div>
+      <div class="sidebar__item" onclick="switchTab('orders')">💰 充值订单 <span class="sidebar__badge hidden" id="orderBadge"></span></div>
       <div class="sidebar__item" onclick="switchTab('redeem')">🎟️ 卡密管理</div>
       <div class="sidebar__item" onclick="switchTab('reports')">⚠️ 举报管理 <span class="sidebar__badge hidden" id="reportBadge"></span></div>
+      <div class="sidebar__item" onclick="switchTab('support')">🎫 客服工单 <span class="sidebar__badge hidden" id="supportBadge"></span></div>
       <div class="sidebar__item" onclick="switchTab('config')">⚙️ 业务配置</div>
       <div class="sidebar__item" onclick="switchTab('audit')">📋 审计日志</div>
     </div>
@@ -224,6 +240,15 @@ function formatTime(ts) {
   const d = new Date(ts);
   return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 /* ===== Login ===== */
 document.getElementById('adminLoginBtn').onclick = async function() {
@@ -255,10 +280,10 @@ function adminLogout() {
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.sidebar__item').forEach((el, i) => {
-    const tabs = ['dashboard','users','bottles','coins','orders','redeem','reports','config','audit'];
+    const tabs = ['dashboard','users','bottles','coins','orders','redeem','reports','support','config','audit'];
     el.classList.toggle('active', tabs[i] === tab);
   });
-  const titles = { dashboard:'数据概览', users:'用户管理', bottles:'漂流瓶管理', coins:'漂流币管理', orders:'充值订单', redeem:'卡密管理', reports:'举报管理', config:'业务配置', audit:'审计日志' };
+  const titles = { dashboard:'数据概览', users:'用户管理', bottles:'漂流瓶管理', coins:'漂流币管理', orders:'充值订单', redeem:'卡密管理', reports:'举报管理', support:'客服工单', config:'业务配置', audit:'审计日志' };
   document.getElementById('pageTitle').textContent = titles[tab];
   pagination = { page: 1, pageSize: 20, total: 0 };
   renderTab();
@@ -275,9 +300,33 @@ async function renderTab() {
     else if (currentTab === 'orders') await renderOrders();
     else if (currentTab === 'redeem') await renderRedeemCodes();
     else if (currentTab === 'reports') await renderReports();
+    else if (currentTab === 'support') await renderSupport();
     else if (currentTab === 'config') await renderConfig();
     else if (currentTab === 'audit') await renderAudit();
   } catch (e) { c.innerHTML = '<div style="text-align:center;padding:40px;color:#e74c3c">加载失败，请重试</div>'; }
+  refreshBadges();
+}
+
+/* ===== Sidebar badges (待办提醒) ===== */
+function setBadge(id, count) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (count > 0) {
+    el.textContent = count > 99 ? '99+' : count;
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden');
+  }
+}
+async function refreshBadges() {
+  try {
+    const res = await api('/dashboard');
+    if (!res.success) return;
+    const s = res.stats;
+    setBadge('orderBadge', s.pendingOrders || 0);
+    setBadge('reportBadge', s.pendingReports || 0);
+    setBadge('supportBadge', s.pendingSupport || 0);
+  } catch (e) {}
 }
 
 /* ===== Dashboard ===== */
@@ -294,6 +343,8 @@ async function renderDashboard() {
       <div class="stat-card"><div class="stat-card__label">聊天会话</div><div class="stat-card__value">${s.totalSessions}</div></div>
       <div class="stat-card"><div class="stat-card__label">充值总额</div><div class="stat-card__value">¥${s.totalRecharged}</div></div>
       <div class="stat-card"><div class="stat-card__label">漂流币流通</div><div class="stat-card__value">${s.totalCoinsInCirculation}</div></div>
+      <div class="stat-card"><div class="stat-card__label">待支付订单</div><div class="stat-card__value warning">${s.pendingOrders}</div></div>
+      <div class="stat-card"><div class="stat-card__label">未解决工单</div><div class="stat-card__value warning">${s.pendingSupport}</div></div>
       <div class="stat-card"><div class="stat-card__label">待处理举报</div><div class="stat-card__value warning">${s.pendingReports}</div></div>
       <div class="stat-card"><div class="stat-card__label">处罚账号</div><div class="stat-card__value danger">${s.penalizedAccounts}</div></div>
     </div>
@@ -313,11 +364,6 @@ async function renderDashboard() {
         </table>
       </div>
     </div>`;
-  
-  // Update report badge
-  const badge = document.getElementById('reportBadge');
-  if (s.pendingReports > 0) { badge.textContent = s.pendingReports; badge.classList.remove('hidden'); }
-  else badge.classList.add('hidden');
 }
 
 /* ===== Users ===== */
@@ -691,6 +737,67 @@ async function handleReport(id, result) {
   const res = await api(`/reports/${id}/handle`, { method: 'POST', body: JSON.stringify({ result, note }) });
   if (res.success) { showToast('处理成功'); renderReports(); }
   else showToast(res.error || '处理失败');
+}
+
+/* ===== Support (客服工单) ===== */
+let supportStatus = 'pending';
+async function renderSupport() {
+  const res = await api(`/support?status=${supportStatus}&page=${pagination.page}&pageSize=${pagination.pageSize}`);
+  if (!res.success) return;
+  pagination.total = res.total;
+  const c = document.getElementById('pageContent');
+  const list = res.tickets.length ? res.tickets.map(t => {
+    const typeLabel = t.type === 'problem' ? '🐞 问题反馈' : '💡 功能建议';
+    const statusLabel = t.status === 'pending' ? '待处理' : (t.status === 'resolved' ? '已解决' : '已回复');
+    const canHandle = t.status === 'pending' || t.status === 'replied';
+    return `<div class="ticket-card">
+      <div class="ticket-card__head">
+        <span class="ticket-card__type">${typeLabel}</span>
+        <span class="badge ${badgeClass(t.status)}">${statusLabel}</span>
+      </div>
+      <div class="ticket-card__meta">用户：${escapeHtml(t.userNickname)}（${escapeHtml(t.userPhone || '-')}）· ${formatTime(t.createdAt)}</div>
+      ${t.subject ? `<div class="ticket-card__subject">${escapeHtml(t.subject)}</div>` : ''}
+      <div class="ticket-card__desc">${escapeHtml(t.description)}</div>
+      ${t.contact ? `<div class="ticket-card__contact">联系方式：${escapeHtml(t.contact)}</div>` : ''}
+      ${t.reply ? `<div class="ticket-card__reply"><b>管理员回复：</b>${escapeHtml(t.reply)}</div>` : ''}
+      ${canHandle ? `<div class="ticket-card__actions">
+        <button class="btn-sm btn-primary" onclick="showSupportReply('${t.id}')">回复 / 解决</button>
+      </div>
+      <div id="supportReplyBox-${t.id}" class="ticket-reply-box hidden">
+        <textarea id="supportReplyText-${t.id}" placeholder="填写回复内容（可选）"></textarea>
+        <div class="ticket-reply-box__btns">
+          <button class="btn-sm btn-success" onclick="handleSupport('${t.id}','resolve')">标记已解决</button>
+          <button class="btn-sm btn-primary" onclick="handleSupport('${t.id}','reply')">仅回复</button>
+        </div>
+      </div>` : ''}
+    </div>`;
+  }).join('') : '<div style="text-align:center;padding:40px;color:#999">暂无工单</div>';
+  c.innerHTML = `
+    <div class="search-bar">
+      <select onchange="supportStatus=this.value;pagination.page=1;renderSupport()">
+        <option value="pending" ${supportStatus==='pending'?'selected':''}>待处理</option>
+        <option value="replied" ${supportStatus==='replied'?'selected':''}>已回复</option>
+        <option value="resolved" ${supportStatus==='resolved'?'selected':''}>已解决</option>
+        <option value="all" ${supportStatus==='all'?'selected':''}>全部</option>
+      </select>
+    </div>
+    <div class="ticket-list">${list}</div>
+    ${renderPagination()}`;
+}
+
+function showSupportReply(id) {
+  const box = document.getElementById('supportReplyBox-' + id);
+  if (box) box.classList.toggle('hidden');
+}
+
+async function handleSupport(id, action) {
+  const ta = document.getElementById('supportReplyText-' + id);
+  const reply = ta ? ta.value.trim() : '';
+  const res = await api(`/support/${id}/handle`, { method: 'POST', body: JSON.stringify({ action, reply }) });
+  if (res.success) {
+    showToast(action === 'resolve' ? '已标记为已解决' : '已回复');
+    renderSupport();
+  } else showToast(res.error || '操作失败');
 }
 
 /* ===== Config ===== */

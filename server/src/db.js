@@ -64,6 +64,7 @@ function createDefaultDB() {
     coinTransactions: [],
     rechargeOrders: [],
     reports: [],
+    supportTickets: [],
     auditLogs: [],
     inviteCodes: [],
     smsCodes: [],

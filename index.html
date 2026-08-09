@@ -367,6 +367,22 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .edit-field textarea{min-height:60px;line-height:1.5}
 .edit-field .hint{font-size:11px;color:#98a2a0;margin-top:4px}
 
+/* ===== Support (联系客服) ===== */
+.support-content{flex:1;padding:16px;overflow-y:auto}
+.support-intro{font-size:13px;color:#718082;line-height:1.6;background:rgba(31,122,116,.06);border-radius:12px;padding:12px 14px;margin-bottom:16px}
+.support-ticket{background:#fff;border:1px solid #eee;border-radius:12px;padding:14px;margin-bottom:12px}
+.support-ticket__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.support-ticket__type{font-size:14px;font-weight:700;color:#172b2d}
+.support-ticket__status{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px}
+.support-ticket__status.status-pending{background:rgba(239,123,98,.15);color:#ef7b62}
+.support-ticket__status.status-replied{background:rgba(223,169,72,.15);color:#c8920a}
+.support-ticket__status.status-resolved{background:rgba(31,122,116,.15);color:#1f7a74}
+.support-ticket__subject{font-size:14px;font-weight:600;color:#172b2d;margin-bottom:6px}
+.support-ticket__desc{font-size:13px;color:#3c4a4a;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.support-ticket__contact{font-size:12px;color:#718082;margin-top:6px}
+.support-ticket__reply{font-size:13px;color:#1f7a74;line-height:1.6;background:rgba(31,122,116,.06);border-radius:8px;padding:8px 10px;margin-top:8px;white-space:pre-wrap;word-break:break-word}
+.support-ticket__time{font-size:11px;color:#98a2a0;margin-top:8px;text-align:right}
+
 /* ===== Account Delete ===== */
 .delete-content{flex:1;padding:16px;overflow-y:auto}
 .delete-warn{background:rgba(231,76,60,.06);border-radius:12px;padding:16px;margin-bottom:16px}
@@ -737,6 +753,16 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
     <div class="report-content" id="reportContent"></div>
   </div>
 
+  <!-- ===== PAGE: Support (联系客服) ===== -->
+  <div class="page" id="page-support">
+    <div class="nav-bar">
+      <div class="nav-bar__back" onclick="navigateBack()">←</div>
+      <div class="nav-bar__title">联系客服</div>
+      <div class="nav-bar__spacer"></div>
+    </div>
+    <div class="support-content" id="supportContent"></div>
+  </div>
+
   <!-- ===== PAGE: Settings ===== -->
   <div class="page" id="page-settings">
     <div class="nav-bar">
@@ -911,6 +937,15 @@ function formatDateTime(ts) {
   const d = new Date(ts);
   return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 function statusLabel(status) {
   const m = { displaying:'展示中', expired:'已过期', deleted:'已删除', active:'限时中', permanent:'永久', pending_permanent:'等待续聊确认', blocked:'已拉黑' };
   return m[status] || status;
@@ -954,6 +989,7 @@ function onPageEnter(pageId) {
   if (pageId === 'settings') renderSettings();
   if (pageId === 'edit-profile') renderEditProfile();
   if (pageId === 'account-delete') renderAccountDelete();
+  if (pageId === 'support') renderSupport();
 }
 
 /* ================================================================
@@ -1988,6 +2024,91 @@ async function submitReport() {
 }
 
 /* ================================================================
+   SUPPORT (联系客服 / 工单)
+   ================================================================ */
+let supportType = 'problem';
+function renderSupport() {
+  supportType = 'problem';
+  $('supportContent').innerHTML = `
+    <div class="support-intro">遇到问题或有好建议？提交后管理员会尽快处理，您可以随时在此查看进度与回复。</div>
+    <div class="coin-section-title">类型</div>
+    <div class="report-reasons" id="supportTypes">
+      <div class="report-reason selected" onclick="selectSupportType('problem',this)">🐞 遇到问题</div>
+      <div class="report-reason" onclick="selectSupportType('suggestion',this)">💡 功能建议</div>
+    </div>
+    <div class="edit-field">
+      <label>标题（选填）</label>
+      <input type="text" id="supportSubject" maxlength="50" placeholder="一句话概括您的问题或建议">
+    </div>
+    <div class="edit-field">
+      <label>问题描述 / 建议内容</label>
+      <textarea id="supportDesc" maxlength="500" placeholder="请尽量详细描述，方便我们定位和处理..."></textarea>
+      <div class="hint">最多 500 字</div>
+    </div>
+    <div class="edit-field">
+      <label>联系方式（选填，便于回复）</label>
+      <input type="text" id="supportContact" maxlength="50" placeholder="手机号 / 微信 / 邮箱">
+    </div>
+    <button class="primary-button" id="submitSupportBtn" onclick="submitSupport()">提交工单</button>
+    <div class="coin-section-title" style="margin-top:26px">我的工单</div>
+    <div id="mySupportList"></div>`;
+  loadMySupport();
+}
+
+function selectSupportType(type, el) {
+  supportType = type;
+  document.querySelectorAll('#supportTypes .report-reason').forEach(r => r.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+async function submitSupport() {
+  const subject = $('supportSubject').value.trim();
+  const description = $('supportDesc').value.trim();
+  const contact = $('supportContact').value.trim();
+  if (!description) { showToast('请填写内容描述'); return; }
+  const btn = $('submitSupportBtn');
+  btn.disabled = true; btn.textContent = '提交中...';
+  try {
+    const res = await api('/support', { method: 'POST', body: JSON.stringify({ type: supportType, subject, description, contact }) });
+    if (res.success) {
+      showToast('已提交，管理员会尽快处理');
+      $('supportSubject').value = '';
+      $('supportDesc').value = '';
+      $('supportContact').value = '';
+      loadMySupport();
+    } else { showToast(res.error || '提交失败'); }
+  } catch (e) {}
+  btn.disabled = false; btn.textContent = '提交工单';
+}
+
+async function loadMySupport() {
+  const el = $('mySupportList');
+  if (!el) return;
+  try {
+    const res = await api('/support/my');
+    if (res.success && res.tickets && res.tickets.length) {
+      el.innerHTML = res.tickets.map(t => {
+        const statusText = t.status === 'pending' ? '待处理' : (t.status === 'resolved' ? '已解决' : '已回复');
+        const statusCls = t.status === 'pending' ? 'pending' : (t.status === 'resolved' ? 'resolved' : 'replied');
+        return `<div class="support-ticket">
+          <div class="support-ticket__head">
+            <span class="support-ticket__type">${t.type === 'problem' ? '🐞 问题反馈' : '💡 功能建议'}</span>
+            <span class="support-ticket__status status-${statusCls}">${statusText}</span>
+          </div>
+          ${t.subject ? `<div class="support-ticket__subject">${escapeHtml(t.subject)}</div>` : ''}
+          <div class="support-ticket__desc">${escapeHtml(t.description)}</div>
+          ${t.contact ? `<div class="support-ticket__contact">联系方式：${escapeHtml(t.contact)}</div>` : ''}
+          ${t.reply ? `<div class="support-ticket__reply"><b>管理员回复：</b>${escapeHtml(t.reply)}</div>` : ''}
+          <div class="support-ticket__time">${formatTime(t.createdAt)}</div>
+        </div>`;
+      }).join('');
+    } else {
+      el.innerHTML = `<div class="empty-state"><div class="empty-state__icon">📭</div><div class="empty-state__title">暂无工单</div><div class="empty-state__desc">提交后会出现在这里</div></div>`;
+    }
+  } catch (e) {}
+}
+
+/* ================================================================
    SETTINGS
    ================================================================ */
 async function renderSettings() {
@@ -2047,14 +2168,14 @@ async function renderSettings() {
             <div class="settings-item__label">隐私政策</div>
             <div class="settings-item__arrow">›</div>
           </div>
+          <div class="settings-item" onclick="navigate('support')">
+            <div class="settings-item__icon" style="background:rgba(31,122,116,.1)">🎫</div>
+            <div class="settings-item__label">联系客服</div>
+            <div class="settings-item__arrow">›</div>
+          </div>
           <div class="settings-item" onclick="showToast('如遇问题请联系客服：support@driftisland.app')">
             <div class="settings-item__icon" style="background:rgba(0,0,0,.04)">❓</div>
             <div class="settings-item__label">帮助与反馈</div>
-            <div class="settings-item__arrow">›</div>
-          </div>
-          <div class="settings-item" onclick="window.open('/admin.html','_blank')">
-            <div class="settings-item__icon" style="background:rgba(31,122,116,.1)">⚙️</div>
-            <div class="settings-item__label">管理后台</div>
             <div class="settings-item__arrow">›</div>
           </div>
         </div>

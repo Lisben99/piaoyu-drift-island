@@ -41,9 +41,11 @@ app.use('/api/invite', require('./routes/invite'));
 app.use('/api/profile', require('./routes/profile'));
 app.use('/api/reports', require('./routes/report'));
 app.use('/api/blacklist', require('./routes/blacklist'));
+app.use('/api/support', require('./routes/support').user);
 app.use('/api/admin', require('./routes/admin'));
 const redeemRoutes = require('./routes/redeem');
 app.use('/api/admin', redeemRoutes.admin);
+app.use('/api/admin', require('./routes/support').admin);
 app.use('/api/redeem', redeemRoutes.user);
 
 // Health check

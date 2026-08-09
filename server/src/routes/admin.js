@@ -73,6 +73,8 @@ router.get('/dashboard', adminAuth, (req, res) => {
     .reduce((sum, o) => sum + o.amount, 0);
   const totalCoinsInCirculation = database.users.reduce((sum, u) => sum + (u.coins || 0), 0);
   const pendingReports = database.reports.filter(r => r.status === 'pending').length;
+  const pendingOrders = database.rechargeOrders.filter(o => o.status === 'pending').length;
+  const pendingSupport = database.supportTickets.filter(t => t.status === 'pending' || t.status === 'replied').length;
   const penalizedAccounts = database.users.filter(u => u.status === 'banned' || u.status === 'frozen' || u.status === 'restricted').length;
   
   // Recent users
@@ -95,7 +97,7 @@ router.get('/dashboard', adminAuth, (req, res) => {
     stats: {
       totalUsers, dailyActive, totalBottles, totalSessions,
       totalRecharged, totalCoinsInCirculation,
-      pendingReports, penalizedAccounts
+      pendingReports, pendingOrders, pendingSupport, penalizedAccounts
     },
     recentUsers,
     recentReports
