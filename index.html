@@ -231,6 +231,8 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .chat-header__status.permanent{color:#1f7a74}
 .chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch}
 .msg-bubble{max-width:75%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5;word-break:break-word}
+.msg-img{max-width:200px;max-height:260px;border-radius:10px;display:block;cursor:zoom-in;margin:0}
+.msg-text{white-space:pre-wrap}
 .msg-bubble--mine{align-self:flex-end;background:#1f7a74;color:#fff;border-bottom-right-radius:4px}
 .msg-bubble--other{align-self:flex-start;background:#fff;color:#172b2d;border-bottom-left-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
 .msg-time{font-size:10px;color:#98a2a0;text-align:center;padding:4px 0}
@@ -240,6 +242,8 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .chat-permanent-banner p{font-size:13px;color:#1f7a74;font-weight:600}
 .chat-input-bar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid #e6e4dc;background:#fff;flex-shrink:0}
 .chat-input-bar input{flex:1;height:38px;padding:0 14px;background:#f7f5ef;border-radius:19px;font-size:14px;border:1px solid #e6e4dc}
+.chat-img-btn{width:38px;height:38px;border-radius:50%;background:#f7f5ef;color:#1f7a74;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;border:1px solid #e6e4dc;cursor:pointer}
+.chat-img-btn:active{background:#ece9e0}
 .chat-send-btn{width:38px;height:38px;border-radius:50%;background:#1f7a74;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
 .chat-send-btn:disabled{opacity:.4}
 .chat-pending-banner{padding:14px;text-align:center;background:rgba(31,122,116,.06);flex-shrink:0}
@@ -1379,10 +1383,10 @@ async function renderMessages() {
               <div class="message-item__name">${name}</div>
               <div class="message-item__time">${s.lastMessageAt ? formatTime(s.lastMessageAt) : formatTime(s.startedAt)}</div>
             </div>
-            <div class="message-item__preview">${s.lastMessage ? s.lastMessage.content : '开始聊天吧'}</div>
+            <div class="message-item__preview">${s.lastMessage ? (s.lastMessage.content || (s.lastMessage.image ? '[图片]' : '开始聊天吧')) : '开始聊天吧'}</div>
           </div>
           <div class="message-item__badge">
-            <span class="message-status-tag ${statusTagClass(s.status)}">${statusLabel(s.status)}</span>
+            ${s.status === 'active' ? '' : `<span class="message-status-tag ${statusTagClass(s.status)}">${statusLabel(s.status)}</span>`}
           </div>
         </div>`;
       }).join('');
@@ -1437,12 +1441,7 @@ function renderChatPage(session, messages) {
     <div class="chat-header__info">
       <div class="chat-header__name">${otherName}</div>`;
   
-  if (session.status === 'active') {
-    const remaining = Math.max(0, session.expiresAt - Date.now());
-    const hours = Math.floor(remaining / 3600000);
-    const mins = Math.floor((remaining % 3600000) / 60000);
-    html += `<div class="chat-header__status timer">限时聊天 ${hours}h ${mins}m</div>`;
-  } else if (session.status === 'expired') {
+  if (session.status === 'expired') {
     html += `<div class="chat-header__status expired">已过期</div>`;
   } else if (session.status === 'permanent') {
     html += `<div class="chat-header__status permanent">永久好友</div>`;
@@ -1453,8 +1452,7 @@ function renderChatPage(session, messages) {
   
   if (messages && messages.length > 0) {
     messages.forEach(m => {
-      const isMine = m.senderId === currentUser.id;
-      html += `<div class="msg-bubble ${isMine?'msg-bubble--mine':'msg-bubble--other'}">${m.content}</div>`;
+      html += buildMsgBubble(m, m.senderId === currentUser.id);
     });
   } else {
     html += `<div class="msg-time">开始你们的对话吧</div>`;
@@ -1465,6 +1463,8 @@ function renderChatPage(session, messages) {
   // Bottom area
   if (session.status === 'active' || session.status === 'permanent') {
     html += `<div class="chat-input-bar">
+      <button class="chat-img-btn" type="button" onclick="document.getElementById('chatImgInput').click()">📷</button>
+      <input type="file" id="chatImgInput" accept="image/*" style="display:none" onchange="onChatImageSelected(event)">
       <input type="text" id="chatInput" placeholder="输入消息..." onkeydown="if(event.key==='Enter')sendChatMsg()">
       <button class="chat-send-btn" onclick="sendChatMsg()">↑</button>
     </div>`;
@@ -1524,6 +1524,31 @@ async function sendChatMsg() {
     try {
       const res = await api('/chat/start', { method: 'POST', body: JSON.stringify({ targetUserId: null, firstMessage: content }) });
     } catch (e) {}
+  }
+}
+
+// 选择并发送图片消息
+async function onChatImageSelected(event) {
+  const file = event.target.files && event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { showToast('请选择图片文件'); return; }
+  try {
+    showToast('图片处理中...');
+    const dataUrl = await fileToDataURL(file, 1280);
+    sendChatImage(dataUrl);
+  } catch (e) {
+    showToast('图片处理失败');
+  }
+}
+
+// 发送图片消息（仅支持实时 WebSocket 通道）
+function sendChatImage(dataUrl) {
+  if (!currentChatSessionId) return;
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify({ type: 'chat_message', data: { sessionId: currentChatSessionId, content: '', image: dataUrl } }));
+  } else {
+    showToast('聊天连接未建立，请稍后重试');
   }
 }
 
@@ -1592,12 +1617,31 @@ function connectWS() {
   ws.onerror = function() { ws = null; };
 }
 
+function buildMsgBubble(m, isMine) {
+  let inner = '';
+  if (m.image) {
+    inner += `<img class="msg-img" src="${m.image}" onclick="viewImage(this.src)" alt="图片">`;
+  }
+  if (m.content) {
+    inner += `<div class="msg-text">${escapeHtml(m.content)}</div>`;
+  }
+  if (!inner) inner = '<div class="msg-text"></div>';
+  return `<div class="msg-bubble ${isMine ? 'msg-bubble--mine' : 'msg-bubble--other'}">${inner}</div>`;
+}
+
 function appendMessage(msg, isMine) {
   const cm = $('chatMessages');
   if (!cm) return;
   const bubble = document.createElement('div');
   bubble.className = 'msg-bubble ' + (isMine ? 'msg-bubble--mine' : 'msg-bubble--other');
-  bubble.textContent = msg.content;
+  let inner = '';
+  if (msg.image) {
+    inner += `<img class="msg-img" src="${msg.image}" onclick="viewImage(this.src)" alt="图片">`;
+  }
+  if (msg.content) {
+    inner += `<div class="msg-text">${escapeHtml(msg.content)}</div>`;
+  }
+  bubble.innerHTML = inner || '<div class="msg-text"></div>';
   cm.appendChild(bubble);
   cm.scrollTop = cm.scrollHeight;
 }

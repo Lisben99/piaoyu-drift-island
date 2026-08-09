@@ -234,7 +234,7 @@ router.get('/sessions', auth, (req, res) => {
         startedAt: s.startedAt,
         expiresAt: s.expiresAt,
         lastMessageAt: s.lastMessageAt,
-        lastMessage: lastMessage ? { content: lastMessage.content, createdAt: lastMessage.createdAt, senderId: lastMessage.senderId } : null,
+        lastMessage: lastMessage ? { content: lastMessage.content, image: lastMessage.image || null, createdAt: lastMessage.createdAt, senderId: lastMessage.senderId } : null,
         permanentRequested: s.permanentRequested,
         permanentRequestedBy: s.permanentRequested ? s.initiatedBy : null,
         permanentResponseDeadline: s.permanentResponseDeadline

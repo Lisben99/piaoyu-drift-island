@@ -73,8 +73,8 @@ async function handleMessage(ws, msg) {
   const { type, data } = msg;
   
   if (type === 'chat_message') {
-    // Send a chat message
-    const { sessionId, content } = data;
+    // Send a chat message (text and/or image)
+    const { sessionId, content, image } = data;
     const database = db();
     const session = database.chatSessions.find(s => s.id === sessionId);
     
@@ -100,12 +100,14 @@ async function handleMessage(ws, msg) {
       return;
     }
     
-    // Content moderation
-    const { moderate } = require('./moderation');
-    const modResult = await moderate(content);
-    if (!modResult.pass) {
-      ws.send(JSON.stringify({ type: 'error', error: modResult.reason }));
-      return;
+    // Content moderation (text only; images are not text-moderated here)
+    if (content) {
+      const { moderate } = require('./moderation');
+      const modResult = await moderate(content);
+      if (!modResult.pass) {
+        ws.send(JSON.stringify({ type: 'error', error: modResult.reason }));
+        return;
+      }
     }
     
     // Create message
@@ -113,7 +115,8 @@ async function handleMessage(ws, msg) {
       id: database.genId ? database.genId('msg') : `msg-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
       sessionId,
       senderId: ws.userId,
-      content,
+      content: content || '',
+      image: image || null,
       createdAt: Date.now(),
       moderated: MODERATION_PROVIDER !== 'local'
     };
