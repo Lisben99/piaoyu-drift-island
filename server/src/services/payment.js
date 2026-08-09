@@ -181,7 +181,10 @@ async function submitPaymentProof(userId, orderId, { note, image } = {}) {
   if (!order) return { success: false, error: '订单不存在' };
   if (order.userId !== userId) return { success: false, error: '无权操作该订单' };
   if (order.status === 'paid') return { success: false, error: '订单已支付' };
-  if (order.status === 'rejected') return { success: false, error: '订单已被拒绝' };
+  // 允许待支付(pending)与已拒绝(rejected)的订单重新提交支付凭证
+  if (order.status !== 'pending' && order.status !== 'rejected') {
+    return { success: false, error: '当前订单状态无法提交凭证' };
+  }
 
   // Guard against oversized inline images (keeps the JSON DB small)
   const img = image || '';
