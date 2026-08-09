@@ -96,17 +96,55 @@ async function confirmPayment(orderId, paymentData = {}) {
   order.paidAt = Date.now();
   order.paymentData = paymentData;
   
-  // Credit coins
+  // Credit coins (addCoinTransaction already increments user.coins — do not double-add)
   const user = db.findUserById(order.userId);
   if (user) {
-    user.coins += order.coins;
-    user.totalRecharged += order.amount;
+    user.totalRecharged = (user.totalRecharged || 0) + order.amount;
     db.addCoinTransaction(user.id, order.coins, 'recharge', `充值${order.amount}元获得${order.coins}枚漂流币`, order.id);
   }
   
   db.save();
   
   return { success: true, coins: order.coins, balance: user ? user.coins : 0 };
+}
+
+// User claims they paid: attach proof (note / screenshot) and move order to 'submitted'
+// (awaiting admin verification). No coins are credited until the admin confirms.
+async function submitPaymentProof(userId, orderId, { note, image } = {}) {
+  const database = db.db();
+  const order = database.rechargeOrders.find(o => o.id === orderId);
+  if (!order) return { success: false, error: '订单不存在' };
+  if (order.userId !== userId) return { success: false, error: '无权操作该订单' };
+  if (order.status === 'paid') return { success: false, error: '订单已支付' };
+  if (order.status === 'rejected') return { success: false, error: '订单已被拒绝' };
+
+  // Guard against oversized inline images (keeps the JSON DB small)
+  const img = image || '';
+  if (img && img.length > 1.5 * 1024 * 1024) {
+    return { success: false, error: '截图过大，请压缩后重试' };
+  }
+
+  order.status = 'submitted';
+  order.payProof = {
+    note: (note || '').toString().slice(0, 200),
+    image: img,
+    submittedAt: Date.now()
+  };
+  db.save();
+  return { success: true, status: order.status };
+}
+
+// Admin rejects a submitted/pending order (e.g. payment not received)
+async function rejectOrder(orderId, reason) {
+  const database = db.db();
+  const order = database.rechargeOrders.find(o => o.id === orderId);
+  if (!order) return { success: false, error: '订单不存在' };
+  if (order.status === 'paid') return { success: false, error: '订单已支付，无法拒绝' };
+  order.status = 'rejected';
+  order.rejectReason = (reason || '').toString().slice(0, 200);
+  order.rejectedAt = Date.now();
+  db.save();
+  return { success: true };
 }
 
 async function refundOrder(orderId, reason) {
@@ -120,10 +158,9 @@ async function refundOrder(orderId, reason) {
   }
   
   // Refund via WeChat Pay API in production
-  // For now, just deduct coins and mark as refunded
+  // For now, just deduct coins (addCoinTransaction handles the deduction) and mark as refunded
   const user = db.findUserById(order.userId);
   if (user) {
-    user.coins -= order.coins;
     db.addCoinTransaction(user.id, -order.coins, 'refund', `充值退款：${reason}`, order.id);
   }
   
@@ -133,4 +170,4 @@ async function refundOrder(orderId, reason) {
   return { success: true };
 }
 
-module.exports = { PACKAGES, getPackage, getTotalCoins, createOrder, confirmPayment, refundOrder };
+module.exports = { PACKAGES, getPackage, getTotalCoins, createOrder, confirmPayment, submitPaymentProof, rejectOrder, refundOrder };

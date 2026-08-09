@@ -574,6 +574,7 @@ async function renderOrders() {
       <select onchange="orderStatus=this.value;pagination.page=1;renderOrders()">
         <option value="all" ${orderStatus==='all'?'selected':''}>全部</option>
         <option value="pending" ${orderStatus==='pending'?'selected':''}>待支付</option>
+        <option value="submitted" ${orderStatus==='submitted'?'selected':''}>待确认</option>
         <option value="paid" ${orderStatus==='paid'?'selected':''}>已支付</option>
         <option value="refunded" ${orderStatus==='refunded'?'selected':''}>已退款</option>
       </select>
@@ -590,7 +591,13 @@ async function renderOrders() {
             <td>${o.coins}</td>
             <td><span class="badge ${badgeClass(o.status)}">${o.status}</span></td>
             <td>${formatTime(o.createdAt)}</td>
-            <td>${o.status==='paid' ? `<button class="btn-sm btn-danger" onclick="refundOrder('${o.id}')">退款</button>` : '-'}</td>
+            <td>
+              ${o.payProof && o.payProof.note ? `<div style="font-size:11px;color:#555;margin-bottom:4px">备注：${o.payProof.note}</div>` : ''}
+              ${o.payProof && o.payProof.image ? `<img src="${o.payProof.image}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;margin-bottom:4px" />` : ''}
+              ${o.status==='submitted' ? `<div><button class="btn-sm btn-primary" onclick="adminConfirmOrder('${o.id}')">确认到账</button> <button class="btn-sm btn-danger" onclick="adminRejectOrder('${o.id}')">拒绝</button></div>` : ''}
+              ${o.status==='paid' ? `<button class="btn-sm btn-danger" onclick="refundOrder('${o.id}')">退款</button>` : ''}
+              ${(o.status!=='submitted' && o.status!=='paid') ? '-' : ''}
+            </td>
           </tr>`).join('')}
         </tbody>
       </table>
@@ -604,6 +611,21 @@ async function refundOrder(id) {
   const res = await api(`/orders/${id}/refund`, { method: 'POST', body: JSON.stringify({ reason }) });
   if (res.success) { showToast('退款成功'); renderOrders(); }
   else showToast(res.error || '退款失败');
+}
+
+async function adminConfirmOrder(id) {
+  if (!confirm('确认已收到该笔付款，并发放漂流币？')) return;
+  const res = await api(`/orders/${id}/confirm`, { method: 'POST', body: JSON.stringify({}) });
+  if (res.success) { showToast(`已确认，发放 ${res.coins} 枚`); renderOrders(); }
+  else showToast(res.error || '操作失败');
+}
+
+async function adminRejectOrder(id) {
+  const reason = prompt('请输入拒绝原因（如：未收到付款）：');
+  if (!reason) return;
+  const res = await api(`/orders/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) });
+  if (res.success) { showToast('已拒绝'); renderOrders(); }
+  else showToast(res.error || '操作失败');
 }
 
 /* ===== Reports ===== */
@@ -653,6 +675,7 @@ async function renderConfig() {
   const res = await api('/config');
   if (!res.success) return;
   const c = res.config;
+  window.pendingPaymentQR = c.paymentQR || '';
   document.getElementById('pageContent').innerHTML = `
     <div class="card">
       <div class="card__title">业务参数配置</div>
@@ -670,6 +693,11 @@ async function renderConfig() {
         <div class="config-item"><label>永久续聊费用</label><input type="number" id="cfg_permanent_chat_cost" value="${c.permanent_chat_cost}"></div>
         <div class="config-item"><label>充值比例(币/元)</label><input type="number" id="cfg_recharge_rate" value="${c.recharge_rate}"></div>
       </div>
+      <div class="config-item" style="margin-top:12px"><label>收款码（用户扫码付款用，支持微信/支付宝收款码图片）</label>
+        <input type="file" id="cfg_paymentQR_file" accept="image/*" onchange="onPaymentQRSelected(this)" style="margin-bottom:8px" />
+        <div id="cfg_paymentQR_preview">${c.paymentQR ? `<img src="${c.paymentQR}" style="width:140px;height:140px;object-fit:contain;border:1px solid #ddd;border-radius:8px" />` : '<span style="font-size:12px;color:#999">尚未配置</span>'}</div>
+      </div>
+      <div class="config-item" style="margin-top:12px"><label>收款提示文字</label><input type="text" id="cfg_paymentQR_note" value="${c.paymentQRNote || ''}" placeholder="如：微信扫码付款，转账备注填你的手机号" style="width:100%" /></div>
       <div class="config-item" style="margin-top:12px"><label>系统公告</label><input type="text" id="cfg_system_announcement" value="${c.system_announcement || ''}" style="width:100%"></div>
       <div class="config-item" style="margin-top:12px"><label><input type="checkbox" id="cfg_maintenance_mode" ${c.maintenance_mode?'checked':''}> 维护模式（开启后用户无法使用）</label></div>
       <button class="btn-sm btn-primary" style="margin-top:16px;padding:10px 24px" onclick="saveConfig()">保存配置</button>
@@ -691,11 +719,47 @@ async function saveConfig() {
     permanent_chat_cost: parseInt(document.getElementById('cfg_permanent_chat_cost').value),
     recharge_rate: parseInt(document.getElementById('cfg_recharge_rate').value),
     system_announcement: document.getElementById('cfg_system_announcement').value,
-    maintenance_mode: document.getElementById('cfg_maintenance_mode').checked
+    maintenance_mode: document.getElementById('cfg_maintenance_mode').checked,
+    paymentQR: window.pendingPaymentQR || '',
+    paymentQRNote: document.getElementById('cfg_paymentQR_note').value
   };
   const res = await api('/config', { method: 'POST', body: JSON.stringify(updates) });
   if (res.success) showToast('配置已保存');
   else showToast(res.error || '保存失败');
+}
+
+// Compress an image file to a capped data URL (keeps the JSON DB small)
+function adminFileToDataURL(file, maxW) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxW / img.width);
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function onPaymentQRSelected(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  try {
+    const dataUrl = await adminFileToDataURL(file, 480);
+    window.pendingPaymentQR = dataUrl;
+    document.getElementById('cfg_paymentQR_preview').innerHTML =
+      `<img src="${dataUrl}" style="width:140px;height:140px;object-fit:contain;border:1px solid #ddd;border-radius:8px" />`;
+  } catch (e) { showToast('图片读取失败'); }
 }
 
 /* ===== Audit ===== */

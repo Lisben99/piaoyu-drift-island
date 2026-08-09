@@ -1419,27 +1419,33 @@ async function renderCoinCenter() {
    RECHARGE
    ================================================================ */
 let selectedPkg = null;
+let payInfo = { qr: '', note: '' };
+let currentPayOrderId = null;
+let payPackages = [];
 async function renderRecharge() {
   try {
     const [pkgRes, balRes] = await Promise.all([
       api('/recharge/packages'),
       api('/coins/balance')
     ]);
-    if (pkgRes.success) {
-      selectedPkg = null;
-      let html = `<div class="recharge-balance">
+    if (!pkgRes.success) return;
+    payInfo = { qr: pkgRes.paymentQR || '', note: pkgRes.paymentQRNote || '' };
+    payPackages = pkgRes.packages || [];
+    selectedPkg = null;
+    currentPayOrderId = null;
+    let html = `<div class="recharge-balance">
         <div class="label">当前余额</div>
         <div class="amount">${balRes.balance} 枚</div>
       </div>
       <div class="coin-section-title">选择充值套餐</div>
       <div class="recharge-packages">`;
-      html += pkgRes.packages.map(p => `
+    html += payPackages.map(p => `
         <div class="recharge-pkg" onclick="selectPkg('${p.id}',this)">
           <div class="recharge-pkg__coins">${p.coins + (p.coinsBonus || 0)} 枚${p.coinsBonus ? `<small>（含赠${p.coinsBonus}）</small>` : ''}</div>
           <div class="recharge-pkg__price">¥${p.price}</div>
         </div>`).join('');
-      html += `</div>
-      <button class="primary-button" id="rechargeBtn" disabled onclick="doRecharge()">立即支付</button>
+    html += `</div>
+      <div id="payPanel" style="display:none;margin-top:18px"></div>
       <div style="text-align:center;margin-top:14px;font-size:12px;color:#98a2a0">1元 = ${pkgRes.rate}枚漂流币</div>
 
       <div class="coin-section-title" style="margin-top:22px">兑换码充值</div>
@@ -1448,54 +1454,110 @@ async function renderRecharge() {
         <button id="redeemBtn" onclick="doRedeem()" style="padding:0 22px;background:#1f7a74;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer">兑换</button>
       </div>
       <div style="text-align:center;margin-top:8px;font-size:12px;color:#98a2a0">已购卡密？在此兑换即得漂流币</div>`;
-      
-      // Order history
-      const ordersRes = await api('/recharge/orders');
-      if (ordersRes.success && ordersRes.orders.length > 0) {
-        html += `<div class="coin-section-title" style="margin-top:20px">充值记录</div>`;
-        html += ordersRes.orders.slice(0, 10).map(o => `
+
+    // Order history
+    const ordersRes = await api('/recharge/orders');
+    if (ordersRes.success && ordersRes.orders.length > 0) {
+      html += `<div class="coin-section-title" style="margin-top:20px">充值记录</div>`;
+      html += ordersRes.orders.slice(0, 10).map(o => `
           <div class="ledger-item">
             <div class="ledger-item__info">
               <div class="type">充值 ${o.coins} 枚</div>
-              <div class="time">${formatDateTime(o.createdAt)} · ${o.status === 'paid' ? '已支付' : o.status === 'refunded' ? '已退款' : '待支付'}</div>
+              <div class="time">${formatDateTime(o.createdAt)} · ${orderStatusText(o.status)}</div>
             </div>
             <div class="ledger-item__amount">¥${o.amount}</div>
           </div>`).join('');
-      }
-      
-      $('rechargeContent').innerHTML = html;
     }
+
+    $('rechargeContent').innerHTML = html;
   } catch (e) {}
+}
+
+function orderStatusText(s) {
+  return s === 'paid' ? '已到账' : s === 'submitted' ? '待确认' : s === 'rejected' ? '已拒绝' : s === 'refunded' ? '已退款' : '待支付';
 }
 
 function selectPkg(id, el) {
   selectedPkg = id;
   document.querySelectorAll('.recharge-pkg').forEach(p => p.classList.remove('selected'));
   el.classList.add('selected');
-  $('rechargeBtn').disabled = false;
+  const p = payPackages.find(x => x.id === id);
+  if (!p) return;
+  const total = p.coins + (p.coinsBonus || 0);
+  const panel = $('payPanel');
+  panel.style.display = 'block';
+  panel.innerHTML = `
+    <div class="coin-section-title">扫码支付</div>
+    ${payInfo.qr ? `<img src="${payInfo.qr}" style="width:180px;height:180px;object-fit:contain;border:1px solid #e6e4dc;border-radius:10px" />` : `<div style="font-size:12px;color:#ef7b62;margin:8px 0">管理员尚未配置收款码，请直接联系管理员获取付款方式。</div>`}
+    <div style="margin:8px 0;font-size:14px">支付金额：<b>¥${p.price}</b> → 得 <b>${total}</b> 枚</div>
+    ${payInfo.note ? `<div style="font-size:12px;color:#718082;margin-bottom:8px">${payInfo.note}</div>` : ''}
+    <button class="primary-button" id="payBtn" onclick="startPayment()">我已支付</button>
+    <div id="payProofBox" style="display:none;margin-top:12px"></div>`;
 }
 
-async function doRecharge() {
+async function startPayment() {
   if (!selectedPkg) return;
-  const btn = $('rechargeBtn');
-  btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
+  const btn = $('payBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '创建订单中...'; }
   try {
     const orderRes = await api('/recharge/order', { method: 'POST', body: JSON.stringify({ packageId: selectedPkg }) });
-    if (orderRes.success) {
-      // Dev mode: confirm immediately
-      const confirmRes = await api('/recharge/order/' + orderRes.orderId + '/confirm', { method: 'POST', body: JSON.stringify({}) });
-      if (confirmRes.success) {
-        showToast(`充值成功！获得 ${confirmRes.coins} 枚漂流币`);
-        currentUser.coins = confirmRes.balance;
-        renderRecharge();
-      } else {
-        showToast(confirmRes.error || '支付失败');
-      }
+    if (!orderRes.success) { showToast(orderRes.error || '创建订单失败'); if (btn) { btn.disabled = false; btn.textContent = '我已支付'; } return; }
+    currentPayOrderId = orderRes.orderId;
+    const box = $('payProofBox');
+    box.style.display = 'block';
+    box.innerHTML = `
+      <div style="font-size:12px;color:#718082;margin-bottom:6px">订单号：${(orderRes.orderId || '').slice(0, 12)}…（付款后提交凭证，管理员确认后即到账）</div>
+      <input id="payNote" placeholder="付款备注/转账单号（选填）" style="width:100%;padding:10px 12px;border:2px solid #e6e4dc;border-radius:10px;font-size:14px;margin-bottom:8px" />
+      <input id="payImg" type="file" accept="image/*" style="margin-bottom:8px;font-size:13px" />
+      <button class="primary-button" id="paySubmitBtn" onclick="submitPaymentProof()">提交凭证，等待确认</button>`;
+    if (btn) btn.textContent = '修改凭证';
+  } catch (e) { showToast('创建订单失败，请重试'); if (btn) { btn.disabled = false; btn.textContent = '我已支付'; } }
+}
+
+async function submitPaymentProof() {
+  if (!currentPayOrderId) { showToast('订单不存在，请重新选择套餐'); return; }
+  const note = ($('payNote') ? $('payNote').value : '').trim();
+  const fileInput = $('payImg');
+  const file = fileInput && fileInput.files && fileInput.files[0];
+  const btn = $('paySubmitBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '提交中...'; }
+  try {
+    let image = '';
+    if (file) image = await fileToDataURL(file, 360);
+    const res = await api('/recharge/order/' + currentPayOrderId + '/pay', { method: 'POST', body: JSON.stringify({ note, image }) });
+    if (res.success) {
+      showToast('已提交，等待管理员确认到账');
+      renderRecharge();
     } else {
-      showToast(orderRes.error || '创建订单失败');
+      showToast(res.error || '提交失败');
+      if (btn) { btn.disabled = false; btn.textContent = '提交凭证，等待确认'; }
     }
-  } catch (e) { showToast('充值失败，请重试'); }
-  btn.innerHTML = '立即支付'; btn.disabled = false;
+  } catch (e) {
+    showToast('提交失败，请重试');
+    if (btn) { btn.disabled = false; btn.textContent = '提交凭证，等待确认'; }
+  }
+}
+
+function fileToDataURL(file, maxW) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxW / img.width);
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 async function doRedeem() {

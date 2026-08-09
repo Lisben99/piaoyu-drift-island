@@ -131,9 +131,17 @@ async function main() {
   check('Create recharge order', r.status === 200 && r.data.success && r.data.orderId);
   const orderId = r.data.orderId;
   
+  // Closed loop: user submits payment proof (note + screenshot), NOT a self-confirm
+  r = await api('POST', '/api/recharge/order/' + orderId + '/pay', { note: '已扫码支付', image: 'data:image/png;base64,AAAA' }, token1);
+  check('User submits payment proof (status=submitted)', r.status === 200 && r.data.success && r.data.status === 'submitted');
+  
+  // User self-confirm must be blocked (admin-only, since personal accounts have no merchant callback)
   r = await api('POST', '/api/recharge/order/' + orderId + '/confirm', {}, token1);
-  check('Confirm payment', r.status === 200 && r.data.success);
-  check('Coins credited (10 coins added)', r.data.balance >= 28);
+  check('User self-confirm blocked', r.status === 200 && r.data.success === false);
+  
+  // Balance must NOT increase before admin confirmation
+  r = await api('GET', '/api/coins/balance', null, token1);
+  const balanceBeforeAdminConfirm = r.data.balance;
   
   // 19. Invite
   console.log('\n=== Invite ===');
@@ -167,7 +175,7 @@ async function main() {
   
   // 23. Admin
   console.log('\n=== Admin ===');
-  r = await api('POST', '/api/admin/login', { username: 'admin', password: 'admin123' });
+  r = await api('POST', '/api/admin/login', { username: 'admin', password: 'yuanyi0318' });
   check('Admin login', r.status === 200 && r.data.token);
   const adminToken = r.data.token;
   
@@ -189,6 +197,11 @@ async function main() {
   
   r = await api('GET', '/api/admin/orders?page=1&limit=10', null, adminToken);
   check('Admin order list', r.status === 200);
+  
+  // Admin confirms the user's recharge order (closed loop: coins credited here)
+  r = await api('POST', '/api/admin/orders/' + orderId + '/confirm', {}, adminToken);
+  check('Admin confirms recharge order', r.status === 200 && r.data.success);
+  check('Coins credited after admin confirm (+10)', r.data.balance === balanceBeforeAdminConfirm + 10);
   
   r = await api('GET', '/api/admin/reports?page=1&limit=10', null, adminToken);
   check('Admin report list', r.status === 200);

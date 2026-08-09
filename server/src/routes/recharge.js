@@ -5,11 +5,18 @@ const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
 const { db, save } = require('../db');
-const { PACKAGES, createOrder, confirmPayment, refundOrder, getTotalCoins } = require('../services/payment');
+const { PACKAGES, createOrder, confirmPayment, submitPaymentProof, refundOrder, getTotalCoins } = require('../services/payment');
 
-// List packages
+// List packages + operator payment QR (public; used by the recharge page)
 router.get('/packages', (req, res) => {
-  res.json({ success: true, packages: PACKAGES, rate: db().config.recharge_rate });
+  const cfg = db().config;
+  res.json({
+    success: true,
+    packages: PACKAGES,
+    rate: cfg.recharge_rate,
+    paymentQR: cfg.paymentQR || '',
+    paymentQRNote: cfg.paymentQRNote || ''
+  });
 });
 
 // Create order
@@ -19,10 +26,17 @@ router.post('/order', auth, async (req, res) => {
   res.json(result);
 });
 
-// Confirm payment (dev mode) / check payment status (production)
-router.post('/order/:id/confirm', auth, async (req, res) => {
-  const result = await confirmPayment(req.params.id, req.body.paymentData || {});
+// User claims they paid: attach proof, order -> 'submitted' (awaiting admin confirm)
+router.post('/order/:id/pay', auth, async (req, res) => {
+  const { note, image } = req.body || {};
+  const result = await submitPaymentProof(req.user.id, req.params.id, { note, image });
   res.json(result);
+});
+
+// Payment confirmation is admin-only (no merchant callback available for personal accounts).
+// The user-facing confirm endpoint is disabled to prevent self-crediting.
+router.post('/order/:id/confirm', auth, (req, res) => {
+  res.json({ success: false, error: '支付需由管理员确认，请先在「我已支付」中提交凭证，等待管理员核实到账。' });
 });
 
 // My orders

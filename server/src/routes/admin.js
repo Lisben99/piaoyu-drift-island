@@ -7,7 +7,7 @@ const { adminAuth } = require('../middleware/auth');
 const { db, save, genId, findUserById, findBottleById, addCoinTransaction, addAuditLog, findAdminById } = require('../db');
 const { signAdminToken } = require('../utils/jwt');
 const { comparePassword, hashPassword } = require('../utils/crypto');
-const { PACKAGES, refundOrder } = require('../services/payment');
+const { PACKAGES, refundOrder, confirmPayment, rejectOrder } = require('../services/payment');
 
 // Admin login
 router.post('/login', (req, res) => {
@@ -293,6 +293,25 @@ router.get('/orders', adminAuth, (req, res) => {
     });
   
   res.json({ success: true, orders: paged, total });
+});
+
+// Confirm a recharge order: admin verifies the user's payment proof, then coins are credited
+router.post('/orders/:id/confirm', adminAuth, async (req, res) => {
+  const result = await confirmPayment(req.params.id, {});
+  if (result.success) {
+    addAuditLog(req.admin.id, 'recharge_confirm', req.params.id, `确认充值到账，发放 ${result.coins} 枚漂流币`);
+  }
+  res.json(result);
+});
+
+// Reject a recharge order (payment not received / mismatched)
+router.post('/orders/:id/reject', adminAuth, async (req, res) => {
+  const { reason } = req.body || {};
+  const result = await rejectOrder(req.params.id, reason);
+  if (result.success) {
+    addAuditLog(req.admin.id, 'recharge_reject', req.params.id, `拒绝充值：${reason || ''}`);
+  }
+  res.json(result);
 });
 
 // Refund order
