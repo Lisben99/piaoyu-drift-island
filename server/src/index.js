@@ -42,6 +42,7 @@ app.use('/api/profile', require('./routes/profile'));
 app.use('/api/reports', require('./routes/report'));
 app.use('/api/blacklist', require('./routes/blacklist'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/_verify_moderation', require('./routes/verify-moderation'));
 
 // Health check
 app.get('/api/health', (req, res) => {
