@@ -4,8 +4,9 @@
 const express = require('express');
 const router = express.Router();
 const { sendVerificationCode, verifyCode } = require('../services/sms');
+const { sendVerificationCode: sendEmailVerificationCode, verifyCode: verifyEmailCode } = require('../services/email');
 const { signUserToken } = require('../utils/jwt');
-const { findUserByPhone, createUser, db, save } = require('../db');
+const { findUserByPhone, findUserByEmail, createUser, db, save } = require('../db');
 
 // Send SMS verification code
 router.post('/sms/send', async (req, res) => {
@@ -17,36 +18,54 @@ router.post('/sms/send', async (req, res) => {
   res.json(result);
 });
 
-// Login with phone + code
+// Send email verification code
+router.post('/email/send', async (req, res) => {
+  const { email } = req.body;
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.json({ success: false, error: '请输入正确的邮箱地址' });
+  }
+  const result = await sendEmailVerificationCode(email);
+  res.json(result);
+});
+
+// Login with phone+code OR email+code (auto-create account on first verify)
 router.post('/login', async (req, res) => {
-  const { phone, code } = req.body;
-  if (!phone || !code) {
-    return res.json({ success: false, error: '请输入手机号和验证码' });
+  const { phone, email, code } = req.body;
+
+  let verifyResult;
+  let user;
+
+  if (email) {
+    if (!code) {
+      return res.json({ success: false, error: '请输入邮箱和验证码' });
+    }
+    verifyResult = await verifyEmailCode(email, code);
+    if (!verifyResult.success) return res.json(verifyResult);
+    user = findUserByEmail(email);
+    if (!user) user = createUser(null, email);
+  } else {
+    if (!phone || !code) {
+      return res.json({ success: false, error: '请输入手机号和验证码' });
+    }
+    verifyResult = await verifyCode(phone, code);
+    if (!verifyResult.success) return res.json(verifyResult);
+    user = findUserByPhone(phone);
+    if (!user) user = createUser(phone, null);
   }
-  
-  const verifyResult = await verifyCode(phone, code);
-  if (!verifyResult.success) {
-    return res.json(verifyResult);
-  }
-  
-  // Find or create user
-  let user = findUserByPhone(phone);
-  if (!user) {
-    user = createUser(phone);
-  }
-  
+
   // Update last login
   user.lastLoginAt = Date.now();
   save();
-  
+
   const token = signUserToken(user);
-  
+
   res.json({
     success: true,
     token,
     user: {
       id: user.id,
       phone: user.phone,
+      email: user.email,
       nickname: user.nickname,
       avatar: user.avatar,
       gender: user.gender,
@@ -75,6 +94,7 @@ router.get('/me', (req, res) => {
   res.json({
     id: user.id,
     phone: user.phone,
+    email: user.email,
     nickname: user.nickname,
     avatar: user.avatar,
     gender: user.gender,

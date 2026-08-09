@@ -52,6 +52,7 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     timestamp: Date.now(),
     sms_provider: process.env.SMS_PROVIDER || 'dev',
+    email_provider: process.env.EMAIL_PROVIDER || 'dev',
     payment_provider: process.env.PAYMENT_PROVIDER || 'dev',
     redeem_provider: 'cardcode',
     moderation_provider: process.env.MODERATION_PROVIDER || 'local',

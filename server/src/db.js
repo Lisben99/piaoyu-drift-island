@@ -66,6 +66,7 @@ function createDefaultDB() {
     auditLogs: [],
     inviteCodes: [],
     smsCodes: [],
+    emailCodes: [],
     redeemCodes: [],
     blacklist: [],
     config: { ...DEFAULT_CONFIG },
@@ -230,11 +231,16 @@ function findUserByPhone(phone) {
   return cache.users.find(u => u.phone === phone);
 }
 
-function createUser(phone) {
+function findUserByEmail(email) {
+  return cache.users.find(u => u.email === email);
+}
+
+function createUser(phone, email) {
   const config = cache.config;
   const user = {
     id: genId('u'),
-    phone,
+    phone: phone || '',
+    email: email || '',
     nickname: '',
     avatar: '',
     bio: '',
@@ -360,6 +366,7 @@ module.exports = {
   genId,
   findUserById,
   findUserByPhone,
+  findUserByEmail,
   createUser,
   addCoinTransaction,
   findBottleById,
