@@ -7,6 +7,7 @@ const { auth } = require('../middleware/auth');
 const { db, save, genId, findUserById, findChatSessionById, findChatSessionByUsers, addCoinTransaction } = require('../db');
 const { moderate } = require('../services/moderation');
 const { sendToUser } = require('../services/websocket');
+const botEngine = require('../services/botEngine');
 
 // Start a chat session (first message costs 1 coin)
 router.post('/start', auth, async (req, res) => {
@@ -21,6 +22,8 @@ router.post('/start', auth, async (req, res) => {
   if (!targetUser) {
     return res.json({ success: false, error: '用户不存在' });
   }
+  // Chatting with a bot is free and long-lived (AI assistant, cold-start help).
+  const isBotTarget = (targetUser.account_type || 'HUMAN') === 'BOT';
   
   // Check restrictions
   if (req.user.restrictions.chat || req.user.status === 'restricted') {
@@ -73,6 +76,7 @@ router.post('/start', auth, async (req, res) => {
             type: 'message_received',
             data: { ...message, sessionId: session.id }
           });
+          botEngine.scheduleChatReply(session.id, req.user.id, firstMessage);
         }
         return res.json({ success: true, session, coins: req.user.coins });
       }
@@ -107,11 +111,11 @@ router.post('/start', auth, async (req, res) => {
       if (req.user.coins < config.chat_session_cost) {
         return res.json({ success: false, error: '漂流币不足，无法开启新会话', needRecharge: true });
       }
-      addCoinTransaction(req.user.id, -config.chat_session_cost, 'chat_session', '开启新的聊天会话');
+      if (!isBotTarget) addCoinTransaction(req.user.id, -config.chat_session_cost, 'chat_session', '开启新的聊天会话');
       
       session.status = 'active';
       session.startedAt = Date.now();
-      session.expiresAt = Date.now() + config.chat_session_hours * 3600000;
+      session.expiresAt = isBotTarget ? Date.now() + 365 * 24 * 3600000 : Date.now() + config.chat_session_hours * 3600000;
       save();
       
       if (firstMessage) {
@@ -140,12 +144,12 @@ router.post('/start', auth, async (req, res) => {
     }
   }
   
-  // New session - first message costs 1 coin
-  if (req.user.coins < config.chat_session_cost) {
+  // New session - first message costs 1 coin (free when chatting with a bot)
+  if (!isBotTarget && req.user.coins < config.chat_session_cost) {
     return res.json({ success: false, error: '漂流币不足，请充值', needRecharge: true });
   }
   
-  addCoinTransaction(req.user.id, -config.chat_session_cost, 'chat_session', '发起聊天会话');
+  if (!isBotTarget) addCoinTransaction(req.user.id, -config.chat_session_cost, 'chat_session', '发起聊天会话');
   
   session = {
     id: genId('chat'),
@@ -154,7 +158,7 @@ router.post('/start', auth, async (req, res) => {
     initiatedBy: req.user.id,
     status: 'active',
     startedAt: Date.now(),
-    expiresAt: Date.now() + config.chat_session_hours * 3600000,
+    expiresAt: isBotTarget ? Date.now() + 365 * 24 * 3600000 : Date.now() + config.chat_session_hours * 3600000,
     lastMessageAt: null,
     permanentRequested: false,
     permanentAccepted: false,
@@ -185,6 +189,7 @@ router.post('/start', auth, async (req, res) => {
       type: 'message_received',
       data: { ...message, sessionId: session.id }
     });
+    botEngine.scheduleChatReply(session.id, req.user.id, firstMessage);
   }
   
   save();

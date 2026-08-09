@@ -58,6 +58,8 @@ const DEFAULT_CONFIG = {
   // ===== Bot tuning (AGENTS §23 / §11) — all editable in admin backend =====
   bot_reply_delay_min_seconds: 30,
   bot_reply_delay_max_seconds: 90,
+  bot_chat_reply_delay_min_seconds: 3,   // private chat feels snappier than public bottles
+  bot_chat_reply_delay_max_seconds: 8,
   bot_only_reply_when_no_human_reply: true,
   bot_max_replies_per_message: 1,
   bot_public_post_enabled: true,

@@ -44,10 +44,29 @@ function resolveConfig() {
   };
 }
 
-function buildMessages({ message, persona, mode }) {
+function buildMessages({ message, persona, mode, history }) {
   const character = persona && persona.trim()
     ? `你的角色设定是：${persona.trim()}。请始终用这个角色的口吻说话。`
     : '你是一个活泼、真诚的普通网友。';
+
+  // Private 1:1 chat with a human — needs conversation context to stay coherent.
+  if (mode === 'chat') {
+    const chatSystem =
+      '你在匿名漂流瓶社区「漂屿」里和一个陌生网友私聊。' +
+      character +
+      '请像朋友一样自然地接话、提问或共情，保持对话感。要求：' +
+      '1) 用中文；2) 简短，不超过60字；3) 不要说教、不要列条目、不要说「作为一个AI」；' +
+      '4) 顺着对方的话往下聊，别生硬切换话题；5) 不要带#话题标签、不要刷表情包。' +
+      '只输出你要说的那一句话，不要加引号。';
+    const msgs = [{ role: 'system', content: chatSystem }];
+    if (Array.isArray(history)) {
+      for (const h of history) {
+        if (!h || !h.content) continue;
+        msgs.push({ role: h.role === 'assistant' ? 'assistant' : 'user', content: String(h.content) });
+      }
+    }
+    return msgs;
+  }
 
   const replySystem =
     '你在一个匿名漂流瓶社区「漂屿」里和陌生网友聊天。' +
@@ -92,8 +111,8 @@ async function generateReply(input = {}) {
   const cfg = resolveConfig();
   if (!cfg) return null; // no provider/key -> template mode (free)
 
-  const mode = input.mode === 'post' ? 'post' : 'reply';
-  const messages = buildMessages({ message: input.message, persona: input.persona, mode });
+  const mode = input.mode === 'chat' ? 'chat' : (input.mode === 'post' ? 'post' : 'reply');
+  const messages = buildMessages({ message: input.message, persona: input.persona, mode, history: input.history });
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);

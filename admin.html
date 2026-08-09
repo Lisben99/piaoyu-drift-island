@@ -855,6 +855,8 @@ async function renderConfig() {
       <div class="config-grid">
         <div class="config-item"><label>回复延迟下限(秒)</label><input type="number" id="cfg_bot_reply_delay_min_seconds" value="${c.bot_reply_delay_min_seconds}"></div>
         <div class="config-item"><label>回复延迟上限(秒)</label><input type="number" id="cfg_bot_reply_delay_max_seconds" value="${c.bot_reply_delay_max_seconds}"></div>
+        <div class="config-item"><label>私聊回复延迟下限(秒)</label><input type="number" id="cfg_bot_chat_reply_delay_min_seconds" value="${c.bot_chat_reply_delay_min_seconds}"></div>
+        <div class="config-item"><label>私聊回复延迟上限(秒)</label><input type="number" id="cfg_bot_chat_reply_delay_max_seconds" value="${c.bot_chat_reply_delay_max_seconds}"></div>
         <div class="config-item"><label>每条最多 Bot 回复数</label><input type="number" id="cfg_bot_max_replies_per_message" value="${c.bot_max_replies_per_message}"></div>
         <div class="config-item"><label>回复触发概率(0~1)</label><input type="number" step="0.05" id="cfg_bot_reply_probability" value="${c.bot_reply_probability}"></div>
         <div class="config-item"><label>主动发帖间隔(分钟)</label><input type="number" id="cfg_bot_public_post_interval_minutes" value="${c.bot_public_post_interval_minutes}"></div>
@@ -902,6 +904,8 @@ async function saveConfig() {
     enable_content_moderation: document.getElementById('cfg_enable_content_moderation').checked,
     bot_reply_delay_min_seconds: parseInt(document.getElementById('cfg_bot_reply_delay_min_seconds').value),
     bot_reply_delay_max_seconds: parseInt(document.getElementById('cfg_bot_reply_delay_max_seconds').value),
+    bot_chat_reply_delay_min_seconds: parseInt(document.getElementById('cfg_bot_chat_reply_delay_min_seconds').value),
+    bot_chat_reply_delay_max_seconds: parseInt(document.getElementById('cfg_bot_chat_reply_delay_max_seconds').value),
     bot_max_replies_per_message: parseInt(document.getElementById('cfg_bot_max_replies_per_message').value),
     bot_public_post_interval_minutes: parseInt(document.getElementById('cfg_bot_public_post_interval_minutes').value),
     bot_daily_max_posts: parseInt(document.getElementById('cfg_bot_daily_max_posts').value),

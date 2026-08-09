@@ -4,6 +4,7 @@
 const { WebSocketServer } = require('ws');
 const { verifyToken } = require('../utils/jwt');
 const { findUserById, db, save } = require('../db');
+const botEngine = require('./botEngine');
 
 const MODERATION_PROVIDER = process.env.MODERATION_PROVIDER || 'local';
 
@@ -140,6 +141,12 @@ async function handleMessage(ws, msg) {
       type: 'message_received',
       data: { ...message, sessionId }
     });
+
+    // If the recipient is a bot, schedule an AI reply back to the human.
+    const recipient = findUserById(recipientId);
+    if (recipient && (recipient.account_type || 'HUMAN') === 'BOT') {
+      botEngine.scheduleChatReply(session.id, ws.userId, message.content);
+    }
     
     // Update session last message time
     session.lastMessageAt = Date.now();

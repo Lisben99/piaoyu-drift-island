@@ -90,7 +90,22 @@ const TOPIC_TEMPLATES = [
 ];
 
 let pendingReplies = new Map(); // bottleId -> timeout handle
+let pendingChatReplies = new Map(); // sessionId -> timeout handle
 let postTimer = null;
+
+// Fallback canned lines for private chat (used only when AI is unavailable).
+const CHAT_TEMPLATES = [
+  '哈哈，然后呢？',
+  '我懂你说的那种感觉～',
+  '真的假的，展开讲讲？',
+  '听起来挺有意思的',
+  '你这话把我逗笑了',
+  '嗯嗯，我在听，你说',
+  '是啊，有时候就是这样',
+  '诶，你平时也这样吗',
+  '我也是这么想的',
+  '莫名有点共鸣，你继续'
+];
 
 function config() { return db().config; }
 function rand(min, max) { return min + Math.random() * (max - min); }
@@ -291,6 +306,81 @@ function postIntervalMs() {
   return ((config().bot_public_post_interval_minutes || 20) * 60 * 1000);
 }
 
+// ----- Private 1:1 chat with a bot (AGENTS §7 / §19) -----
+// Triggered whenever a HUMAN sends a message to a BOT account. The bot replies
+// with AI (if enabled) after a short, human-like delay; falls back to templates
+// and gracefully no-ops when bots/private-chat are disabled or capped.
+function scheduleChatReply(sessionId, humanUserId, _content) {
+  const cfg = config();
+  if (!cfg.enable_bot || !cfg.enable_bot_private_chat) return;
+
+  const session = db().chatSessions.find(s => s.id === sessionId);
+  if (!session) return;
+
+  const botUserId = session.userA === humanUserId ? session.userB : session.userA;
+  const botUser = findUserById(botUserId);
+  if (!botUser || (botUser.account_type || 'HUMAN') === 'HUMAN') return; // only reply when recipient is a bot
+
+  const bot = getEnabledBots().find(b => b.userId === botUserId);
+  if (!bot) return; // bot disabled or unknown
+
+  const maxReplies = cfg.bot_daily_max_replies || 200;
+  if ((bot.dailyReplies || 0) >= (bot.dailyMaxReplies != null ? bot.dailyMaxReplies : maxReplies)) return;
+
+  const delay = rand(cfg.bot_chat_reply_delay_min_seconds || 3, cfg.bot_chat_reply_delay_max_seconds || 8) * 1000;
+  if (pendingChatReplies.has(sessionId)) clearTimeout(pendingChatReplies.get(sessionId));
+  const t = setTimeout(() => {
+    runChatReply(sessionId, bot).catch(e => console.error('[BotEngine] chat reply error', e));
+  }, delay);
+  pendingChatReplies.set(sessionId, t);
+}
+
+async function runChatReply(sessionId, bot) {
+  pendingChatReplies.delete(sessionId);
+  const session = db().chatSessions.find(s => s.id === sessionId);
+  if (!session || session.status === 'expired' || session.status === 'blocked') return;
+
+  const cfg = config();
+  const humanUserId = session.userA === bot.userId ? session.userB : session.userA;
+
+  // Build recent conversation context so the AI stays coherent.
+  const history = db().messages
+    .filter(m => m.sessionId === sessionId && m.content)
+    .sort((a, b) => a.createdAt - b.createdAt)
+    .slice(-12)
+    .map(m => ({ role: m.senderId === bot.userId ? 'assistant' : 'user', content: m.content }));
+
+  let content = null;
+  if (cfg.enable_ai_reply) {
+    content = await aiProvider.generateReply({ persona: bot.personaPrompt, mode: 'chat', history });
+  }
+  if (!content) content = CHAT_TEMPLATES[Math.floor(Math.random() * CHAT_TEMPLATES.length)];
+  if (!content) return;
+
+  if (cfg.enable_content_moderation !== false) {
+    const mod = await moderate(content);
+    if (!mod.pass) { console.warn('[BotEngine] chat reply blocked by moderation:', mod.reason); return; }
+  }
+
+  const message = {
+    id: genId('msg'),
+    sessionId,
+    senderId: bot.userId,
+    content,
+    image: null,
+    createdAt: Date.now(),
+    moderated: false
+  };
+  db().messages.push(message);
+  session.lastMessageAt = Date.now();
+  save();
+  recordBotActivity(bot.botId, 'reply');
+
+  // Deliver to the human in real time (bot itself is not a WS client).
+  const { sendToUser } = require('../services/websocket');
+  sendToUser(humanUserId, { type: 'message_received', data: { ...message, sessionId } });
+}
+
 function startProactivePosts() {
   stopProactivePosts();
   const tick = () => {
@@ -332,6 +422,7 @@ async function init() {
 module.exports = {
   init,
   scheduleBottleReply,
+  scheduleChatReply,
   runProactivePost,
   computeCSI,
   getBotStats,
