@@ -295,11 +295,12 @@ router.get('/orders', adminAuth, (req, res) => {
   res.json({ success: true, orders: paged, total });
 });
 
-// Confirm a recharge order: admin verifies the user's payment proof, then coins are credited
+// Confirm a recharge order: admin verifies the user's payment proof, then a redeem code is generated
+// The user must redeem the code in-app to receive the coins.
 router.post('/orders/:id/confirm', adminAuth, async (req, res) => {
-  const result = await confirmPayment(req.params.id, {});
+  const result = await confirmPayment(req.params.id, {}, { adminId: req.admin.id });
   if (result.success) {
-    addAuditLog(req.admin.id, 'recharge_confirm', req.params.id, `确认充值到账，发放 ${result.coins} 枚漂流币`);
+    addAuditLog(req.admin.id, 'recharge_confirm', req.params.id, `确认充值到账，发放兑换码 ${result.redeemCode ? result.redeemCode.code : 'unknown'}（${result.coins} 枚漂流币）`);
   }
   res.json(result);
 });

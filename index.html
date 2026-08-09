@@ -822,6 +822,19 @@ function showToast(msg) {
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(t._timer); t._timer = setTimeout(() => t.classList.remove('show'), 2000);
 }
+function copyToClipboard(text) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => showToast('已复制')).catch(() => showToast('复制失败，请手动复制'));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('已复制');
+  }
+}
 function showModal(title, body, actions) {
   $('modalTitle').textContent = title;
   $('modalBody').innerHTML = body;
@@ -1580,7 +1593,7 @@ async function renderRecharge() {
         </div>`).join('');
     html += `</div>
       <div id="payPanel" style="display:none;margin-top:18px"></div>
-      <div style="text-align:center;margin-top:14px;font-size:12px;color:#98a2a0">1元 = ${pkgRes.rate}枚漂流币</div>
+      <div style="text-align:center;margin-top:14px;font-size:12px;color:#98a2a0">1元 = ${pkgRes.rate}枚漂流币 · 管理员确认后将发放兑换码</div>
 
       <div class="coin-section-title" style="margin-top:22px">兑换码充值</div>
       <div style="display:flex;gap:10px;margin-top:10px">
@@ -1593,14 +1606,20 @@ async function renderRecharge() {
     const ordersRes = await api('/recharge/orders');
     if (ordersRes.success && ordersRes.orders.length > 0) {
       html += `<div class="coin-section-title" style="margin-top:20px">充值记录</div>`;
-      html += ordersRes.orders.slice(0, 10).map(o => `
+      html += ordersRes.orders.slice(0, 10).map(o => {
+        const codeHtml = (o.status === 'paid' && o.redeemCode && o.redeemCode.code)
+          ? `<div style="font-family:monospace;font-size:13px;color:#1f7a74;font-weight:700;background:#e9f5f3;padding:4px 8px;border-radius:6px;display:inline-block;margin-top:4px">${o.redeemCode.code}</div> <span style="font-size:12px;color:#1f7a74" onclick="copyToClipboard('${o.redeemCode.code.replace(/'/g, "\\'")}')">复制</span>`
+          : '';
+        return `
           <div class="ledger-item">
             <div class="ledger-item__info">
               <div class="type">充值 ${o.coins} 枚</div>
               <div class="time">${formatDateTime(o.createdAt)} · ${orderStatusText(o.status)}</div>
+              ${codeHtml}
             </div>
             <div class="ledger-item__amount">¥${o.amount}</div>
-          </div>`).join('');
+          </div>`;
+      }).join('');
     }
 
     $('rechargeContent').innerHTML = html;
@@ -1608,7 +1627,7 @@ async function renderRecharge() {
 }
 
 function orderStatusText(s) {
-  return s === 'paid' ? '已到账' : s === 'submitted' ? '待确认' : s === 'rejected' ? '已拒绝' : s === 'refunded' ? '已退款' : '待支付';
+  return s === 'paid' ? '已发放兑换码' : s === 'submitted' ? '待确认' : s === 'rejected' ? '已拒绝' : s === 'refunded' ? '已退款' : '待支付';
 }
 
 function selectPkg(id, el) {
@@ -1640,7 +1659,7 @@ async function startPayment() {
     const box = $('payProofBox');
     box.style.display = 'block';
     box.innerHTML = `
-      <div style="font-size:12px;color:#718082;margin-bottom:6px">订单号：${(orderRes.orderId || '').slice(0, 12)}…（付款后提交凭证，管理员确认后即到账）</div>
+      <div style="font-size:12px;color:#718082;margin-bottom:6px">订单号：${(orderRes.orderId || '').slice(0, 12)}…（付款后提交凭证，管理员确认后发放兑换码，凭码兑换漂流币）</div>
       <input id="payNote" placeholder="付款备注/转账单号（选填）" style="width:100%;padding:10px 12px;border:2px solid #e6e4dc;border-radius:10px;font-size:14px;margin-bottom:8px" />
       <input id="payImg" type="file" accept="image/*" style="margin-bottom:8px;font-size:13px" />
       <button class="primary-button" id="paySubmitBtn" onclick="submitPaymentProof()">提交凭证，等待确认</button>`;

@@ -106,6 +106,9 @@ function redeemCode(userId, rawCode) {
   if (!record) {
     return { success: false, error: '兑换码不存在或已失效' };
   }
+  if (record.status === 'voided') {
+    return { success: false, error: '该兑换码已退款作废' };
+  }
   if (record.status === 'used') {
     return { success: false, error: '该兑换码已被使用' };
   }

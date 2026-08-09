@@ -16,8 +16,52 @@
  * 4. Install wechatpay-axios-plugin or use raw HTTP
  */
 
+const crypto = require('crypto');
 const PAYMENT_PROVIDER = process.env.PAYMENT_PROVIDER || 'dev'; // 'dev' or 'wechat'
 const db = require('../db');
+
+// Redeem-code alphabet without ambiguous glyphs (0/O, 1/I/L)
+const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function randomSegment(len) {
+  const bytes = crypto.randomBytes(len);
+  let s = '';
+  for (let i = 0; i < len; i++) s += ALPHABET[bytes[i] % ALPHABET.length];
+  return s;
+}
+function buildCode(prefix) {
+  const p = (prefix || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  const body = `${randomSegment(4)}-${randomSegment(4)}-${randomSegment(4)}-${randomSegment(4)}`;
+  return p ? `${p}-${body}` : body;
+}
+function normalizeCode(raw) {
+  return String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+function generateOneRedeemCode({ coins, createdBy, note, refOrderId }) {
+  const existing = new Set(db.getRedeemCodes().map(r => r.codeKey));
+  let code, key, guard = 0;
+  do {
+    code = buildCode('PY'); // 固定前缀 PiaoYu
+    key = normalizeCode(code);
+    guard++;
+  } while (existing.has(key) && guard < 20);
+  if (existing.has(key)) key = key + Date.now();
+
+  const record = {
+    id: db.genId('rc'),
+    batch: refOrderId ? `order-${refOrderId}` : db.genId('rcb'),
+    code,
+    codeKey: key,
+    coins,
+    status: 'unused',
+    createdBy,
+    note: note || '',
+    createdAt: Date.now(),
+    usedBy: null,
+    usedAt: null
+  };
+  db.addRedeemCode(record);
+  return record;
+}
 
 const PACKAGES = [
   { id: 'pkg1', price: 1, coins: 10, label: '10枚' },
@@ -72,40 +116,61 @@ async function createOrder(userId, pkgId) {
   }
 }
 
-async function confirmPayment(orderId, paymentData = {}) {
+async function confirmPayment(orderId, paymentData = {}, { adminId = null } = {}) {
   const database = db.db();
   const order = database.rechargeOrders.find(o => o.id === orderId);
   if (!order) {
     return { success: false, error: '订单不存在' };
   }
-  
-  // Idempotency check
+
+  // Idempotency: if already paid, return existing redeem code
   if (order.status === 'paid') {
-    return { success: false, error: '订单已支付' };
+    return {
+      success: false,
+      error: '订单已支付',
+      redeemCode: order.redeemCode || null
+    };
   }
-  
+
   if (PAYMENT_PROVIDER === 'wechat') {
     // Production: verify payment with WeChat Pay API
     // const { verifyPayment } = require('./wechat-pay');
     // const verified = await verifyPayment(order);
     // if (!verified.success) return { success: false, error: '支付验证失败' };
   }
-  
-  // Mark as paid
+
+  // Mark as paid (but do NOT credit coins directly — user redeems the code)
   order.status = 'paid';
   order.paidAt = Date.now();
   order.paymentData = paymentData;
-  
-  // Credit coins (addCoinTransaction already increments user.coins — do not double-add)
+
+  // Generate a one-time redeem code bound to this order
+  const redeemRecord = generateOneRedeemCode({
+    coins: order.coins,
+    createdBy: adminId || 'system',
+    note: `充值订单 ${order.orderId} 自动发放`,
+    refOrderId: order.id
+  });
+  order.redeemCode = {
+    codeId: redeemRecord.id,
+    code: redeemRecord.code,
+    codeKey: redeemRecord.codeKey
+  };
+
+  // Only record total recharged amount on user; coins are credited when code is redeemed
   const user = db.findUserById(order.userId);
   if (user) {
     user.totalRecharged = (user.totalRecharged || 0) + order.amount;
-    db.addCoinTransaction(user.id, order.coins, 'recharge', `充值${order.amount}元获得${order.coins}枚漂流币`, order.id);
   }
-  
+
   db.save();
-  
-  return { success: true, coins: order.coins, balance: user ? user.coins : 0 };
+
+  return {
+    success: true,
+    coins: order.coins,
+    balance: user ? user.coins : 0,
+    redeemCode: order.redeemCode
+  };
 }
 
 // User claims they paid: attach proof (note / screenshot) and move order to 'submitted'
@@ -156,17 +221,28 @@ async function refundOrder(orderId, reason) {
   if (order.status !== 'paid') {
     return { success: false, error: '订单状态不支持退款' };
   }
-  
-  // Refund via WeChat Pay API in production
-  // For now, just deduct coins (addCoinTransaction handles the deduction) and mark as refunded
+
+  // Void the bound redeem code if it has not been used yet
+  if (order.redeemCode && order.redeemCode.codeId) {
+    const record = database.redeemCodes.find(r => r.id === order.redeemCode.codeId);
+    if (record) {
+      if (record.status === 'used') {
+        return { success: false, error: '兑换码已被用户使用，无法退款' };
+      }
+      record.status = 'voided';
+      record.note = `${record.note || ''} [退款作废] ${reason || ''}`.trim();
+    }
+  }
+
+  // If the user already redeemed the code, deduct coins; otherwise nothing to deduct
   const user = db.findUserById(order.userId);
   if (user) {
     db.addCoinTransaction(user.id, -order.coins, 'refund', `充值退款：${reason}`, order.id);
   }
-  
+
   order.status = 'refunded';
   db.save();
-  
+
   return { success: true };
 }
 
