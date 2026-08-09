@@ -7,6 +7,25 @@ const { auth } = require('../middleware/auth');
 const { db, save, genId, findBottleById, getActiveBottles, addCoinTransaction, findUserById } = require('../db');
 const { moderate } = require('../services/moderation');
 
+// Shared helper: append a reply to a bottle. Used by both the HTTP endpoint
+// (human replies) and the Bot engine (automated replies). Returns the reply.
+function recordBottleReply(bottle, data) {
+  bottle.replies = bottle.replies || [];
+  const reply = {
+    id: genId('reply'),
+    senderId: data.senderId || '',
+    senderNickname: data.senderNickname || '匿名用户',
+    senderGender: data.senderGender || '',
+    senderAccountType: data.senderAccountType || 'HUMAN',
+    anonymous: !!data.anonymous,
+    content: data.content,
+    createdAt: Date.now()
+  };
+  bottle.replies.push(reply);
+  save();
+  return reply;
+}
+
 // List bottles (lobby)
 router.get('/', (req, res) => {
   const authHeader = req.headers.authorization;
@@ -41,6 +60,7 @@ router.get('/', (req, res) => {
         anonymous: true,
         status: b.status,
         createdAt: b.createdAt,
+        replyCount: b.replies ? b.replies.length : 0,
         expiresAt: b.createdAt + db().config.bottle_display_hours * 3600000
       };
     }
@@ -54,6 +74,7 @@ router.get('/', (req, res) => {
       anonymous: false,
       status: b.status,
       createdAt: b.createdAt,
+      replyCount: b.replies ? b.replies.length : 0,
       expiresAt: b.createdAt + db().config.bottle_display_hours * 3600000
     };
   });
@@ -85,9 +106,51 @@ router.get('/:id', (req, res) => {
     bottle: {
       ...bottle,
       authorNickname: author ? author.nickname : '匿名用户',
-      authorAvatar: author ? author.avatar : ''
+      authorAvatar: author ? author.avatar : '',
+      replies: (bottle.replies || []).map(r => ({
+        id: r.id,
+        senderId: r.anonymous ? '' : r.senderId,
+        senderNickname: r.anonymous ? '匿名' : (r.senderNickname || '匿名用户'),
+        senderGender: r.senderGender || '',
+        senderAccountType: r.senderAccountType || 'HUMAN',
+        anonymous: !!r.anonymous,
+        content: r.content,
+        createdAt: r.createdAt
+      })),
+      replyCount: bottle.replies ? bottle.replies.length : 0
     }
   });
+});
+
+// Reply to a bottle (PUBLIC_REPLY) — human users
+router.post('/:id/reply', auth, async (req, res) => {
+  const { content } = req.body;
+  const bottle = findBottleById(req.params.id);
+  if (!bottle || bottle.deleted) {
+    return res.json({ success: false, error: '漂流瓶不存在' });
+  }
+  if (!content || content.trim().length === 0) {
+    return res.json({ success: false, error: '回复内容不能为空' });
+  }
+  if (content.length > 300) {
+    return res.json({ success: false, error: '回复不能超过300字' });
+  }
+  // Content moderation (skip if disabled via feature flag)
+  if (db().config.enable_content_moderation !== false) {
+    const modResult = await moderate(content);
+    if (!modResult.pass) {
+      return res.json({ success: false, error: modResult.reason });
+    }
+  }
+  const reply = recordBottleReply(bottle, {
+    senderId: req.user.id,
+    senderNickname: req.user.nickname || '匿名用户',
+    senderGender: req.user.role,
+    senderAccountType: req.user.account_type || 'HUMAN',
+    anonymous: false,
+    content: content.trim()
+  });
+  res.json({ success: true, reply, replyCount: bottle.replies.length });
 });
 
 // Create bottle
@@ -131,6 +194,7 @@ router.post('/', auth, async (req, res) => {
     anonymous: !!anonymous,
     status: 'displaying',
     deleted: false,
+    replies: [],
     createdAt: Date.now()
   };
   db().bottles.push(bottle);
@@ -192,3 +256,4 @@ router.get('/my/list', auth, (req, res) => {
 });
 
 module.exports = router;
+module.exports.recordBottleReply = recordBottleReply;

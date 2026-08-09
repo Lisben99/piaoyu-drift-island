@@ -191,6 +191,20 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .chat-btn-permanent{background:rgba(31,122,116,.1);color:#1f7a74}
 .chat-btn-self{background:rgba(231,76,60,.08);color:#e74c3c}
 .bottle-card__report{padding:4px 8px;font-size:11px;color:#98a2a0}
+.chat-btn-reply{background:rgba(91,141,239,.12);color:#5b8def}
+/* ===== Bottle replies (PUBLIC_REPLY) ===== */
+.reply-list{max-height:46vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:4px 2px 8px}
+.reply-empty{text-align:center;color:#98a2a0;font-size:13px;padding:24px 0}
+.reply-item{background:#f7f5ef;border-radius:10px;padding:9px 12px}
+.reply-item__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.reply-item__name{font-size:13px;font-weight:700;color:#172b2d}
+.reply-item__time{font-size:11px;color:#98a2a0}
+.reply-item__content{font-size:14px;line-height:1.5;color:#2b3a3c;word-break:break-word}
+.reply-bot-tag{display:inline-block;margin-left:6px;font-size:10px;font-weight:600;color:#fff;background:#9b6dd7;border-radius:5px;padding:1px 5px;vertical-align:middle}
+.reply-input-row{display:flex;gap:8px;margin-top:10px;align-items:flex-end}
+.reply-input{flex:1;height:54px;resize:none;padding:9px 12px;background:#f7f5ef;border:1px solid #e6e4dc;border-radius:10px;font-size:14px;font-family:inherit}
+.reply-send{flex-shrink:0;height:38px;padding:0 18px;border-radius:10px;background:#1f7a74;color:#fff;font-size:14px;font-weight:600}
+.reply-send:disabled{opacity:.6}
 
 /* ===== Empty State ===== */
 .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center}
@@ -1294,6 +1308,7 @@ async function renderLobby() {
           <div class="bottle-card__footer">
             <div class="bottle-card__status">${statusLabel(b.status)}</div>
             <div class="bottle-card__actions">
+              <button class="bottle-card__chat-btn chat-btn-reply" onclick="openBottleReplies('${b.id}')">回复${b.replyCount ? '(' + b.replyCount + ')' : ''}</button>
               ${isSelf || isAnon ? '' : `<button class="bottle-card__chat-btn chat-btn-primary" onclick="startChat('${b.authorId}','${b.content.slice(0,20)}...')">聊聊</button>`}
               <button class="bottle-card__report" onclick="navigate('report'); window._reportTarget={type:'bottle',id:'${b.id}'}">举报</button>
             </div>
@@ -1361,7 +1376,10 @@ async function renderMineBottles() {
           <div class="bottle-card__content">${b.content}</div>
           <div class="bottle-card__footer">
             <div class="bottle-card__status">${statusLabel(b.status)} · ${formatTime(b.createdAt)}${b.anonymous ? ' · <span class="bottle-card__anon">匿名</span>' : ''}</div>
-            ${b.status === 'displaying' || b.status === 'expired' ? `<button class="bottle-card__chat-btn chat-btn-self" onclick="deleteBottle('${b.id}')">删除</button>` : ''}
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="bottle-card__chat-btn chat-btn-reply" onclick="openBottleReplies('${b.id}')">回复${b.replyCount ? '(' + b.replyCount + ')' : ''}</button>
+              ${b.status === 'displaying' || b.status === 'expired' ? `<button class="bottle-card__chat-btn chat-btn-self" onclick="deleteBottle('${b.id}')">删除</button>` : ''}
+            </div>
           </div>
         </div>`).join('') + '</div>';
     } else {
@@ -1379,6 +1397,67 @@ async function deleteBottle(id) {
       else showToast(res.error || '删除失败');
     }}
   ]);
+}
+
+function bottleReplyItemHtml(r) {
+  const name = r.anonymous ? '匿名' : (r.senderNickname || '匿名');
+  const botTag = r.senderAccountType === 'BOT' ? '<span class="reply-bot-tag">官方</span>' : '';
+  return `<div class="reply-item">
+    <div class="reply-item__head"><span class="reply-item__name">${escapeHtml(name)}${botTag}</span><span class="reply-item__time">${formatTime(r.createdAt)}</span></div>
+    <div class="reply-item__content">${escapeHtml(r.content)}</div>
+  </div>`;
+}
+
+async function openBottleReplies(id) {
+  window._replyBottleId = id;
+  const res = await api('/bottles/' + id);
+  if (!res.success) { showToast('加载失败'); return; }
+  const b = res.bottle;
+  const listHtml = (b.replies && b.replies.length)
+    ? b.replies.map(bottleReplyItemHtml).join('')
+    : '<div class="reply-empty">还没有回复，来抢沙发～</div>';
+  const body = `<div class="reply-list">${listHtml}</div>
+    <div class="reply-input-row">
+      <textarea id="replyInput" class="reply-input" maxlength="300" placeholder="回复点什么..."></textarea>
+      <button class="reply-send" onclick="postBottleReply()">发送</button>
+    </div>`;
+  showModal('回复 (' + (b.replyCount || 0) + ')', body, [{ text: '关闭', cancel: true }]);
+  const ta = document.getElementById('replyInput');
+  if (ta) ta.focus();
+}
+
+async function postBottleReply() {
+  const id = window._replyBottleId;
+  const ta = document.getElementById('replyInput');
+  if (!ta) return;
+  const content = ta.value.trim();
+  if (!content) { showToast('回复内容不能为空'); return; }
+  const btn = document.querySelector('.reply-send');
+  if (btn) btn.disabled = true;
+  try {
+    const res = await api('/bottles/' + id + '/reply', { method: 'POST', body: JSON.stringify({ content }) });
+    if (res.success) {
+      ta.value = '';
+      showToast('已回复');
+      const r2 = await api('/bottles/' + id);
+      if (r2.success) {
+        const listEl = document.querySelector('.reply-list');
+        if (listEl) {
+          listEl.innerHTML = (r2.bottle.replies && r2.bottle.replies.length)
+            ? r2.bottle.replies.map(bottleReplyItemHtml).join('')
+            : '<div class="reply-empty">还没有回复，来抢沙发～</div>';
+          listEl.scrollTop = listEl.scrollHeight;
+        }
+        const titleEl = document.getElementById('modalTitle');
+        if (titleEl) titleEl.textContent = '回复 (' + (r2.bottle.replyCount || 0) + ')';
+      }
+      renderLobby();
+      renderMineBottles();
+    } else {
+      showToast(res.error || '回复失败');
+    }
+  } catch (e) { showToast('回复失败，请重试'); }
+  if (btn) btn.disabled = false;
 }
 
 /* ================================================================
