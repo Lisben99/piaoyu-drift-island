@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f7f5ef">
-<title>漂流大厅 · DRIFT ISLAND</title>
+<title>漂屿 · DRIFT ISLAND</title>
 <script src="config.js"></script>
 <style>
 /* ===== Reset ===== */
@@ -209,6 +209,15 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .publish-info__row .label{color:#718082}
 .publish-info__row .value{font-weight:700}
 .publish-warn{font-size:12px;color:#98a2a0;text-align:center;margin-bottom:14px;line-height:1.6}
+.publish-anon{display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.03)}
+.publish-anon__title{font-size:14px;font-weight:600;color:#172b2d}
+.publish-anon__desc{font-size:11px;color:#98a2a0;margin-top:2px}
+.switch{width:46px;height:26px;border-radius:13px;background:#d8dcdb;position:relative;flex-shrink:0;transition:background .2s;cursor:pointer}
+.switch::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.switch.on{background:#1f7a74}
+.switch.on::after{left:23px}
+.bottle-card__anon{font-size:10px;color:#fff;background:#98a2a0;border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+.settings-avatar-img,.edit-avatar-img,.profile-avatar-img,.bottle-card__avatar-img{background-size:cover;background-position:center}
 
 /* ===== Chat Page ===== */
 .chat-page{flex:1;display:flex;flex-direction:column;overflow:hidden}
@@ -350,7 +359,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 /* ===== Edit Profile ===== */
 .edit-content{flex:1;padding:16px;overflow-y:auto}
 .edit-avatar-section{display:flex;flex-direction:column;align-items:center;padding:20px 0}
-.edit-avatar{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:#fff;margin-bottom:8px}
+.edit-avatar{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:#fff;margin-bottom:8px;cursor:pointer;overflow:hidden}
 .edit-avatar-change{font-size:13px;color:#1f7a74;font-weight:600}
 .edit-field{margin-bottom:16px}
 .edit-field label{display:block;font-size:12px;color:#718082;font-weight:600;margin-bottom:6px}
@@ -411,7 +420,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
         <div class="welcome-cover">
           <div class="brand-lockup">
             <div class="brand-mark"><div class="brand-wave"></div></div>
-            <div><span class="brand-name">漂流大厅</span><span class="brand-caption">DRIFT ISLAND</span></div>
+            <div><span class="brand-name">漂屿</span><span class="brand-caption">DRIFT ISLAND</span></div>
           </div>
         </div>
         <div class="auth-art">
@@ -511,10 +520,10 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 
   <!-- ===== PAGE: Role Select ===== -->
   <div class="page" id="page-role">
-    <div class="role-page">
+      <div class="role-page">
       <div class="brand-lockup" style="margin-bottom:4px">
         <div class="brand-mark"><div class="brand-wave"></div></div>
-        <div><span class="brand-name">漂流大厅</span><span class="brand-caption">DRIFT ISLAND</span></div>
+        <div><span class="brand-name">漂屿</span><span class="brand-caption">DRIFT ISLAND</span></div>
       </div>
       <div class="role-header">
         <span class="eyebrow">最后一步</span>
@@ -625,6 +634,13 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
         <div class="publish-info__row"><span class="label">展示时长</span><span class="value">48 小时</span></div>
       </div>
       <div class="publish-warn">发布本条漂流瓶需要消耗 2 枚漂流币，内容将在大厅展示 48 小时</div>
+      <div class="publish-anon" onclick="document.getElementById('anonSwitch').classList.toggle('on')">
+        <div>
+          <div class="publish-anon__title">匿名发布</div>
+          <div class="publish-anon__desc">开启后，大厅中不显示你的昵称与性别</div>
+        </div>
+        <div class="switch" id="anonSwitch"></div>
+      </div>
       <button class="primary-button" id="publishBtn">投入大海</button>
     </div>
   </div>
@@ -857,6 +873,31 @@ function avatarColor(name) {
   return colors[Math.abs(h) % colors.length];
 }
 function avatarInitial(name) { return (name || '?')[0].toUpperCase(); }
+function avatarStyle(name, avatar, color) {
+  const c = color || avatarColor(name || '?');
+  if (avatar) {
+    return `background:#e9eef0;background-size:cover;background-position:center;background-image:url('${avatar}')`;
+  }
+  return `background:${c}`;
+}
+function avatarMarkup(name, avatar, cls, color) {
+  return `<div class="${cls}" style="${avatarStyle(name, avatar, color)}">${avatar ? '' : avatarInitial(name || '?')}</div>`;
+}
+function paintAvatar(el, name, avatar, color) {
+  if (!el) return;
+  const c = color || avatarColor(name || '?');
+  if (avatar) {
+    el.style.background = '#e9eef0';
+    el.style.backgroundImage = `url('${avatar}')`;
+    el.style.backgroundSize = 'cover';
+    el.style.backgroundPosition = 'center';
+    el.textContent = '';
+  } else {
+    el.style.background = c;
+    el.style.backgroundImage = '';
+    el.textContent = avatarInitial(name || '?');
+  }
+}
 function formatTime(ts) {
   const d = new Date(ts); const now = new Date();
   const diff = (now - d) / 1000;
@@ -1113,8 +1154,7 @@ async function renderHome() {
       const u = currentUser || {};
       const name = u.nickname || (u.phone ? u.phone.slice(-4) + '号岛民' : (u.email ? u.email.split('@')[0] : '岛民'));
       const color = avatarColor(name);
-      $('homeAvatar').style.background = color;
-      $('homeAvatar').textContent = avatarInitial(name);
+      paintAvatar($('homeAvatar'), name, u.avatar, color);
       $('homeName').textContent = name;
       const hour = new Date().getHours();
       $('homeSub').textContent = hour < 6 ? '夜深了，注意休息' : hour < 12 ? '早上好' : hour < 18 ? '下午好' : '晚上好';
@@ -1180,15 +1220,17 @@ async function renderLobby() {
     if (res.success && res.bottles.length > 0) {
       $('lobbyCoins').textContent = currentUser?.coins || 0;
       $('lobbyList').innerHTML = '<div class="bottle-list">' + res.bottles.map(b => {
-        const name = b.authorNickname || '匿名';
-        const color = avatarColor(name);
-        const isSelf = b.authorId === currentUser?.id;
+        const isAnon = !!b.anonymous;
+        const name = isAnon ? '匿名' : (b.authorNickname || '匿名');
+        const color = isAnon ? '#98a2a0' : avatarColor(name);
+        const isSelf = b.authorId && b.authorId === currentUser?.id;
+        const avatar = isAnon ? '' : b.authorAvatar;
         return `<div class="bottle-card">
           <div class="bottle-card__head">
-            <div class="bottle-card__avatar" style="background:${color}">${avatarInitial(name)}</div>
+            ${avatarMarkup(name, avatar, 'bottle-card__avatar', color)}
             <div>
-              <div class="bottle-card__name">${name}${isSelf?' (我)':''}</div>
-              <div class="bottle-card__role">${b.authorGender==='male'?'男生':'女生'}</div>
+              <div class="bottle-card__name">${name}${isSelf?' (我)':''}${isAnon?'<span class="bottle-card__anon">匿名</span>':''}</div>
+              <div class="bottle-card__role">${isAnon ? '神秘岛民' : (b.authorGender==='male'?'男生':'女生')}</div>
             </div>
             <div class="bottle-card__time">${formatTime(b.createdAt)}</div>
           </div>
@@ -1196,7 +1238,7 @@ async function renderLobby() {
           <div class="bottle-card__footer">
             <div class="bottle-card__status">${statusLabel(b.status)}</div>
             <div class="bottle-card__actions">
-              ${isSelf ? '' : `<button class="bottle-card__chat-btn chat-btn-primary" onclick="startChat('${b.authorId}','${b.content.slice(0,20)}...')">聊聊</button>`}
+              ${isSelf || isAnon ? '' : `<button class="bottle-card__chat-btn chat-btn-primary" onclick="startChat('${b.authorId}','${b.content.slice(0,20)}...')">聊聊</button>`}
               <button class="bottle-card__report" onclick="navigate('report'); window._reportTarget={type:'bottle',id:'${b.id}'}">举报</button>
             </div>
           </div>
@@ -1221,14 +1263,17 @@ function renderPublish() {
   $('publishBalance').textContent = (currentUser?.coins || 0) + ' 枚';
   $('publishCount').textContent = '0';
   $('publishText').value = '';
+  const sw = $('anonSwitch');
+  if (sw) sw.classList.remove('on');
 }
 $('publishText').addEventListener('input', function() { $('publishCount').textContent = this.value.length; });
 $('publishBtn').onclick = async function() {
   const content = $('publishText').value.trim();
   if (!content) { showToast('请写点什么吧'); return; }
+  const anonymous = $('anonSwitch') && $('anonSwitch').classList.contains('on');
   this.innerHTML = '<span class="spinner"></span>'; this.disabled = true;
   try {
-    const res = await api('/bottles', { method: 'POST', body: JSON.stringify({ content }) });
+    const res = await api('/bottles', { method: 'POST', body: JSON.stringify({ content, anonymous }) });
     if (res.success) {
       showToast('漂流瓶已投入大海！');
       currentUser.coins = res.coins;
@@ -1259,7 +1304,7 @@ async function renderMineBottles() {
         <div class="bottle-card">
           <div class="bottle-card__content">${b.content}</div>
           <div class="bottle-card__footer">
-            <div class="bottle-card__status">${statusLabel(b.status)} · ${formatTime(b.createdAt)}</div>
+            <div class="bottle-card__status">${statusLabel(b.status)} · ${formatTime(b.createdAt)}${b.anonymous ? ' · <span class="bottle-card__anon">匿名</span>' : ''}</div>
             ${b.status === 'displaying' || b.status === 'expired' ? `<button class="bottle-card__chat-btn chat-btn-self" onclick="deleteBottle('${b.id}')">删除</button>` : ''}
           </div>
         </div>`).join('') + '</div>';
@@ -1954,7 +1999,7 @@ async function renderSettings() {
       const color = avatarColor(name);
       $('settingsContent').innerHTML = `
         <div class="settings-header">
-          <div class="settings-avatar" style="background:${color}">${avatarInitial(name)}</div>
+          ${avatarMarkup(name, meRes.avatar, 'settings-avatar', color)}
           <div class="settings-name">${name}</div>
           <div class="settings-sub">${meRes.gender === 'male' ? '男生' : '女生'} · ${meRes.coins} 枚漂流币</div>
         </div>
@@ -2028,14 +2073,17 @@ async function renderSettings() {
 /* ================================================================
    EDIT PROFILE
    ================================================================ */
+let pendingAvatar = null;
 function renderEditProfile() {
   const u = currentUser || {};
   const name = u.nickname || '';
   const color = avatarColor(name || '岛民');
+  pendingAvatar = null;
   $('editProfileContent').innerHTML = `
     <div class="edit-avatar-section">
-      <div class="edit-avatar" style="background:${color}">${avatarInitial(name || '?')}</div>
-      <div class="edit-avatar-change">头像不可修改</div>
+      <div class="edit-avatar" id="editAvatarPreview" onclick="document.getElementById('editAvatarInput').click()" style="background:${color}">${avatarInitial(name || '?')}</div>
+      <div class="edit-avatar-change" onclick="document.getElementById('editAvatarInput').click()">点击更换头像</div>
+      <input type="file" id="editAvatarInput" accept="image/*" style="display:none" onchange="onEditAvatarChange(this)">
     </div>
     <div class="edit-field">
       <label>昵称</label>
@@ -2053,15 +2101,33 @@ function renderEditProfile() {
 async function saveProfile() {
   const nickname = $('editNickname').value.trim();
   const bio = $('editBio').value.trim();
+  const body = { nickname, bio };
+  if (pendingAvatar !== null) body.avatar = pendingAvatar;
   try {
-    const res = await api('/profile/edit', { method: 'POST', body: JSON.stringify({ nickname, bio }) });
+    const res = await api('/profile/edit', { method: 'POST', body: JSON.stringify(body) });
     if (res.success) {
       showToast('保存成功');
       currentUser.nickname = nickname;
       currentUser.bio = bio;
+      if (pendingAvatar !== null) currentUser.avatar = pendingAvatar;
       navigateBack();
     } else { showToast(res.error || '保存失败'); }
   } catch (e) {}
+}
+
+function onEditAvatarChange(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const btn = input.parentNode.querySelector('.edit-avatar-change');
+  if (btn) btn.textContent = '处理中...';
+  fileToDataURL(file, 240).then(dataUrl => {
+    pendingAvatar = dataUrl;
+    const name = (currentUser && currentUser.nickname) || '';
+    paintAvatar($('editAvatarPreview'), name, pendingAvatar, avatarColor(name || '岛民'));
+    if (btn) btn.textContent = '点击更换头像';
+  }).catch(() => {
+    if (btn) btn.textContent = '图片读取失败，重试';
+  });
 }
 
 /* ================================================================
@@ -2120,7 +2186,7 @@ async function renderProfile(userId) {
       const color = avatarColor(p.nickname || '?');
       $('profileContent').innerHTML = `
         <div class="profile-header">
-          <div class="profile-avatar" style="background:${color}">${avatarInitial(p.nickname)}</div>
+          ${avatarMarkup(p.nickname, p.avatar, 'profile-avatar', color)}
           <div class="profile-name">${p.nickname}</div>
           <div class="profile-role">${p.gender === 'male' ? '男生' : '女生'}</div>
           ${p.bio ? `<div class="profile-bio">${p.bio}</div>` : ''}
@@ -2140,7 +2206,7 @@ async function renderProfile(userId) {
 function showAgreement(type) {
   if (type === 'user') {
     $('agreementTitle').textContent = '用户协议';
-    $('agreementBody').innerHTML = `<p>欢迎使用漂流大厅（以下简称"本应用"）。使用本应用即表示您同意以下条款：</p>
+    $('agreementBody').innerHTML = `<p>欢迎使用漂屿（以下简称"本应用"）。使用本应用即表示您同意以下条款：</p>
     <br><p><b>1. 服务内容</b></p><p>本应用提供漂流瓶发布、浏览、匿名聊天等社交功能。</p>
     <br><p><b>2. 用户行为规范</b></p><p>用户不得发布违法、色情、暴力、骚扰等内容。违规内容将被删除，严重违规者将被封禁账号。</p>
     <br><p><b>3. 虚拟货币</b></p><p>漂流币为虚拟货币，可通过签到、邀请等方式免费获取，也可通过充值购买。充值后不支持退款，注销账号后余额清零。</p>
@@ -2149,7 +2215,7 @@ function showAgreement(type) {
     <br><p><b>6. 条款修改</b></p><p>我们保留修改本协议的权利，修改后将在应用内通知。</p>`;
   } else {
     $('agreementTitle').textContent = '隐私政策';
-    $('agreementBody').innerHTML = `<p>本隐私政策说明漂流大厅如何收集、使用和保护您的个人信息：</p>
+    $('agreementBody').innerHTML = `<p>本隐私政策说明漂屿如何收集、使用和保护您的个人信息：</p>
     <br><p><b>1. 信息收集</b></p><p>我们收集您的手机号码用于注册登录，收集昵称、性别等您主动填写的信息。</p>
     <br><p><b>2. 信息使用</b></p><p>收集的信息仅用于提供应用功能、身份验证和防滥用。我们不会向第三方出售您的信息。</p>
     <br><p><b>3. 信息安全</b></p><p>我们采取技术措施保护您的信息安全，手机号加密存储。</p>

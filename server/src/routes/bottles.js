@@ -30,12 +30,28 @@ router.get('/', (req, res) => {
   // Map to public view
   const result = bottles.map(b => {
     const author = findUserById(b.authorId);
+    if (b.anonymous) {
+      return {
+        id: b.id,
+        content: b.content,
+        authorId: '',
+        authorNickname: '匿名',
+        authorGender: '',
+        authorAvatar: '',
+        anonymous: true,
+        status: b.status,
+        createdAt: b.createdAt,
+        expiresAt: b.createdAt + db().config.bottle_display_hours * 3600000
+      };
+    }
     return {
       id: b.id,
       content: b.content,
       authorId: b.authorId,
       authorNickname: author ? author.nickname : '匿名用户',
       authorGender: b.authorGender,
+      authorAvatar: author ? author.avatar : '',
+      anonymous: false,
       status: b.status,
       createdAt: b.createdAt,
       expiresAt: b.createdAt + db().config.bottle_display_hours * 3600000
@@ -52,18 +68,31 @@ router.get('/:id', (req, res) => {
     return res.json({ success: false, error: '漂流瓶不存在' });
   }
   const author = findUserById(bottle.authorId);
+  if (bottle.anonymous) {
+    return res.json({
+      success: true,
+      bottle: {
+        ...bottle,
+        authorId: '',
+        authorNickname: '匿名',
+        authorGender: '',
+        authorAvatar: ''
+      }
+    });
+  }
   res.json({
     success: true,
     bottle: {
       ...bottle,
-      authorNickname: author ? author.nickname : '匿名用户'
+      authorNickname: author ? author.nickname : '匿名用户',
+      authorAvatar: author ? author.avatar : ''
     }
   });
 });
 
 // Create bottle
 router.post('/', auth, async (req, res) => {
-  const { content } = req.body;
+  const { content, anonymous } = req.body;
   const config = db().config;
   
   // Validate
@@ -99,6 +128,7 @@ router.post('/', auth, async (req, res) => {
     content: content.trim(),
     authorId: req.user.id,
     authorGender: req.user.role,
+    anonymous: !!anonymous,
     status: 'displaying',
     deleted: false,
     createdAt: Date.now()
@@ -155,6 +185,7 @@ router.get('/my/list', auth, (req, res) => {
       id: b.id,
       content: b.content,
       status: b.status,
+      anonymous: b.anonymous,
       createdAt: b.createdAt
     }))
   });
