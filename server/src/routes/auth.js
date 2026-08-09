@@ -48,7 +48,7 @@ router.post('/email/send', async (req, res) => {
 // Register with phone+code OR email+code, then set a password.
 // Verification code proves ownership of the phone/email; password enables future password login.
 router.post('/register', async (req, res) => {
-  const { type, phone, email, code, password } = req.body;
+  const { type, phone, email, code, password, role } = req.body;
 
   if (type !== 'phone' && type !== 'email') {
     return res.json({ success: false, error: '注册方式不正确' });
@@ -58,6 +58,9 @@ router.post('/register', async (req, res) => {
   }
   if (!password || password.length < 6) {
     return res.json({ success: false, error: '密码至少 6 位' });
+  }
+  if (!['male', 'female'].includes(role)) {
+    return res.json({ success: false, error: '请选择性别' });
   }
 
   let verifyResult;
@@ -80,6 +83,8 @@ router.post('/register', async (req, res) => {
   }
 
   const user = createUser(type === 'phone' ? phone : null, type === 'email' ? email : null, password);
+  user.role = role;
+  user.gender = role;
   user.lastLoginAt = Date.now();
   save();
 
@@ -190,7 +195,10 @@ router.post('/role', (req, res) => {
   if (!['male', 'female'].includes(role)) {
     return res.json({ success: false, error: '请选择角色' });
   }
-  
+  // 性别一经设置永久绑定，不可修改（注册时已选，或验证码登录用户仅首次引导可选）
+  if (user.role) {
+    return res.json({ success: false, error: '性别已设置，不可修改' });
+  }
   user.role = role;
   user.gender = role;
   save();

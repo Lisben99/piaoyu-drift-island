@@ -1021,7 +1021,7 @@ $('loginBtn').onclick = async function() {
       setToken(res.token);
       currentUser = res.user;
       if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
-      if (res.user.isNewUser || !res.user.role) {
+      if (!res.user.role) {
         navigateTo('role', true);
       } else {
         navigateTo('home', true);
@@ -1049,7 +1049,7 @@ $('pwdLoginBtn').onclick = async function() {
     if (res.success) {
       setToken(res.token);
       currentUser = res.user;
-      if (res.user.isNewUser || !res.user.role) navigateTo('role', true);
+      if (!res.user.role) navigateTo('role', true);
       else navigateTo('home', true);
     } else {
       showToast(res.error || '登录失败');
