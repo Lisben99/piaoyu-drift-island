@@ -150,6 +150,13 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
         </div>
         <span class="auth-note" style="margin-top:8px">性别确认后将永久绑定，不可修改</span>
       </div>
+      <div style="margin-top:15px">
+        <label class="field-label">邀请码（选填）</label>
+        <div class="input-wrap">
+          <input class="plain-input" type="text" maxlength="40" placeholder="填写好友的邀请码，双方各得奖励" id="regInviteInput" />
+        </div>
+        <span class="auth-note" style="margin-top:8px">选填：填写邀请码，你和好友注册后都可获得漂流币奖励</span>
+      </div>
       <button class="primary-button" id="registerBtn">注册并登录</button>
       <button class="text-button" id="regChangeBtn" style="text-align:center">更换账号</button>
     </div>
@@ -299,12 +306,18 @@ $('registerBtn').onclick = async function() {
   const isEmail = loginMode === 'email';
   const payload = { type: isEmail ? 'email' : 'phone', code, password, role: regGender };
   if (isEmail) payload.email = loginEmail; else payload.phone = loginPhone;
+  const inviteCode = $('regInviteInput') ? $('regInviteInput').value.trim() : '';
+  if (inviteCode) payload.inviteCode = inviteCode;
   try {
     const res = await api('/auth/register', { method: 'POST', body: JSON.stringify(payload) });
     if (res.success) {
       setToken(res.token);
-      showToast('注册成功，正在进入…');
-      setTimeout(() => { location.href = 'index.html'; }, 700);
+      if (res.invite && res.invite.applied) {
+        showToast(`注册成功！你和好友各获得 ${res.invite.inviteeBonus} 枚漂流币`);
+      } else {
+        showToast('注册成功，正在进入…');
+      }
+      setTimeout(() => { location.href = 'index.html'; }, 900);
       return;
     } else {
       showToast(res.error || '注册失败');
@@ -320,6 +333,16 @@ $('regChangeBtn').onclick = function() {
   $('regCodeStep').classList.add('hidden');
   if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
 };
+
+// Prefill invite code from share link (e.g. register.html?inv=XXXX)
+(function prefillInvite() {
+  try {
+    const params = new URLSearchParams(location.search);
+    const inv = params.get('inv');
+    const el = $('regInviteInput');
+    if (inv && el && !el.value) el.value = inv;
+  } catch (e) { /* ignore */ }
+})();
 </script>
 </body>
 </html>

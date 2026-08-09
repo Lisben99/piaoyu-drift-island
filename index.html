@@ -1815,10 +1815,11 @@ async function renderInvite() {
   try {
     const res = await api('/invite/info');
     if (res.success) {
+      const link = (location.origin + '/register.html?inv=' + res.inviteCode);
       $('inviteContent').innerHTML = `
         <div class="invite-card">
-          <div class="title">邀请好友，各得 ${res.inviteBonus} 枚</div>
-          <div class="desc">分享你的邀请码，好友注册后双方各获得 ${res.inviteBonus} 枚漂流币</div>
+          <div class="title">邀请好友赚漂流币</div>
+          <div class="desc">分享下方邀请码或链接，好友注册后：你可得 <b>${res.inviteBonus}</b> 枚，好友可得 <b>${res.invitedBonus}</b> 枚</div>
           <div class="invite-code-box">
             <span class="code">${res.inviteCode}</span>
             <button class="text-button" style="color:#fff" onclick="copyCode('${res.inviteCode}')">复制</button>
@@ -1829,25 +1830,40 @@ async function renderInvite() {
           <div class="invite-stat"><div class="num">${res.monthInvited}</div><div class="lbl">本月邀请</div></div>
           <div class="invite-stat"><div class="num">${res.monthlyLimit - res.monthInvited}</div><div class="lbl">剩余名额</div></div>
         </div>
-        <button class="primary-button" onclick="simulateInvite()">模拟邀请好友 (+${res.inviteBonus}币)</button>
-        <div style="text-align:center;margin-top:10px;font-size:12px;color:#98a2a0">每月最多邀请 ${res.monthlyLimit} 人</div>`;
+        <button class="primary-button" onclick="copyInviteLink('${res.inviteCode}')">复制邀请链接并分享</button>
+        <div style="text-align:center;margin-top:10px;font-size:12px;color:#98a2a0">每月最多邀请 ${res.monthlyLimit} 人</div>
+        <div style="text-align:center;margin-top:6px;font-size:11px;color:#b0b8b7">邀请链接：${link}</div>`;
     }
   } catch (e) {}
 }
 
 function copyCode(code) {
-  navigator.clipboard.writeText(code).then(() => showToast('邀请码已复制'));
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(() => showToast('邀请码已复制'), () => fallbackCopy(code));
+  } else { fallbackCopy(code); }
 }
 
-async function simulateInvite() {
+function copyInviteLink(code) {
+  const link = location.origin + '/register.html?inv=' + code;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(link).then(() => showToast('邀请链接已复制'), () => fallbackCopy(link));
+  } else { fallbackCopy(link); }
+}
+
+function fallbackCopy(text) {
   try {
-    const res = await api('/invite/simulate', { method: 'POST' });
-    if (res.success) {
-      showToast(`邀请成功！获得 ${res.bonus} 枚漂流币`);
-      currentUser.coins = res.coins;
-      renderInvite();
-    } else { showToast(res.error || '邀请失败'); }
-  } catch (e) {}
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast(ok ? '已复制到剪贴板' : '复制失败，请手动复制');
+  } catch (e) {
+    showToast('复制失败，请手动复制');
+  }
 }
 
 /* ================================================================

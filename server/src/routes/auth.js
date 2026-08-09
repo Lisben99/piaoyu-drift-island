@@ -7,6 +7,7 @@ const { sendVerificationCode, verifyCode } = require('../services/sms');
 const { sendVerificationCode: sendEmailVerificationCode, verifyCode: verifyEmailCode } = require('../services/email');
 const { signUserToken } = require('../utils/jwt');
 const { findUserByPhone, findUserByEmail, createUser, setUserPassword, verifyPassword, db, save } = require('../db');
+const { applyInvite } = require('../services/invite');
 
 // Shape the user object returned to clients (avoids leaking passwordHash)
 function publicUser(user) {
@@ -48,7 +49,7 @@ router.post('/email/send', async (req, res) => {
 // Register with phone+code OR email+code, then set a password.
 // Verification code proves ownership of the phone/email; password enables future password login.
 router.post('/register', async (req, res) => {
-  const { type, phone, email, code, password, role } = req.body;
+  const { type, phone, email, code, password, role, inviteCode } = req.body;
 
   if (type !== 'phone' && type !== 'email') {
     return res.json({ success: false, error: '注册方式不正确' });
@@ -88,8 +89,11 @@ router.post('/register', async (req, res) => {
   user.lastLoginAt = Date.now();
   save();
 
+  // Apply invite reward if a valid invite code was provided (binds relationship + grants both parties coins)
+  const inviteInfo = applyInvite(user, inviteCode);
+
   const token = signUserToken(user);
-  res.json({ success: true, token, user: publicUser(user) });
+  res.json({ success: true, token, user: publicUser(user), invite: inviteInfo });
 });
 
 // Login: either (account + password) or (phone|email + code).

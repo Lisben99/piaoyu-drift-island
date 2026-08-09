@@ -708,6 +708,7 @@ async function renderConfig() {
         <div class="config-item"><label>连续3天额外奖励</label><input type="number" id="cfg_consecutive_day3_bonus" value="${c.consecutive_day3_bonus}"></div>
         <div class="config-item"><label>连续7天额外奖励</label><input type="number" id="cfg_consecutive_day7_bonus" value="${c.consecutive_day7_bonus}"></div>
         <div class="config-item"><label>邀请奖励</label><input type="number" id="cfg_invite_bonus" value="${c.invite_bonus}"></div>
+        <div class="config-item"><label>受邀注册奖励</label><input type="number" id="cfg_invited_bonus" value="${c.invited_bonus}"></div>
         <div class="config-item"><label>每月邀请上限</label><input type="number" id="cfg_invite_monthly_limit" value="${c.invite_monthly_limit}"></div>
         <div class="config-item"><label>漂流瓶发布费用</label><input type="number" id="cfg_bottle_publish_cost" value="${c.bottle_publish_cost}"></div>
         <div class="config-item"><label>漂流瓶展示时长(小时)</label><input type="number" id="cfg_bottle_display_hours" value="${c.bottle_display_hours}"></div>
@@ -734,6 +735,7 @@ async function saveConfig() {
     consecutive_day3_bonus: parseInt(document.getElementById('cfg_consecutive_day3_bonus').value),
     consecutive_day7_bonus: parseInt(document.getElementById('cfg_consecutive_day7_bonus').value),
     invite_bonus: parseInt(document.getElementById('cfg_invite_bonus').value),
+    invited_bonus: parseInt(document.getElementById('cfg_invited_bonus').value),
     invite_monthly_limit: parseInt(document.getElementById('cfg_invite_monthly_limit').value),
     bottle_publish_cost: parseInt(document.getElementById('cfg_bottle_publish_cost').value),
     bottle_display_hours: parseInt(document.getElementById('cfg_bottle_display_hours').value),

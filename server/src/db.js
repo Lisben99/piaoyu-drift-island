@@ -34,6 +34,7 @@ const DEFAULT_CONFIG = {
   consecutive_day3_bonus: 1,
   consecutive_day7_bonus: 2,
   invite_bonus: 5,
+  invited_bonus: 5,
   invite_monthly_limit: 10,
   bottle_publish_cost: 2,
   bottle_display_hours: 48,
@@ -235,6 +236,12 @@ function findUserByEmail(email) {
   return cache.users.find(u => u.email === email);
 }
 
+function findUserByInviteCode(code) {
+  const c = String(code || '').trim().toLowerCase();
+  if (!c) return null;
+  return cache.users.find(u => (u.inviteCode || '').toLowerCase() === c);
+}
+
 function createUser(phone, email, password = null) {
   const config = cache.config;
   const passwordHash = password ? bcrypt.hashSync(password, 10) : '';
@@ -384,6 +391,7 @@ module.exports = {
   findUserById,
   findUserByPhone,
   findUserByEmail,
+  findUserByInviteCode,
   createUser,
   setUserPassword,
   verifyPassword,
