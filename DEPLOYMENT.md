@@ -89,6 +89,7 @@ npm start                             # = node src/index.js
   - 一个免费版 PostgreSQL 数据库 `drift-island-db`
   - 一个免费版 Web Service `drift-island-api`
 - **自动部署**：`autoDeploy: true`，推送到 `main` 即自动重新构建并部署。
+- **⚠️ 部署铁律（2026-08-09 实测踩坑）**：Render 只监听 **`main` 分支**。所有改动必须推到 `main`（`git push origin main` 或本地在 `main` 上 `git push origin HEAD:main`）。**推到 `master` 不会触发部署**，线上会悄无声息地停在旧代码（表现为：health 显示新 env，但新接口 404、新字段缺失）。本仓库本地分支也叫 `main`、但历史上有过推到 `master` 的操作，务必以 `main` 为准。若发现线上与 git 最新提交不一致，第一步先确认推送的是 `main`。
 - **初次部署**：在 Render 控制台用 GitHub 账号授权后，选择仓库以 Blueprint 方式导入即可。
 
 > 踩坑：render.yaml 中 `fromDatabase` 必须是**嵌套对象**格式，不能是字符串：
@@ -225,6 +226,8 @@ npm start                             # = node src/index.js
    - 腾讯内容审核：已用 `tencentcloud-sdk-nodejs-tms` 实现 `server/src/services/moderation.js` 的 `moderateTencent`，无密钥时自动回退 local。
 3. 生产服务商密钥需由运营方提供后填入 Render 环境变量（短信/审核密钥已具备，支付待提供）。
 4. 建议补充：操作日志可视化、定期数据库备份脚本、错误监控（如 Sentry）。
+
+> **⚠️ 短信现状（2026-08-09）**：阿里云短信账户因**余额不足被停用**（`isv.OUT_OF_SERVICE ... insufficient balance`），`SMS_PROVIDER=aliyun` 且 KEY/SECRET 已配，但真实短信发不出。由于注册无独立接口、走「手机号+短信验证码」自动建号，**短信挂 → 新用户无法注册 → 也无法兑换码**。两条恢复路径：① 给阿里云账户充值（买短信认证套餐）恢复真实短信；② 临时让 `sms.js` 在阿里云发送失败时回退 dev 模式（验证码返回前端，注册立即可用，代价是过渡期手机号无真实校验）。运营方决定「暂不动」，注册环节待另行处理。
 
 ---
 
