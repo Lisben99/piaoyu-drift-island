@@ -31,6 +31,9 @@ app.use(express.static(webRoot, {
 const wsService = require('./services/websocket');
 wsService.init(server);
 
+// Bot engine (cold-start bot pool) — seeded + scheduled on startup
+const botEngine = require('./services/botEngine');
+
 // API routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/bottles', require('./routes/bottles'));
@@ -84,6 +87,9 @@ async function start() {
     await initDb();
     console.log('[Server] Database ready.');
   }
+
+  // Seed bots + start proactive-post scheduler (db must be loaded first).
+  botEngine.init();
 
   server.listen(PORT, () => {
     console.log(`\n========================================`);

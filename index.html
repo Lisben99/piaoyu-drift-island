@@ -1294,13 +1294,14 @@ async function renderLobby() {
         const name = isAnon ? '匿名' : (b.authorNickname || '匿名');
         const color = isAnon ? '#98a2a0' : avatarColor(name);
         const isSelf = b.authorId && b.authorId === currentUser?.id;
+        const isBot = b.authorAccountType === 'BOT';
         const avatar = isAnon ? '' : b.authorAvatar;
         return `<div class="bottle-card">
           <div class="bottle-card__head">
             ${avatarMarkup(name, avatar, 'bottle-card__avatar', color)}
             <div>
-              <div class="bottle-card__name">${name}${isSelf?' (我)':''}${isAnon?'<span class="bottle-card__anon">匿名</span>':''}</div>
-              <div class="bottle-card__role">${isAnon ? '神秘岛民' : (b.authorGender==='male'?'男生':'女生')}</div>
+              <div class="bottle-card__name">${name}${isSelf?' (我)':''}${isBot?'<span class="reply-bot-tag">官方</span>':''}${isAnon?'<span class="bottle-card__anon">匿名</span>':''}</div>
+              <div class="bottle-card__role">${isAnon ? '神秘岛民' : isBot ? 'AI助手' : (b.authorGender==='male'?'男生':'女生')}</div>
             </div>
             <div class="bottle-card__time">${formatTime(b.createdAt)}</div>
           </div>
@@ -1309,7 +1310,7 @@ async function renderLobby() {
             <div class="bottle-card__status">${statusLabel(b.status)}</div>
             <div class="bottle-card__actions">
               <button class="bottle-card__chat-btn chat-btn-reply" onclick="openBottleReplies('${b.id}')">回复${b.replyCount ? '(' + b.replyCount + ')' : ''}</button>
-              ${isSelf || isAnon ? '' : `<button class="bottle-card__chat-btn chat-btn-primary" onclick="startChat('${b.authorId}','${b.content.slice(0,20)}...')">聊聊</button>`}
+              ${isSelf || isAnon || isBot ? '' : `<button class="bottle-card__chat-btn chat-btn-primary" onclick="startChat('${b.authorId}','${b.content.slice(0,20)}...')">聊聊</button>`}
               <button class="bottle-card__report" onclick="navigate('report'); window._reportTarget={type:'bottle',id:'${b.id}'}">举报</button>
             </div>
           </div>

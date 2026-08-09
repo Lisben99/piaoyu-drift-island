@@ -66,7 +66,12 @@ const DEFAULT_CONFIG = {
   bot_daily_max_posts: 12,
   bot_daily_max_replies: 200,
   csi_low_threshold: 5,              // CSI below -> high bot activity
-  csi_high_threshold: 50             // CSI above -> bots stand down
+  csi_high_threshold: 50,            // CSI above -> bots stand down
+  bot_reply_probability: 0.8,        // chance a qualifying unanswered bottle gets a bot reply
+  csi_w1: 1,                        // weight: human user count
+  csi_w2: 10,                       // weight: recent (10min) human messages
+  csi_w3: 50,                       // weight: human reply rate
+  csi_w4: 2                         // weight: unanswered human bottles (penalty)
 };
 
 const DEFAULT_ADMIN = {
@@ -92,6 +97,7 @@ function createDefaultDB() {
     smsCodes: [],
     emailCodes: [],
     redeemCodes: [],
+    botProfiles: [],
     blacklist: [],
     config: { ...DEFAULT_CONFIG },
     admins: [DEFAULT_ADMIN]
@@ -404,6 +410,151 @@ function getRedeemCodes() {
   return cache.redeemCodes;
 }
 
+// ===== Bot helpers (AGENTS §5–§13 / §16 / §21) =====
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+// Default bot personas for cold-start. Seeded once on first init.
+const BOT_SEEDS = [
+  {
+    displayName: '漂屿小助手',
+    genderDisplay: 'official',
+    personaPrompt: '你是漂屿的官方AI互动助手，用于冷启动阶段帮助用户自然表达。每次回复10～40字，温柔简短，多问轻松的小问题，绝不索要联系方式或引导付费。',
+    speakingStyle: '温暖、自然、克制',
+    activityWeight: 1.2
+  },
+  {
+    displayName: '夜聊搭子',
+    genderDisplay: 'neutral',
+    personaPrompt: '你是个习惯晚睡、喜欢深夜聊天的AI搭子，语气轻松随性，偶尔俏皮，回复简短（10-40字），多顺着对方的话问下去。',
+    speakingStyle: '随性、俏皮',
+    activityWeight: 1.0
+  },
+  {
+    displayName: '听海的人',
+    genderDisplay: 'neutral',
+    personaPrompt: '你是个安静善于倾听的AI朋友，语气温和，少说多问，鼓励对方表达，不打断不评判，回复简短自然。',
+    speakingStyle: '温和、安静',
+    activityWeight: 0.9
+  },
+  {
+    displayName: '元气小太阳',
+    genderDisplay: 'neutral',
+    personaPrompt: '你是个充满元气、积极向上的AI伙伴，语气轻快，偶尔用emoji，回复简短（10-40字），擅长接话和抛小问题。',
+    speakingStyle: '轻快、阳光',
+    activityWeight: 1.0
+  },
+  {
+    displayName: '慢半拍',
+    genderDisplay: 'neutral',
+    personaPrompt: '你是个慢节奏、佛系的AI朋友，语气松弛，不急着给建议，常回以轻松的感慨或反问，回复简短自然。',
+    speakingStyle: '松弛、佛系',
+    activityWeight: 0.8
+  }
+];
+
+// Create a BOT-account-type user + its bot profile. account_type allows the
+// DB to distinguish bots from humans (AGENTS §5.2 / §25 rule 5).
+function createBot(displayName, genderDisplay, personaPrompt, speakingStyle, activityWeight) {
+  const user = {
+    id: genId('u'),
+    phone: '',
+    email: '',
+    passwordHash: '',
+    nickname: displayName,
+    avatar: '',
+    bio: '我是漂屿的AI互动助手',
+    gender: '',
+    role: '',
+    status: 'active',
+    restrictions: { publish: false, chat: false },
+    coins: 0,
+    totalRecharged: 0,
+    totalInvited: 0,
+    invitedBy: null,
+    inviteCode: genId('inv'),
+    checkin: { lastDate: null, consecutive: 0 },
+    account_type: 'BOT',
+    createdAt: Date.now(),
+    lastLoginAt: Date.now()
+  };
+  cache.users.push(user);
+  const profile = {
+    botId: genId('bot'),
+    userId: user.id,
+    displayName,
+    avatar: '',
+    personaPrompt: personaPrompt || '',
+    speakingStyle: speakingStyle || '',
+    activityWeight: activityWeight || 1.0,
+    genderDisplay: genderDisplay || 'neutral',
+    enabled: true,
+    dailyPosts: 0,
+    dailyReplies: 0,
+    statsDate: todayStr(),
+    createdAt: Date.now()
+  };
+  cache.botProfiles.push(profile);
+  save();
+  return profile;
+}
+
+// Seed the default bot pool exactly once (when botProfiles is empty).
+function seedBotsIfNeeded() {
+  if (!cache.botProfiles) cache.botProfiles = [];
+  if (cache.botProfiles.length > 0) return false;
+  for (const s of BOT_SEEDS) {
+    createBot(s.displayName, s.genderDisplay, s.personaPrompt, s.speakingStyle, s.activityWeight);
+  }
+  saveNow();
+  return true;
+}
+
+function getBotProfiles() {
+  return cache.botProfiles || [];
+}
+
+function getEnabledBots() {
+  return (cache.botProfiles || []).filter(b => b.enabled);
+}
+
+function findBotProfileByUserId(userId) {
+  return (cache.botProfiles || []).find(b => b.userId === userId);
+}
+
+function findBotProfileByBotId(botId) {
+  return (cache.botProfiles || []).find(b => b.botId === botId);
+}
+
+function updateBotProfile(botId, updates) {
+  const p = findBotProfileByBotId(botId);
+  if (!p) return null;
+  const allowed = ['displayName', 'avatar', 'personaPrompt', 'speakingStyle', 'activityWeight', 'genderDisplay', 'enabled', 'dailyMaxPosts', 'dailyMaxReplies'];
+  for (const k of allowed) {
+    if (updates[k] !== undefined) p[k] = updates[k];
+  }
+  save();
+  return p;
+}
+
+// Increment a bot's daily post/reply counter, auto-resetting on a new day.
+function recordBotActivity(botId, type) {
+  const p = findBotProfileByBotId(botId);
+  if (!p) return;
+  const t = todayStr();
+  if (p.statsDate !== t) {
+    p.dailyPosts = 0;
+    p.dailyReplies = 0;
+    p.statsDate = t;
+  }
+  if (type === 'post') p.dailyPosts += 1;
+  else if (type === 'reply') p.dailyReplies += 1;
+  save();
+}
+
 module.exports = {
   db: () => cache,
   load,
@@ -430,6 +581,15 @@ module.exports = {
   addRedeemCode,
   findRedeemCodeByKey,
   getRedeemCodes,
+  // Bot helpers
+  createBot,
+  seedBotsIfNeeded,
+  getBotProfiles,
+  getEnabledBots,
+  findBotProfileByUserId,
+  findBotProfileByBotId,
+  updateBotProfile,
+  recordBotActivity,
   DEFAULT_CONFIG,
   USE_PG
 };

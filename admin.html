@@ -159,6 +159,7 @@ input,textarea,select{font-family:inherit;outline:none;resize:none}
       <div class="sidebar__item" onclick="switchTab('redeem')">🎟️ 卡密管理</div>
       <div class="sidebar__item" onclick="switchTab('reports')">⚠️ 举报管理 <span class="sidebar__badge hidden" id="reportBadge"></span></div>
       <div class="sidebar__item" onclick="switchTab('support')">🎫 客服工单 <span class="sidebar__badge hidden" id="supportBadge"></span></div>
+      <div class="sidebar__item" onclick="switchTab('bots')">🤖 机器人管理</div>
       <div class="sidebar__item" onclick="switchTab('config')">⚙️ 业务配置</div>
       <div class="sidebar__item" onclick="switchTab('audit')">📋 审计日志</div>
     </div>
@@ -280,10 +281,10 @@ function adminLogout() {
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.sidebar__item').forEach((el, i) => {
-    const tabs = ['dashboard','users','bottles','coins','orders','redeem','reports','support','config','audit'];
+    const tabs = ['dashboard','users','bottles','coins','orders','redeem','reports','support','bots','config','audit'];
     el.classList.toggle('active', tabs[i] === tab);
   });
-  const titles = { dashboard:'数据概览', users:'用户管理', bottles:'漂流瓶管理', coins:'漂流币管理', orders:'充值订单', redeem:'卡密管理', reports:'举报管理', support:'客服工单', config:'业务配置', audit:'审计日志' };
+  const titles = { dashboard:'数据概览', users:'用户管理', bottles:'漂流瓶管理', coins:'漂流币管理', orders:'充值订单', redeem:'卡密管理', reports:'举报管理', support:'客服工单', bots:'机器人管理', config:'业务配置', audit:'审计日志' };
   document.getElementById('pageTitle').textContent = titles[tab];
   pagination = { page: 1, pageSize: 20, total: 0 };
   renderTab();
@@ -301,6 +302,7 @@ async function renderTab() {
     else if (currentTab === 'redeem') await renderRedeemCodes();
     else if (currentTab === 'reports') await renderReports();
     else if (currentTab === 'support') await renderSupport();
+    else if (currentTab === 'bots') await renderBots();
     else if (currentTab === 'config') await renderConfig();
     else if (currentTab === 'audit') await renderAudit();
   } catch (e) { c.innerHTML = '<div style="text-align:center;padding:40px;color:#e74c3c">加载失败，请重试</div>'; }
@@ -854,12 +856,17 @@ async function renderConfig() {
         <div class="config-item"><label>回复延迟下限(秒)</label><input type="number" id="cfg_bot_reply_delay_min_seconds" value="${c.bot_reply_delay_min_seconds}"></div>
         <div class="config-item"><label>回复延迟上限(秒)</label><input type="number" id="cfg_bot_reply_delay_max_seconds" value="${c.bot_reply_delay_max_seconds}"></div>
         <div class="config-item"><label>每条最多 Bot 回复数</label><input type="number" id="cfg_bot_max_replies_per_message" value="${c.bot_max_replies_per_message}"></div>
+        <div class="config-item"><label>回复触发概率(0~1)</label><input type="number" step="0.05" id="cfg_bot_reply_probability" value="${c.bot_reply_probability}"></div>
         <div class="config-item"><label>主动发帖间隔(分钟)</label><input type="number" id="cfg_bot_public_post_interval_minutes" value="${c.bot_public_post_interval_minutes}"></div>
         <div class="config-item"><label>每日最多发帖</label><input type="number" id="cfg_bot_daily_max_posts" value="${c.bot_daily_max_posts}"></div>
         <div class="config-item"><label>每日最多回复</label><input type="number" id="cfg_bot_daily_max_replies" value="${c.bot_daily_max_replies}"></div>
         <div class="config-item"><label>CSI 低阈值</label><input type="number" id="cfg_csi_low_threshold" value="${c.csi_low_threshold}"></div>
         <div class="config-item"><label>CSI 高阈值</label><input type="number" id="cfg_csi_high_threshold" value="${c.csi_high_threshold}"></div>
         <div class="config-item"><label>整体活跃权重(0~2)</label><input type="number" step="0.1" id="cfg_bot_active_weight" value="${c.bot_active_weight}"></div>
+        <div class="config-item"><label>CSI权重·真人用户数</label><input type="number" id="cfg_csi_w1" value="${c.csi_w1}"></div>
+        <div class="config-item"><label>CSI权重·近10分消息</label><input type="number" id="cfg_csi_w2" value="${c.csi_w2}"></div>
+        <div class="config-item"><label>CSI权重·真人回复率</label><input type="number" id="cfg_csi_w3" value="${c.csi_w3}"></div>
+        <div class="config-item"><label>CSI权重·未回复惩罚</label><input type="number" id="cfg_csi_w4" value="${c.csi_w4}"></div>
       </div>
       <button class="btn-sm btn-primary" style="margin-top:16px;padding:10px 24px" onclick="saveConfig()">保存配置</button>
     </div>`;
@@ -901,11 +908,124 @@ async function saveConfig() {
     bot_daily_max_replies: parseInt(document.getElementById('cfg_bot_daily_max_replies').value),
     csi_low_threshold: parseInt(document.getElementById('cfg_csi_low_threshold').value),
     csi_high_threshold: parseInt(document.getElementById('cfg_csi_high_threshold').value),
+    bot_reply_probability: parseFloat(document.getElementById('cfg_bot_reply_probability').value),
+    csi_w1: parseInt(document.getElementById('cfg_csi_w1').value),
+    csi_w2: parseInt(document.getElementById('cfg_csi_w2').value),
+    csi_w3: parseInt(document.getElementById('cfg_csi_w3').value),
+    csi_w4: parseInt(document.getElementById('cfg_csi_w4').value),
     bot_active_weight: parseFloat(document.getElementById('cfg_bot_active_weight').value)
   };
   const res = await api('/config', { method: 'POST', body: JSON.stringify(updates) });
   if (res.success) showToast('配置已保存');
   else showToast(res.error || '保存失败');
+}
+
+/* ================================================================
+   BOT MANAGEMENT (AGENTS §16)
+   ================================================================ */
+async function renderBots() {
+  const res = await api('/bots');
+  if (!res.success) return;
+  const bots = res.bots || [];
+  const rows = bots.map(b => `
+    <tr>
+      <td>${escapeHtml(b.displayName)} ${b.enabled ? '<span class="badge badge-active">启用</span>' : '<span class="badge badge-restricted">停用</span>'}</td>
+      <td>${escapeHtml(b.genderDisplay || '')}</td>
+      <td>${escapeHtml(b.speakingStyle || '')}</td>
+      <td>${b.dailyPosts}/${b.dailyMaxPosts}</td>
+      <td>${b.dailyReplies}/${b.dailyMaxReplies}</td>
+      <td>${b.activityWeight}</td>
+      <td class="table__actions">
+        <button class="btn-sm ${b.enabled ? 'btn-warning' : 'btn-primary'}" onclick="toggleBot('${b.botId}', ${!b.enabled})">${b.enabled ? '停用' : '启用'}</button>
+        <button class="btn-sm btn-primary" onclick="editBot('${b.botId}')">编辑</button>
+        <button class="btn-sm btn-danger" onclick="deleteBot('${b.botId}')">删除</button>
+      </td>
+    </tr>`).join('');
+  document.getElementById('pageContent').innerHTML = `
+    <div class="card">
+      <div class="card__title">机器人管理（冷启动 Bot 池）</div>
+      <p style="font-size:13px;color:#888;margin:0 0 12px">机器人用于冷启动阶段补充互动，随真人活跃自动降低权重。所有机器人账号 account_type=BOT，消息可追踪。</p>
+      <button class="btn-sm btn-primary" style="margin-bottom:14px" onclick="createBotUI()">+ 新增机器人</button>
+      <table class="table">
+        <thead><tr><th>昵称/状态</th><th>性别展示</th><th>说话风格</th><th>今日发帖</th><th>今日回复</th><th>活跃权重</th><th>操作</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="7" style="text-align:center;color:#999">暂无机器人</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+
+async function toggleBot(botId, enabled) {
+  const res = await api('/bots/' + botId, { method: 'PUT', body: JSON.stringify({ enabled }) });
+  if (res.success) renderBots();
+  else showToast(res.error || '操作失败');
+}
+
+function botEditForm(b) {
+  b = b || {};
+  return `<div style="display:flex;flex-direction:column;gap:10px">
+    <div><label style="font-size:12px">昵称</label><input id="bot_displayName" value="${escapeHtml(b.displayName || '')}" style="width:100%"></div>
+    <div><label style="font-size:12px">性别展示(official/neutral/male/female)</label><input id="bot_genderDisplay" value="${escapeHtml(b.genderDisplay || 'neutral')}" style="width:100%"></div>
+    <div><label style="font-size:12px">说话风格</label><input id="bot_speakingStyle" value="${escapeHtml(b.speakingStyle || '')}" style="width:100%"></div>
+    <div><label style="font-size:12px">角色 Prompt</label><textarea id="bot_personaPrompt" style="width:100%;min-height:70px">${escapeHtml(b.personaPrompt || '')}</textarea></div>
+    <div><label style="font-size:12px">活跃权重(0~2)</label><input id="bot_activityWeight" type="number" step="0.1" value="${b.activityWeight != null ? b.activityWeight : 1}" style="width:100%"></div>
+    ${b.botId ? `<div style="display:flex;gap:10px">
+      <div style="flex:1"><label style="font-size:12px">每日最多发帖</label><input id="bot_dailyMaxPosts" type="number" value="${b.dailyMaxPosts != null ? b.dailyMaxPosts : ''}" placeholder="留空用默认配置" style="width:100%"></div>
+      <div style="flex:1"><label style="font-size:12px">每日最多回复</label><input id="bot_dailyMaxReplies" type="number" value="${b.dailyMaxReplies != null ? b.dailyMaxReplies : ''}" placeholder="留空用默认配置" style="width:100%"></div>
+    </div>` : ''}
+  </div>`;
+}
+
+function createBotUI() {
+  openModal('新增机器人', botEditForm({}), [
+    { text: '取消', cancel: true },
+    { text: '创建', onClick: async () => {
+      const body = {
+        displayName: document.getElementById('bot_displayName').value.trim(),
+        genderDisplay: document.getElementById('bot_genderDisplay').value.trim(),
+        speakingStyle: document.getElementById('bot_speakingStyle').value.trim(),
+        personaPrompt: document.getElementById('bot_personaPrompt').value.trim(),
+        activityWeight: parseFloat(document.getElementById('bot_activityWeight').value) || 1
+      };
+      const res = await api('/bots', { method: 'POST', body: JSON.stringify(body) });
+      if (res.success) { closeModal(); renderBots(); showToast('已创建'); }
+      else showToast(res.error || '创建失败');
+    }}
+  ]);
+}
+
+async function editBot(botId) {
+  const res = await api('/bots');
+  const b = (res.bots || []).find(x => x.botId === botId);
+  if (!b) return;
+  openModal('编辑机器人', botEditForm(b), [
+    { text: '取消', cancel: true },
+    { text: '保存', onClick: async () => {
+      const updates = {
+        displayName: document.getElementById('bot_displayName').value.trim(),
+        genderDisplay: document.getElementById('bot_genderDisplay').value.trim(),
+        speakingStyle: document.getElementById('bot_speakingStyle').value.trim(),
+        personaPrompt: document.getElementById('bot_personaPrompt').value.trim(),
+        activityWeight: parseFloat(document.getElementById('bot_activityWeight').value) || 1
+      };
+      const dp = document.getElementById('bot_dailyMaxPosts').value;
+      const dr = document.getElementById('bot_dailyMaxReplies').value;
+      if (dp !== '') updates.dailyMaxPosts = parseInt(dp);
+      if (dr !== '') updates.dailyMaxReplies = parseInt(dr);
+      const r2 = await api('/bots/' + botId, { method: 'PUT', body: JSON.stringify(updates) });
+      if (r2.success) { closeModal(); renderBots(); showToast('已保存'); }
+      else showToast(r2.error || '保存失败');
+    }}
+  ]);
+}
+
+function deleteBot(botId) {
+  showModal('删除机器人', '删除后该机器人将停止一切互动（历史发言保留），确定吗？', [
+    { text: '取消', cancel: true },
+    { text: '删除', danger: true, onClick: async () => {
+      const res = await api('/bots/' + botId, { method: 'DELETE' });
+      if (res.success) { renderBots(); showToast('已删除'); }
+      else showToast(res.error || '删除失败');
+    }}
+  ]);
 }
 
 // Compress an image file to a capped data URL (keeps the JSON DB small)

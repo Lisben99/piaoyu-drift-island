@@ -6,6 +6,7 @@ const router = express.Router();
 const { auth } = require('../middleware/auth');
 const { db, save, genId, findBottleById, getActiveBottles, addCoinTransaction, findUserById } = require('../db');
 const { moderate } = require('../services/moderation');
+const botEngine = require('../services/botEngine');
 
 // Shared helper: append a reply to a bottle. Used by both the HTTP endpoint
 // (human replies) and the Bot engine (automated replies). Returns the reply.
@@ -61,6 +62,7 @@ router.get('/', (req, res) => {
         status: b.status,
         createdAt: b.createdAt,
         replyCount: b.replies ? b.replies.length : 0,
+        authorAccountType: 'HUMAN',
         expiresAt: b.createdAt + db().config.bottle_display_hours * 3600000
       };
     }
@@ -72,6 +74,7 @@ router.get('/', (req, res) => {
       authorGender: b.authorGender,
       authorAvatar: author ? author.avatar : '',
       anonymous: false,
+      authorAccountType: author ? (author.account_type || 'HUMAN') : 'HUMAN',
       status: b.status,
       createdAt: b.createdAt,
       replyCount: b.replies ? b.replies.length : 0,
@@ -97,7 +100,8 @@ router.get('/:id', (req, res) => {
         authorId: '',
         authorNickname: '匿名',
         authorGender: '',
-        authorAvatar: ''
+        authorAvatar: '',
+        authorAccountType: 'HUMAN'
       }
     });
   }
@@ -107,6 +111,7 @@ router.get('/:id', (req, res) => {
       ...bottle,
       authorNickname: author ? author.nickname : '匿名用户',
       authorAvatar: author ? author.avatar : '',
+      authorAccountType: author ? (author.account_type || 'HUMAN') : 'HUMAN',
       replies: (bottle.replies || []).map(r => ({
         id: r.id,
         senderId: r.anonymous ? '' : r.senderId,
@@ -199,7 +204,13 @@ router.post('/', auth, async (req, res) => {
   };
   db().bottles.push(bottle);
   save();
-  
+
+  // Schedule a (random 30–90s) bot reply if the author is a human and no one
+  // replies first (AGENTS §7). Bot-authored bottles are skipped inside.
+  if ((req.user.account_type || 'HUMAN') === 'HUMAN') {
+    botEngine.scheduleBottleReply(bottle.id);
+  }
+
   res.json({
     success: true,
     bottle: { ...bottle, authorNickname: req.user.nickname },

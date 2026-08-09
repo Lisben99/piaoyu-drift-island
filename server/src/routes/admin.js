@@ -4,10 +4,11 @@
 const express = require('express');
 const router = express.Router();
 const { adminAuth } = require('../middleware/auth');
-const { db, save, genId, findUserById, findBottleById, addCoinTransaction, addAuditLog, findAdminById } = require('../db');
+const { db, save, genId, findUserById, findBottleById, addCoinTransaction, addAuditLog, findAdminById, createBot, getBotProfiles, findBotProfileByBotId, updateBotProfile } = require('../db');
 const { signAdminToken } = require('../utils/jwt');
 const { comparePassword, hashPassword } = require('../utils/crypto');
 const { PACKAGES, refundOrder, confirmPayment, rejectOrder } = require('../services/payment');
+const botEngine = require('../services/botEngine');
 
 // Admin login
 router.post('/login', (req, res) => {
@@ -64,8 +65,10 @@ router.get('/dashboard', adminAuth, (req, res) => {
   const now = Date.now();
   const todayStart = new Date().setHours(0, 0, 0, 0);
   
-  const totalUsers = database.users.filter(u => u.status !== 'deleted').length;
-  const dailyActive = database.users.filter(u => u.lastLoginAt && u.lastLoginAt >= todayStart).length;
+  // Exclude BOT accounts from human user metrics (AGENTS §5.2 / §25 rule 5).
+  const humanUsers = database.users.filter(u => u.status !== 'deleted' && (u.account_type || 'HUMAN') !== 'BOT');
+  const totalUsers = humanUsers.length;
+  const dailyActive = humanUsers.filter(u => u.lastLoginAt && u.lastLoginAt >= todayStart).length;
   const totalBottles = database.bottles.filter(b => !b.deleted).length;
   const totalSessions = database.chatSessions.length;
   const totalRecharged = database.rechargeOrders
@@ -78,9 +81,9 @@ router.get('/dashboard', adminAuth, (req, res) => {
   const pendingSupport = database.supportTickets.filter(t => t.status === 'pending' || t.status === 'replied').length;
   const penalizedAccounts = database.users.filter(u => u.status === 'banned' || u.status === 'frozen' || u.status === 'restricted').length;
   
-  // Recent users
+  // Recent users (humans only)
   const recentUsers = database.users
-    .filter(u => u.status !== 'deleted')
+    .filter(u => u.status !== 'deleted' && (u.account_type || 'HUMAN') !== 'BOT')
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, 10)
     .map(u => ({
@@ -100,6 +103,7 @@ router.get('/dashboard', adminAuth, (req, res) => {
       totalRecharged, totalCoinsInCirculation,
       pendingReports, pendingOrders, pendingSupport, penalizedAccounts
     },
+    botStats: botEngine.getBotStats(),
     recentUsers,
     recentReports
   });
@@ -389,6 +393,66 @@ router.get('/audit', adminAuth, (req, res) => {
   const paged = logs.slice(start, start + parseInt(pageSize));
   
   res.json({ success: true, logs: paged, total });
+});
+
+// ===== Bot management (AGENTS §16) =====
+// List bot profiles (joined with linked user info)
+router.get('/bots', adminAuth, (req, res) => {
+  const profiles = getBotProfiles().map(p => {
+    const user = findUserById(p.userId);
+    return {
+      botId: p.botId,
+      userId: p.userId,
+      displayName: p.displayName,
+      genderDisplay: p.genderDisplay,
+      personaPrompt: p.personaPrompt,
+      speakingStyle: p.speakingStyle,
+      activityWeight: p.activityWeight,
+      enabled: p.enabled,
+      dailyPosts: p.dailyPosts || 0,
+      dailyReplies: p.dailyReplies || 0,
+      dailyMaxPosts: p.dailyMaxPosts != null ? p.dailyMaxPosts : db().config.bot_daily_max_posts,
+      dailyMaxReplies: p.dailyMaxReplies != null ? p.dailyMaxReplies : db().config.bot_daily_max_replies,
+      nickname: user ? user.nickname : ''
+    };
+  });
+  res.json({ success: true, bots: profiles });
+});
+
+// Create a new bot
+router.post('/bots', adminAuth, (req, res) => {
+  const { displayName, genderDisplay, personaPrompt, speakingStyle, activityWeight } = req.body;
+  if (!displayName || !displayName.trim()) {
+    return res.json({ success: false, error: '请填写机器人昵称' });
+  }
+  const profile = createBot(displayName.trim(), genderDisplay || 'neutral', personaPrompt || '', speakingStyle || '', activityWeight);
+  addAuditLog(req.admin.id, 'bot_create', profile.botId, `创建机器人: ${displayName}`);
+  save();
+  res.json({ success: true, bot: profile });
+});
+
+// Update a bot (toggle enabled, edit persona, caps, weight)
+router.put('/bots/:id', adminAuth, (req, res) => {
+  const updates = req.body || {};
+  if (updates.activityWeight != null) updates.activityWeight = parseFloat(updates.activityWeight);
+  if (updates.dailyMaxPosts != null) updates.dailyMaxPosts = parseInt(updates.dailyMaxPosts);
+  if (updates.dailyMaxReplies != null) updates.dailyMaxReplies = parseInt(updates.dailyMaxReplies);
+  const p = updateBotProfile(req.params.id, updates);
+  if (!p) return res.json({ success: false, error: '机器人不存在' });
+  addAuditLog(req.admin.id, 'bot_update', req.params.id, `更新机器人: ${JSON.stringify(updates)}`);
+  save();
+  res.json({ success: true, bot: p });
+});
+
+// Delete a bot (removes profile from the active pool; past bottles remain)
+router.delete('/bots/:id', adminAuth, (req, res) => {
+  const list = db().botProfiles;
+  const idx = list.findIndex(b => b.botId === req.params.id);
+  if (idx === -1) return res.json({ success: false, error: '机器人不存在' });
+  const removed = list.splice(idx, 1)[0];
+  addAuditLog(req.admin.id, 'bot_delete', req.params.id, `删除机器人: ${removed.displayName}`);
+  save();
+  res.json({ success: true });
 });
 
 module.exports = router;
