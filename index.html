@@ -1815,7 +1815,7 @@ async function renderInvite() {
   try {
     const res = await api('/invite/info');
     if (res.success) {
-      const link = (location.origin + '/register.html?inv=' + res.inviteCode);
+      const link = location.origin + appBase() + 'register.html?inv=' + res.inviteCode;
       $('inviteContent').innerHTML = `
         <div class="invite-card">
           <div class="title">邀请好友赚漂流币</div>
@@ -1843,8 +1843,14 @@ function copyCode(code) {
   } else { fallbackCopy(code); }
 }
 
+function appBase() {
+  const p = location.pathname || '/';
+  const i = p.lastIndexOf('/');
+  return (i >= 0 ? p.substring(0, i + 1) : '/');
+}
+
 function copyInviteLink(code) {
-  const link = location.origin + '/register.html?inv=' + code;
+  const link = location.origin + appBase() + 'register.html?inv=' + code;
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(link).then(() => showToast('邀请链接已复制'), () => fallbackCopy(link));
   } else { fallbackCopy(link); }
