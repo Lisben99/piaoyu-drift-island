@@ -46,11 +46,11 @@ services:
       - key: TENCENT_SECRET_KEY
         sync: false
       - key: EMAIL_PROVIDER
-        value: dev
+        value: smtp
       - key: SMTP_HOST
-        sync: false
+        value: smtp.gmail.com
       - key: SMTP_PORT
-        sync: false
+        value: "465"
       - key: SMTP_USER
         sync: false
       - key: SMTP_PASS

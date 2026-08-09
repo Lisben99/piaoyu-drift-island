@@ -43,8 +43,7 @@ function smtpEnabled() {
   const hasCreds = !!(
     process.env.SMTP_HOST &&
     process.env.SMTP_USER &&
-    process.env.SMTP_PASS &&
-    process.env.SMTP_FROM
+    process.env.SMTP_PASS
   );
   if (EMAIL_PROVIDER === 'smtp') {
     if (hasCreds) return true;
@@ -68,7 +67,7 @@ async function sendSmtp(email, code) {
     }
   });
   await transporter.sendMail({
-    from: process.env.SMTP_FROM,
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
     to: email,
     subject: '漂屿 - 邮箱验证码',
     text: `您的验证码是 ${code}，5 分钟内有效。如非本人操作请忽略。`,
