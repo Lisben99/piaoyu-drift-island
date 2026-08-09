@@ -398,45 +398,131 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
           </g>
         </svg>
       </div>
-      <div id="auth-phone-step" class="form-stack">
+      <!-- 主切换：登录 / 注册 -->
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab active" id="tabLogin">登录</button>
+        <button type="button" class="auth-tab" id="tabRegister">注册</button>
+      </div>
+
+      <!-- 共享协议勾选（登录与注册均需同意） -->
+      <div class="legal-list">
+        <label class="legal"><input type="checkbox" id="cb-agreement" /><span>我已阅读并同意<a href="javascript:void(0)" onclick="showAgreement('user')">《用户协议》</a></span></label>
+        <label class="legal"><input type="checkbox" id="cb-privacy" /><span>我已阅读并同意<a href="javascript:void(0)" onclick="showAgreement('privacy')">《隐私政策》</a></span></label>
+        <label class="legal"><input type="checkbox" id="cb-adult" /><span>我确认已年满 18 周岁</span></label>
+      </div>
+
+      <!-- ============ 登录面板 ============ -->
+      <div id="loginPanel">
         <div class="auth-tabs">
-          <button type="button" class="auth-tab active" id="tabPhone">手机登录</button>
-          <button type="button" class="auth-tab" id="tabEmail">邮箱登录</button>
+          <button type="button" class="auth-tab active" id="tabCodeLogin">验证码登录</button>
+          <button type="button" class="auth-tab" id="tabPwdLogin">密码登录</button>
         </div>
-        <div id="phoneField">
+
+        <!-- 验证码登录 -->
+        <div id="codeLoginForm" class="form-stack">
+          <div class="auth-tabs">
+            <button type="button" class="auth-tab active" id="tabPhone">手机</button>
+            <button type="button" class="auth-tab" id="tabEmail">邮箱</button>
+          </div>
+          <div id="phoneField">
+            <label class="field-label">手机号码</label>
+            <div class="input-wrap">
+              <span class="prefix">+86</span>
+              <input class="plain-input" type="tel" maxlength="11" placeholder="请输入 11 位手机号" id="phoneInput" />
+            </div>
+          </div>
+          <div id="emailField" class="hidden">
+            <label class="field-label">邮箱地址</label>
+            <div class="input-wrap">
+              <input class="plain-input" type="email" placeholder="请输入邮箱地址" id="emailInput" />
+            </div>
+          </div>
+          <button class="primary-button" id="sendCodeBtn">获取验证码</button>
+          <span class="auth-note" id="authNote">未注册的手机号验证后将自动创建账号</span>
+
+          <div id="auth-code-step" class="form-stack hidden">
+            <div>
+              <label class="field-label" id="codeSentLabel">短信验证码已发送至</label>
+              <div class="input-wrap code-input">
+                <input class="plain-input" type="tel" maxlength="6" placeholder="••••••" id="codeInput" />
+              </div>
+            </div>
+            <div class="code-actions">
+              <span class="demo-code" id="devCodeHint"></span>
+              <button class="text-button" id="resendBtn">重新发送</button>
+            </div>
+            <button class="primary-button" id="loginBtn">验证并登录</button>
+            <button class="text-button" id="changePhoneBtn" style="text-align:center">更换账号</button>
+          </div>
+        </div>
+
+        <!-- 密码登录 -->
+        <div id="pwdLoginForm" class="form-stack hidden">
+          <div>
+            <label class="field-label">账号（手机号或邮箱）</label>
+            <div class="input-wrap">
+              <input class="plain-input" type="text" placeholder="请输入手机号或邮箱" id="accountInput" />
+            </div>
+          </div>
+          <div>
+            <label class="field-label">密码</label>
+            <div class="input-wrap">
+              <input class="plain-input" type="password" placeholder="请输入密码" id="passwordInput" />
+            </div>
+          </div>
+          <button class="primary-button" id="pwdLoginBtn">登录</button>
+          <span class="auth-note">使用注册时设置的密码登录；未设置密码的账号请改用验证码登录</span>
+        </div>
+      </div>
+
+      <!-- ============ 注册面板 ============ -->
+      <div id="registerPanel" class="hidden">
+        <div class="auth-tabs">
+          <button type="button" class="auth-tab active" id="regPhoneTab">手机注册</button>
+          <button type="button" class="auth-tab" id="regEmailTab">邮箱注册</button>
+        </div>
+        <div id="regPhoneField">
           <label class="field-label">手机号码</label>
           <div class="input-wrap">
             <span class="prefix">+86</span>
-            <input class="plain-input" type="tel" maxlength="11" placeholder="请输入 11 位手机号" id="phoneInput" />
+            <input class="plain-input" type="tel" maxlength="11" placeholder="请输入 11 位手机号" id="regPhoneInput" />
           </div>
         </div>
-        <div id="emailField" class="hidden">
+        <div id="regEmailField" class="hidden">
           <label class="field-label">邮箱地址</label>
           <div class="input-wrap">
-            <input class="plain-input" type="email" placeholder="请输入邮箱地址" id="emailInput" />
+            <input class="plain-input" type="email" placeholder="请输入邮箱地址" id="regEmailInput" />
           </div>
         </div>
-        <div class="legal-list">
-          <label class="legal"><input type="checkbox" id="cb-agreement" /><span>我已阅读并同意<a href="javascript:void(0)" onclick="showAgreement('user')">《用户协议》</a></span></label>
-          <label class="legal"><input type="checkbox" id="cb-privacy" /><span>我已阅读并同意<a href="javascript:void(0)" onclick="showAgreement('privacy')">《隐私政策》</a></span></label>
-          <label class="legal"><input type="checkbox" id="cb-adult" /><span>我确认已年满 18 周岁</span></label>
-        </div>
-        <button class="primary-button" id="sendCodeBtn">获取验证码</button>
-        <span class="auth-note" id="authNote">未注册的手机号验证后将自动创建账号</span>
-      </div>
-      <div id="auth-code-step" class="form-stack hidden">
-        <div>
-          <label class="field-label" id="codeSentLabel">短信验证码已发送至</label>
-          <div class="input-wrap code-input">
-            <input class="plain-input" type="tel" maxlength="6" placeholder="••••••" id="codeInput" />
+        <button class="primary-button" id="regSendCodeBtn">获取验证码</button>
+        <span class="auth-note" id="regNote">注册即表示同意上方协议，验证通过后将设置登录密码</span>
+
+        <div id="regCodeStep" class="form-stack hidden">
+          <div>
+            <label class="field-label" id="regCodeLabel">验证码已发送至</label>
+            <div class="input-wrap code-input">
+              <input class="plain-input" type="tel" maxlength="6" placeholder="••••••" id="regCodeInput" />
+            </div>
           </div>
+          <div class="code-actions">
+            <span class="demo-code" id="regDevCodeHint"></span>
+            <button class="text-button" id="regResendBtn">重新发送</button>
+          </div>
+          <div>
+            <label class="field-label">设置密码</label>
+            <div class="input-wrap">
+              <input class="plain-input" type="password" maxlength="20" placeholder="6-20 位密码" id="regPasswordInput" />
+            </div>
+          </div>
+          <div>
+            <label class="field-label">确认密码</label>
+            <div class="input-wrap">
+              <input class="plain-input" type="password" maxlength="20" placeholder="再次输入密码" id="regConfirmInput" />
+            </div>
+          </div>
+          <button class="primary-button" id="registerBtn">注册并登录</button>
+          <button class="text-button" id="regChangeBtn" style="text-align:center">更换账号</button>
         </div>
-        <div class="code-actions">
-          <span class="demo-code" id="devCodeHint"></span>
-          <button class="text-button" id="resendBtn">重新发送</button>
-        </div>
-        <button class="primary-button" id="loginBtn">验证并登录</button>
-        <button class="text-button" id="changePhoneBtn" style="text-align:center">更换手机号</button>
       </div>
     </div>
   </div>
@@ -852,11 +938,35 @@ function renderTabBar(containerId, active) {
    LOGIN PAGE
    ================================================================ */
 let loginPhone = '';
-let loginMode = 'phone'; // 'phone' | 'email'
+let loginMode = 'phone'; // 'phone' | 'email' (shared by code-login & register)
 let loginEmail = '';
+let authMode = 'login';  // 'login' | 'register'
+let loginSubMode = 'code'; // 'code' | 'pwd' (login sub tabs)
 let countdownTimer = null;
 
+/* ---- main: 登录 / 注册 ---- */
 function switchAuthMode(mode) {
+  authMode = mode;
+  $('tabLogin').classList.toggle('active', mode === 'login');
+  $('tabRegister').classList.toggle('active', mode === 'register');
+  $('loginPanel').classList.toggle('hidden', mode !== 'login');
+  $('registerPanel').classList.toggle('hidden', mode !== 'register');
+  $('auth-code-step').classList.add('hidden');
+  $('regCodeStep').classList.add('hidden');
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+}
+
+/* ---- login sub: 验证码 / 密码 ---- */
+function switchLoginSub(mode) {
+  loginSubMode = mode;
+  $('tabCodeLogin').classList.toggle('active', mode === 'code');
+  $('tabPwdLogin').classList.toggle('active', mode === 'pwd');
+  $('codeLoginForm').classList.toggle('hidden', mode !== 'code');
+  $('pwdLoginForm').classList.toggle('hidden', mode !== 'pwd');
+}
+
+/* ---- identifier: 手机 / 邮箱 (code-login) ---- */
+function switchIdentifier(mode) {
   loginMode = mode;
   $('tabPhone').classList.toggle('active', mode === 'phone');
   $('tabEmail').classList.toggle('active', mode === 'email');
@@ -867,84 +977,97 @@ function switchAuthMode(mode) {
     : '未注册的邮箱验证后将自动创建账号';
 }
 
-$('tabPhone').onclick = () => switchAuthMode('phone');
-$('tabEmail').onclick = () => switchAuthMode('email');
+/* ---- register identifier: 手机 / 邮箱 ---- */
+function switchRegMode(mode) {
+  loginMode = mode;
+  $('regPhoneTab').classList.toggle('active', mode === 'phone');
+  $('regEmailTab').classList.toggle('active', mode === 'email');
+  $('regPhoneField').classList.toggle('hidden', mode !== 'phone');
+  $('regEmailField').classList.toggle('hidden', mode !== 'email');
+}
 
-$('sendCodeBtn').onclick = async function() {
-  if (!$('cb-agreement').checked) { showToast('请先同意《用户协议》'); return; }
-  if (!$('cb-privacy').checked) { showToast('请先同意《隐私政策》'); return; }
-  if (!$('cb-adult').checked) { showToast('请确认已年满18周岁'); return; }
+function checkAgreement() {
+  if (!$('cb-agreement').checked) { showToast('请先同意《用户协议》'); return false; }
+  if (!$('cb-privacy').checked) { showToast('请先同意《隐私政策》'); return false; }
+  if (!$('cb-adult').checked) { showToast('请确认已年满18周岁'); return false; }
+  return true;
+}
 
-  let res;
-  if (loginMode === 'email') {
-    const email = $('emailInput').value.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('请输入正确的邮箱地址'); return; }
-    this.innerHTML = '<span class="spinner"></span>'; this.disabled = true;
-    try {
-      res = await api('/auth/email/send', { method: 'POST', body: JSON.stringify({ email }) });
-    } catch (e) { showToast('发送失败，请重试'); this.innerHTML = '获取验证码'; this.disabled = false; return; }
+/* shared send-code for login(code) and register */
+async function doSendCode(isRegister) {
+  if (!checkAgreement()) return;
+  const isEmail = loginMode === 'email';
+  let target;
+  let inputEl;
+  if (isEmail) {
+    inputEl = isRegister ? $('regEmailInput') : $('emailInput');
+    target = inputEl.value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(target)) { showToast('请输入正确的邮箱地址'); return; }
   } else {
-    const phone = $('phoneInput').value.trim();
-    if (!/^1[3-9]\d{9}$/.test(phone)) { showToast('请输入正确的手机号'); return; }
-    this.innerHTML = '<span class="spinner"></span>'; this.disabled = true;
-    try {
-      res = await api('/auth/sms/send', { method: 'POST', body: JSON.stringify({ phone }) });
-    } catch (e) { showToast('发送失败，请重试'); this.innerHTML = '获取验证码'; this.disabled = false; return; }
+    inputEl = isRegister ? $('regPhoneInput') : $('phoneInput');
+    target = inputEl.value.trim();
+    if (!/^1[3-9]\d{9}$/.test(target)) { showToast('请输入正确的手机号'); return; }
   }
-
+  const btn = isRegister ? $('regSendCodeBtn') : $('sendCodeBtn');
+  btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
+  const endpoint = isEmail ? '/auth/email/send' : '/auth/sms/send';
+  const body = isEmail ? { email: target } : { phone: target };
+  let res;
   try {
-    if (res && res.success) {
-      if (loginMode === 'email') loginEmail = $('emailInput').value.trim();
-      else loginPhone = $('phoneInput').value.trim();
-      const target = loginMode === 'email' ? loginEmail : loginPhone;
-      $('auth-phone-step').classList.add('hidden');
-      $('auth-code-step').classList.remove('hidden');
-      $('codeSentLabel').textContent = (loginMode === 'email' ? '验证码已发送至邮箱 ' : '短信验证码已发送至 ') + target;
-      if (res.devCode) {
-        $('devCodeHint').textContent = `开发模式验证码：${res.devCode}`;
-      } else {
-        $('devCodeHint').textContent = '';
-      }
-      startCountdown();
+    res = await api(endpoint, { method: 'POST', body: JSON.stringify(body) });
+  } catch (e) {
+    showToast('发送失败，请重试');
+    btn.innerHTML = '获取验证码'; btn.disabled = false;
+    return;
+  }
+  btn.innerHTML = '获取验证码'; btn.disabled = false;
+  if (res && res.success) {
+    if (isEmail) loginEmail = target; else loginPhone = target;
+    if (isRegister) {
+      $('regCodeStep').classList.remove('hidden');
+      $('regCodeLabel').textContent = (isEmail ? '验证码已发送至邮箱 ' : '短信验证码已发送至 ') + target;
+      $('regDevCodeHint').textContent = res.devCode ? `开发模式验证码：${res.devCode}` : '';
     } else {
-      showToast((res && res.error) || '发送失败');
+      $('auth-code-step').classList.remove('hidden');
+      $('codeSentLabel').textContent = (isEmail ? '验证码已发送至邮箱 ' : '短信验证码已发送至 ') + target;
+      $('devCodeHint').textContent = res.devCode ? `开发模式验证码：${res.devCode}` : '';
     }
-  } catch (e) { showToast('发送失败，请重试'); }
-  this.innerHTML = '获取验证码'; this.disabled = false;
-};
+    startCountdown();
+  } else {
+    showToast((res && res.error) || '发送失败');
+  }
+}
 
 function startCountdown() {
   let sec = 60;
   const btn = $('resendBtn');
-  btn.disabled = true;
-  btn.style.opacity = '.4';
+  const regBtn = $('regResendBtn');
+  [btn, regBtn].forEach(b => { if (b) { b.disabled = true; b.style.opacity = '.4'; } });
   countdownTimer = setInterval(() => {
     sec--;
     btn.textContent = `${sec}s 后重发`;
+    if (regBtn) regBtn.textContent = `${sec}s 后重发`;
     if (sec <= 0) {
-      clearInterval(countdownTimer);
-      btn.textContent = '重新发送';
-      btn.disabled = false;
-      btn.style.opacity = '1';
+      clearInterval(countdownTimer); countdownTimer = null;
+      btn.textContent = '重新发送'; btn.disabled = false; btn.style.opacity = '1';
+      if (regBtn) { regBtn.textContent = '重新发送'; regBtn.disabled = false; regBtn.style.opacity = '1'; }
     }
   }, 1000);
 }
 
-$('resendBtn').onclick = async function() {
-  if (this.disabled) return;
-  const payload = loginMode === 'email'
-    ? { email: loginEmail }
-    : { phone: loginPhone };
-  const endpoint = loginMode === 'email' ? '/auth/email/send' : '/auth/sms/send';
-  const res = await api(endpoint, { method: 'POST', body: JSON.stringify(payload) });
-  if (res.success) {
-    showToast('验证码已重新发送');
-    if (res.devCode) $('devCodeHint').textContent = `开发模式验证码：${res.devCode}`;
-    startCountdown();
-  } else {
-    showToast(res.error || '发送失败');
-  }
-};
+/* ---- bindings ---- */
+$('tabLogin').onclick = () => switchAuthMode('login');
+$('tabRegister').onclick = () => switchAuthMode('register');
+$('tabCodeLogin').onclick = () => switchLoginSub('code');
+$('tabPwdLogin').onclick = () => switchLoginSub('pwd');
+$('tabPhone').onclick = () => switchIdentifier('phone');
+$('tabEmail').onclick = () => switchIdentifier('email');
+$('regPhoneTab').onclick = () => switchRegMode('phone');
+$('regEmailTab').onclick = () => switchRegMode('email');
+$('sendCodeBtn').onclick = () => doSendCode(false);
+$('regSendCodeBtn').onclick = () => doSendCode(true);
+$('resendBtn').onclick = () => { if (!$('resendBtn').disabled) doSendCode(false); };
+$('regResendBtn').onclick = () => { if (!$('regResendBtn').disabled) doSendCode(true); };
 
 $('loginBtn').onclick = async function() {
   const code = $('codeInput').value.trim();
@@ -958,7 +1081,7 @@ $('loginBtn').onclick = async function() {
     if (res.success) {
       setToken(res.token);
       currentUser = res.user;
-      if (countdownTimer) clearInterval(countdownTimer);
+      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
       if (res.user.isNewUser || !res.user.role) {
         navigateTo('role', true);
       } else {
@@ -973,8 +1096,58 @@ $('loginBtn').onclick = async function() {
 
 $('changePhoneBtn').onclick = function() {
   $('auth-code-step').classList.add('hidden');
-  $('auth-phone-step').classList.remove('hidden');
-  if (countdownTimer) clearInterval(countdownTimer);
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+};
+
+$('pwdLoginBtn').onclick = async function() {
+  const account = $('accountInput').value.trim();
+  const password = $('passwordInput').value;
+  if (!account) { showToast('请输入账号'); return; }
+  if (!password) { showToast('请输入密码'); return; }
+  this.innerHTML = '<span class="spinner"></span>'; this.disabled = true;
+  try {
+    const res = await api('/auth/login', { method: 'POST', body: JSON.stringify({ account, password }) });
+    if (res.success) {
+      setToken(res.token);
+      currentUser = res.user;
+      if (res.user.isNewUser || !res.user.role) navigateTo('role', true);
+      else navigateTo('home', true);
+    } else {
+      showToast(res.error || '登录失败');
+    }
+  } catch (e) { showToast('登录失败，请重试'); }
+  this.innerHTML = '登录'; this.disabled = false;
+};
+
+$('registerBtn').onclick = async function() {
+  const code = $('regCodeInput').value.trim();
+  const password = $('regPasswordInput').value;
+  const confirm = $('regConfirmInput').value;
+  if (!code || code.length !== 6) { showToast('请输入6位验证码'); return; }
+  if (!password || password.length < 6) { showToast('密码至少 6 位'); return; }
+  if (password !== confirm) { showToast('两次输入的密码不一致'); return; }
+  this.innerHTML = '<span class="spinner"></span>'; this.disabled = true;
+  const isEmail = loginMode === 'email';
+  const payload = { type: isEmail ? 'email' : 'phone', code, password };
+  if (isEmail) payload.email = loginEmail; else payload.phone = loginPhone;
+  try {
+    const res = await api('/auth/register', { method: 'POST', body: JSON.stringify(payload) });
+    if (res.success) {
+      setToken(res.token);
+      currentUser = res.user;
+      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+      if (res.user.isNewUser || !res.user.role) navigateTo('role', true);
+      else navigateTo('home', true);
+    } else {
+      showToast(res.error || '注册失败');
+    }
+  } catch (e) { showToast('注册失败，请重试'); }
+  this.innerHTML = '注册并登录'; this.disabled = false;
+};
+
+$('regChangeBtn').onclick = function() {
+  $('regCodeStep').classList.add('hidden');
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
 };
 
 /* ================================================================

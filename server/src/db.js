@@ -235,12 +235,14 @@ function findUserByEmail(email) {
   return cache.users.find(u => u.email === email);
 }
 
-function createUser(phone, email) {
+function createUser(phone, email, password = null) {
   const config = cache.config;
+  const passwordHash = password ? bcrypt.hashSync(password, 10) : '';
   const user = {
     id: genId('u'),
     phone: phone || '',
     email: email || '',
+    passwordHash,
     nickname: '',
     avatar: '',
     bio: '',
@@ -261,6 +263,21 @@ function createUser(phone, email) {
   addCoinTransaction(user.id, config.new_user_bonus, 'new_user_bonus', '新用户注册赠送');
   save();
   return user;
+}
+
+// Set/reset a user's password (hashed)
+function setUserPassword(userId, password) {
+  const user = findUserById(userId);
+  if (!user) return null;
+  user.passwordHash = bcrypt.hashSync(password, 10);
+  save();
+  return user;
+}
+
+// Verify a plaintext password against a user's stored hash
+function verifyPassword(user, password) {
+  if (!user || !user.passwordHash) return false;
+  return bcrypt.compareSync(password, user.passwordHash);
 }
 
 // Coin transaction helper
@@ -368,6 +385,8 @@ module.exports = {
   findUserByPhone,
   findUserByEmail,
   createUser,
+  setUserPassword,
+  verifyPassword,
   addCoinTransaction,
   findBottleById,
   getActiveBottles,
