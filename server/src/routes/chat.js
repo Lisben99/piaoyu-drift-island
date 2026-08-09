@@ -159,7 +159,8 @@ router.post('/start', auth, async (req, res) => {
     permanentRequested: false,
     permanentAccepted: false,
     permanentRequestedAt: null,
-    permanentResponseDeadline: null
+    permanentResponseDeadline: null,
+    hiddenFor: []
   };
   db().chatSessions.push(session);
   
@@ -212,6 +213,7 @@ router.get('/sessions', auth, (req, res) => {
   
   const sessions = db().chatSessions
     .filter(s => s.userA === req.user.id || s.userB === req.user.id)
+    .filter(s => !(s.hiddenFor && s.hiddenFor.includes(req.user.id)))
     .sort((a, b) => {
       const aTime = a.lastMessageAt || a.startedAt;
       const bTime = b.lastMessageAt || b.startedAt;
@@ -260,6 +262,23 @@ router.get('/sessions/:id/messages', auth, (req, res) => {
     .slice(-100); // Last 100 messages
   
   res.json({ success: true, messages, session });
+});
+
+// Hide a session for the current user (delete/hide from my list only)
+router.post('/sessions/:id/hide', auth, (req, res) => {
+  const session = findChatSessionById(req.params.id);
+  if (!session) {
+    return res.json({ success: false, error: '会话不存在' });
+  }
+  if (session.userA !== req.user.id && session.userB !== req.user.id) {
+    return res.json({ success: false, error: '无权操作' });
+  }
+  session.hiddenFor = session.hiddenFor || [];
+  if (!session.hiddenFor.includes(req.user.id)) {
+    session.hiddenFor.push(req.user.id);
+  }
+  save();
+  res.json({ success: true });
 });
 
 // Request permanent chat

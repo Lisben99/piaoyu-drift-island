@@ -131,6 +131,11 @@ async function handleMessage(ws, msg) {
     
     // Send to recipient
     const recipientId = session.userA === ws.userId ? session.userB : session.userA;
+    // If recipient had hidden this session, reveal it again on new activity
+    if (session.hiddenFor && session.hiddenFor.includes(recipientId)) {
+      session.hiddenFor = session.hiddenFor.filter(u => u !== recipientId);
+      save();
+    }
     sendToUser(recipientId, {
       type: 'message_received',
       data: { ...message, sessionId }

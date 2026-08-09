@@ -267,6 +267,13 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .tag-expired{background:rgba(231,76,60,.08);color:#e74c3c}
 .tag-permanent{background:rgba(31,122,116,.1);color:#1f7a74}
 .tag-pending{background:rgba(223,169,72,.12);color:#8a6d2f}
+.message-item__del{font-size:12px;color:#e74c3c;padding:4px 9px;border:1px solid rgba(231,76,60,.4);border-radius:6px;background:transparent;flex-shrink:0;cursor:pointer}
+.message-item__del:active{background:rgba(231,76,60,.08)}
+.message-item--select{cursor:pointer}
+.message-item__check{width:22px;height:22px;border-radius:50%;border:2px solid #cdd2d0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0}
+.message-item.is-selected .message-item__check{background:#1f7a74;border-color:#1f7a74}
+.nav-text-btn{font-size:14px;color:#1f7a74;font-weight:600;background:none;border:none;padding:4px;cursor:pointer}
+.nav-text-btn.danger{color:#e74c3c}
 
 /* ===== Coin Center ===== */
 .coin-content{flex:1;padding:0 16px 16px;overflow-y:auto}
@@ -702,6 +709,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
     <div class="nav-bar">
       <div class="nav-bar__title" style="position:static;transform:none">消息</div>
       <div class="nav-bar__spacer"></div>
+      <div class="nav-bar__right" id="messagesNavActions"></div>
     </div>
     <div class="messages-content" id="messagesList"></div>
     <div class="tab-bar" id="tabbar-messages"></div>
@@ -861,6 +869,8 @@ let currentPage = null;
 let ws = null;
 let currentChatSessionId = null;
 let lobbyFilter = 'all';
+let chatMultiSelect = false;
+let selectedSessions = new Set();
 
 /* ================================================================
    UTILITIES
@@ -1376,6 +1386,23 @@ async function renderMessages() {
       $('messagesList').innerHTML = res.sessions.map(s => {
         const name = s.otherNickname || '未知';
         const color = avatarColor(name);
+        const preview = s.lastMessage ? (s.lastMessage.content || (s.lastMessage.image ? '[图片]' : '开始聊天吧')) : '开始聊天吧';
+        const statusTag = s.status === 'active' ? '' : `<span class="message-status-tag ${statusTagClass(s.status)}">${statusLabel(s.status)}</span>`;
+        if (chatMultiSelect) {
+          const selected = selectedSessions.has(s.id);
+          return `<div class="message-item message-item--select ${selected ? 'is-selected' : ''}" onclick="toggleSessionSelect('${s.id}')">
+            <div class="message-item__check">${selected ? '✓' : ''}</div>
+            <div class="message-item__avatar" style="background:${color}">${avatarInitial(name)}</div>
+            <div class="message-item__body">
+              <div class="message-item__top">
+                <div class="message-item__name">${name}</div>
+                <div class="message-item__time">${s.lastMessageAt ? formatTime(s.lastMessageAt) : formatTime(s.startedAt)}</div>
+              </div>
+              <div class="message-item__preview">${preview}</div>
+            </div>
+            <div class="message-item__badge">${statusTag}</div>
+          </div>`;
+        }
         return `<div class="message-item" onclick="openChat('${s.id}')">
           <div class="message-item__avatar" style="background:${color}">${avatarInitial(name)}</div>
           <div class="message-item__body">
@@ -1383,18 +1410,84 @@ async function renderMessages() {
               <div class="message-item__name">${name}</div>
               <div class="message-item__time">${s.lastMessageAt ? formatTime(s.lastMessageAt) : formatTime(s.startedAt)}</div>
             </div>
-            <div class="message-item__preview">${s.lastMessage ? (s.lastMessage.content || (s.lastMessage.image ? '[图片]' : '开始聊天吧')) : '开始聊天吧'}</div>
+            <div class="message-item__preview">${preview}</div>
           </div>
-          <div class="message-item__badge">
-            ${s.status === 'active' ? '' : `<span class="message-status-tag ${statusTagClass(s.status)}">${statusLabel(s.status)}</span>`}
-          </div>
+          <div class="message-item__badge">${statusTag}</div>
+          <button class="message-item__del" type="button" onclick="event.stopPropagation();hideSession('${s.id}')">删除</button>
         </div>`;
       }).join('');
     } else {
       $('messagesList').innerHTML = `<div class="empty-state"><div class="empty-state__icon">💬</div><div class="empty-state__title">还没有消息</div><div class="empty-state__desc">去大厅和感兴趣的人聊聊吧</div></div>`;
     }
   } catch (e) {}
+  renderMessagesNav();
   renderTabBar('tabbar-messages', 'messages');
+}
+
+// 消息页右上角操作区（管理 / 多选模式下的取消与删除选中）
+function renderMessagesNav() {
+  const el = $('messagesNavActions');
+  if (!el) return;
+  if (chatMultiSelect) {
+    el.innerHTML = `<button class="nav-text-btn" type="button" onclick="exitMultiSelect()">取消</button>
+      <button class="nav-text-btn danger" type="button" onclick="batchHideSessions()">删除(${selectedSessions.size})</button>`;
+  } else {
+    el.innerHTML = `<button class="nav-text-btn" type="button" onclick="enterMultiSelect()">管理</button>`;
+  }
+}
+
+function enterMultiSelect() {
+  chatMultiSelect = true;
+  selectedSessions = new Set();
+  renderMessages();
+}
+
+function exitMultiSelect() {
+  chatMultiSelect = false;
+  selectedSessions = new Set();
+  renderMessages();
+}
+
+function toggleSessionSelect(id) {
+  if (selectedSessions.has(id)) selectedSessions.delete(id);
+  else selectedSessions.add(id);
+  renderMessages();
+}
+
+async function hideSession(id) {
+  showModal('删除对话', '删除后该对话将从你的消息列表中隐藏（对方仍可见，对方发来新消息会重新显示）。确定删除吗？', [
+    { text: '取消', cancel: true },
+    { text: '删除', onClick: async () => {
+      try {
+        const res = await api('/chat/sessions/' + id + '/hide', { method: 'POST' });
+        if (res.success) {
+          showToast('已删除');
+          renderMessages();
+        } else {
+          showToast(res.error || '操作失败');
+        }
+      } catch (e) { showToast('操作失败'); }
+    } }
+  ]);
+}
+
+async function batchHideSessions() {
+  if (selectedSessions.size === 0) { showToast('请先选择对话'); return; }
+  const ids = Array.from(selectedSessions);
+  showModal('批量删除', `确定删除选中的 ${ids.length} 个对话吗？`, [
+    { text: '取消', cancel: true },
+    { text: '删除', onClick: async () => {
+      try {
+        for (const id of ids) {
+          await api('/chat/sessions/' + id + '/hide', { method: 'POST' });
+        }
+        chatMultiSelect = false;
+        selectedSessions = new Set();
+        showToast('已删除');
+        renderMessages();
+      } catch (e) { showToast('删除失败'); }
+    } }
+  ]);
 }
 
 /* ================================================================
