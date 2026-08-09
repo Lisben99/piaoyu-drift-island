@@ -259,7 +259,11 @@ async function runProactivePost() {
   if (!shouldProactivePost()) return;
   const bot = selectBotForPost();
   if (!bot) return;
-  const content = pickTopicTemplate();
+  let content = null;
+  if (config().enable_ai_reply) {
+    content = await aiProvider.generateReply({ message: '', persona: bot.personaPrompt, mode: 'post' });
+  }
+  if (!content) content = pickTopicTemplate();
 
   if (config().enable_content_moderation !== false) {
     const mod = await moderate(content);
@@ -310,7 +314,8 @@ function getBotStats() {
     enabled,
     postsToday,
     repliesToday,
-    csi: computeCSI().csi
+    csi: computeCSI().csi,
+    aiConfigured: aiProvider.isConfigured()
   };
 }
 

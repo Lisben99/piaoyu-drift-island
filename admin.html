@@ -927,6 +927,10 @@ async function renderBots() {
   const res = await api('/bots');
   if (!res.success) return;
   const bots = res.bots || [];
+  const aiOn = res.aiConfigured;
+  const aiBanner = aiOn
+    ? '<div class="badge badge-active" style="margin-left:8px">🤖 AI 已接入（真实大模型回复）</div>'
+    : '<div class="badge badge-restricted" style="margin-left:8px">⚠️ AI 未接入（当前为模板回复）</div>';
   const rows = bots.map(b => `
     <tr>
       <td>${escapeHtml(b.displayName)} ${b.enabled ? '<span class="badge badge-active">启用</span>' : '<span class="badge badge-restricted">停用</span>'}</td>
@@ -943,8 +947,8 @@ async function renderBots() {
     </tr>`).join('');
   document.getElementById('pageContent').innerHTML = `
     <div class="card">
-      <div class="card__title">机器人管理（冷启动 Bot 池）</div>
-      <p style="font-size:13px;color:#888;margin:0 0 12px">机器人用于冷启动阶段补充互动，随真人活跃自动降低权重。所有机器人账号 account_type=BOT，消息可追踪。</p>
+      <div class="card__title">机器人管理（冷启动 Bot 池）${aiBanner}</div>
+      <p style="font-size:13px;color:#888;margin:0 0 12px">机器人用于冷启动阶段补充互动，随真人活跃自动降低权重。所有机器人账号 account_type=BOT，消息可追踪。AI 开关见「业务配置 → enable_ai_reply」，Key 通过环境变量 AI_API_KEY 配置。</p>
       <button class="btn-sm btn-primary" style="margin-bottom:14px" onclick="createBotUI()">+ 新增机器人</button>
       <table class="table">
         <thead><tr><th>昵称/状态</th><th>性别展示</th><th>说话风格</th><th>今日发帖</th><th>今日回复</th><th>活跃权重</th><th>操作</th></tr></thead>

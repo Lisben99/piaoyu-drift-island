@@ -416,7 +416,7 @@ router.get('/bots', adminAuth, (req, res) => {
       nickname: user ? user.nickname : ''
     };
   });
-  res.json({ success: true, bots: profiles });
+  res.json({ success: true, bots: profiles, aiConfigured: botEngine.isAIConfigured() });
 });
 
 // Create a new bot

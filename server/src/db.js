@@ -47,7 +47,7 @@ const DEFAULT_CONFIG = {
   maintenance_mode: false,
   // ===== Feature Flags (AGENTS §21) — all toggleable in admin backend =====
   enable_bot: true,
-  enable_ai_reply: false,            // template-first by default; AI only if a provider key is present
+  enable_ai_reply: true,            // template-first by default; AI only if a provider key is present
   enable_bot_public_post: true,
   enable_bot_private_chat: false,
   enable_ads: false,
