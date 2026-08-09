@@ -108,7 +108,7 @@ npm start                             # = node src/index.js
 
 | 服务 | 开关变量 | 状态 | 需要的密钥变量 |
 | --- | --- | --- | --- |
-| 短信 | `SMS_PROVIDER` | ✅ 已对接（阿里云「短信认证」Dypnsapi 通道） | `ALIYUN_SMS_KEY`, `ALIYUN_SMS_SECRET`, `ALIYUN_SMS_SIGN`, `ALIYUN_SMS_TEMPLATE` |
+| 短信 | `SMS_PROVIDER` | ✅ 已对接（阿里云「短信认证」Dypnsapi；余额耗尽时暂停） | `ALIYUN_SMS_KEY`, `ALIYUN_SMS_SECRET`（SIGN/TEMPLATE 已内置默认值） |
 | 支付 | `PAYMENT_PROVIDER` | ⏳ 占位桩（待对接微信支付） | `WECHAT_PAY_MCHID`, `WECHAT_PAY_APPID`, `WECHAT_PAY_SERIAL`, `WECHAT_PAY_PRIVATE_KEY`, `WECHAT_PAY_APIV3` |
 | 内容审核 | `MODERATION_PROVIDER` | ✅ 已对接（腾讯云 TMS） | `TENCENT_SECRET_ID`, `TENCENT_SECRET_KEY` |
 | 签名 | `JWT_SECRET` | 已自动生成 | — |
@@ -137,7 +137,7 @@ npm start                             # = node src/index.js
 | `ALIYUN_SMS_SECRET` | `<阿里云 AccessKey Secret>` |
 
 > 以下两项已作为代码默认值内置（个人实名账号「系统赠送」配置），**无需在 Render 填写**：
-> - `ALIYUN_SMS_SIGN` = `信趣男女`
+> - `ALIYUN_SMS_SIGN` = `恒创联众`（系统赠送签名；"信趣男女"是短信服务签名，误用于短信认证会报"签名或者模板无效"）
 > - `ALIYUN_SMS_TEMPLATE` = `100001`
 >
 > `SMS_PROVIDER` 已在 `render.yaml` 中设为 `aliyun`（非密，随代码提交），部署即生效，也**无需手动改**。
@@ -159,6 +159,28 @@ npm start                             # = node src/index.js
 - 端点 `dypnsapi.aliyuncs.com`。
 
 > ⚠️ **安全提示**：以上 AccessKey 曾在聊天中明文出现过。建议本服务激活并验证通过后，到阿里云 RAM 控制台**轮换（禁用并重建）该 AccessKey**，避免长期暴露。
+
+### 6.2 启用腾讯云内容审核（个人实名可开通 TMS）
+
+> 适用场景：腾讯云「文本内容安全 TMS」对个人实名账号开放，无需营业执照，按条计费且有免费额度。已集成 `tencentcloud-sdk-nodejs-tms`，**缺密钥时自动回退本地关键词过滤**，不会中断服务。
+
+**第一步（已自动完成）**：`render.yaml` 中 `MODERATION_PROVIDER` 已设为 `tencent`，部署即生效（未填密钥期间自动回退 local，服务不中断）。
+
+**第二步：在 Render 填入 2 个密钥**
+到 Render Dashboard → `drift-island-api` → Environment，新增以下**两个私密变量**（`sync:false`，加密存储，不进 git）：
+
+| Key | Value |
+| --- | --- |
+| `TENCENT_SECRET_ID` | `<腾讯云 SecretId>`（腾讯云控制台「访问管理 → API 密钥管理」获取） |
+| `TENCENT_SECRET_KEY` | `<腾讯云 SecretKey>` |
+
+保存后 Render 自动重新部署。
+
+**第三步：验证**
+- 健康检查 `GET /api/health` 的 `moderation_provider` 应为 `tencent`。
+- 发布一条含明显违规词（如「赌博」「诈骗」）的内容，应被腾讯云拦截并返回不通过；正常内容正常通过。
+
+> 🔒 密钥仅存 Render，不进 git；请勿写入仓库文件。
 
 ---
 
@@ -193,10 +215,10 @@ npm start                             # = node src/index.js
 
 ## 10. 待完成 / 已知缺口
 
-1. **微信支付对接**（当前为占位桩）：
-   - 需安装微信支付 SDK，实现 `createOrder` / `confirmPayment` / `refundOrder` 的真实调用与回调验签（`server/src/services/payment.js`）。
-   - 微信支付回调地址（`/api/recharge/callback`）需在商户平台配置并补充路由实现。
-   - 待决策：H5 支付还是 JSAPI 支付（影响前端跳转与商户 AppID 配置）。
+1. **微信支付对接 — 当前阻塞**（当前为占位桩）：
+   - ⚠️ **关键约束**：微信支付商户号（mchid）需要企业/个体工商户营业执照；用户为**个人实名、无商户号**，真实微信支付**暂不可行**。
+   - 待评估**个人可用的替代充值方案**（如：手动充值/卡密由管理员后台入账、合规聚合支付、或其他免企业资质的方式），再决定 `payment.js` 实现路径。
+   - 若未来有商户号：需安装微信支付 SDK，实现 `createOrder` / `confirmPayment` / `refundOrder` 真实调用与回调验签；回调地址 `/api/recharge/callback` 需在商户平台配置。H5 还是 JSAPI 影响前端跳转与 AppID 配置。
 2. **已完成的真实对接**（供参考，无需重复实现）：
    - 阿里云短信：已用「短信认证」Dypnsapi 通道实现 `server/src/services/sms.js` 的 `aliyun` 分支（个人实名账号方案）。
    - 腾讯内容审核：已用 `tencentcloud-sdk-nodejs-tms` 实现 `server/src/services/moderation.js` 的 `moderateTencent`，无密钥时自动回退 local。
