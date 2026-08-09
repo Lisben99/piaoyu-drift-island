@@ -73,7 +73,8 @@ router.get('/dashboard', adminAuth, (req, res) => {
     .reduce((sum, o) => sum + o.amount, 0);
   const totalCoinsInCirculation = database.users.reduce((sum, u) => sum + (u.coins || 0), 0);
   const pendingReports = database.reports.filter(r => r.status === 'pending').length;
-  const pendingOrders = database.rechargeOrders.filter(o => o.status === 'pending').length;
+  // 侧边栏「充值订单」角标：显示「待确认到账并发码」数量（用户已上传凭证，管理员尚未确认）
+  const pendingOrders = database.rechargeOrders.filter(o => o.status === 'submitted').length;
   const pendingSupport = database.supportTickets.filter(t => t.status === 'pending' || t.status === 'replied').length;
   const penalizedAccounts = database.users.filter(u => u.status === 'banned' || u.status === 'frozen' || u.status === 'restricted').length;
   
