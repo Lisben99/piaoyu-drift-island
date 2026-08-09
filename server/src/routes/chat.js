@@ -161,7 +161,7 @@ router.post('/start', auth, async (req, res) => {
     permanentRequestedAt: null,
     permanentResponseDeadline: null,
     hiddenFor: [],
-    deletedFor: []
+    clearedAt: {}
   };
   db().chatSessions.push(session);
   
@@ -215,7 +215,6 @@ router.get('/sessions', auth, (req, res) => {
   const sessions = db().chatSessions
     .filter(s => s.userA === req.user.id || s.userB === req.user.id)
     .filter(s => !(s.hiddenFor && s.hiddenFor.includes(req.user.id)))
-    .filter(s => !(s.deletedFor && s.deletedFor.includes(req.user.id)))
     .sort((a, b) => {
       const aTime = a.lastMessageAt || a.startedAt;
       const bTime = b.lastMessageAt || b.startedAt;
@@ -224,8 +223,9 @@ router.get('/sessions', auth, (req, res) => {
     .map(s => {
       const otherUserId = s.userA === req.user.id ? s.userB : s.userA;
       const otherUser = findUserById(otherUserId);
+      const clearedAt = (s.clearedAt && s.clearedAt[req.user.id]) || 0;
       const lastMessage = db().messages
-        .filter(m => m.sessionId === s.id)
+        .filter(m => m.sessionId === s.id && m.createdAt > clearedAt)
         .sort((a, b) => b.createdAt - a.createdAt)[0];
       
       return {
@@ -258,10 +258,11 @@ router.get('/sessions/:id/messages', auth, (req, res) => {
     return res.json({ success: false, error: '无权查看' });
   }
   
+  const clearedAt = (session.clearedAt && session.clearedAt[req.user.id]) || 0;
   const messages = db().messages
-    .filter(m => m.sessionId === session.id)
+    .filter(m => m.sessionId === session.id && m.createdAt > clearedAt)
     .sort((a, b) => a.createdAt - b.createdAt)
-    .slice(-100); // Last 100 messages
+    .slice(-100); // Last 100 messages (after this user's clear)
   
   res.json({ success: true, messages, session });
 });
@@ -279,13 +280,14 @@ router.post('/sessions/:id/hide', auth, (req, res) => {
   if (!session.hiddenFor.includes(req.user.id)) {
     session.hiddenFor.push(req.user.id);
   }
-  // A soft-hide overrides any previous hard-delete
-  session.deletedFor = (session.deletedFor || []).filter(u => u !== req.user.id);
   save();
   res.json({ success: true });
 });
 
-// Hard-delete a session for the current user (remove from my list; will NOT reappear on new messages)
+// Delete a session for the current user: clear OUR chat history and hide it from
+// our list. If the OTHER party later sends a new message, the conversation
+// reappears (showing only messages from that point on). The other party's own
+// history is untouched.
 router.post('/sessions/:id/delete', auth, (req, res) => {
   const session = findChatSessionById(req.params.id);
   if (!session) {
@@ -294,12 +296,12 @@ router.post('/sessions/:id/delete', auth, (req, res) => {
   if (session.userA !== req.user.id && session.userB !== req.user.id) {
     return res.json({ success: false, error: '无权操作' });
   }
-  session.deletedFor = session.deletedFor || [];
-  if (!session.deletedFor.includes(req.user.id)) {
-    session.deletedFor.push(req.user.id);
+  session.clearedAt = session.clearedAt || {};
+  session.clearedAt[req.user.id] = Date.now();
+  session.hiddenFor = session.hiddenFor || [];
+  if (!session.hiddenFor.includes(req.user.id)) {
+    session.hiddenFor.push(req.user.id);
   }
-  // A hard-delete overrides any previous soft-hide
-  session.hiddenFor = (session.hiddenFor || []).filter(u => u !== req.user.id);
   save();
   res.json({ success: true });
 });

@@ -1539,7 +1539,7 @@ async function hideSession(id) {
 }
 
 async function deleteSession(id) {
-  showModal('删除对话', '删除后该对话将从你的消息列表中移除（对方仍可见，且不会因对方发消息而重新出现）。确定删除吗？', [
+  showModal('删除对话', '删除将清空你们之间的聊天记录，并从你的消息列表移除；对方发来新消息时会重新显示（对方自己的记录不受影响）。确定删除吗？', [
     { text: '取消', cancel: true },
     { text: '删除', onClick: async () => {
       try {
@@ -1558,7 +1558,7 @@ async function deleteSession(id) {
 async function batchDeleteSessions() {
   if (selectedSessions.size === 0) { showToast('请先选择对话'); return; }
   const ids = Array.from(selectedSessions);
-  showModal('批量删除', `确定删除选中的 ${ids.length} 个对话吗？（对方仍可见，且不会因新消息重新出现）`, [
+  showModal('批量删除', `确定删除选中的 ${ids.length} 个对话吗？删除会清空聊天记录并从列表移除，对方发来新消息时会重新显示。`, [
     { text: '取消', cancel: true },
     { text: '删除', onClick: async () => {
       try {
