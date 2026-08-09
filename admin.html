@@ -301,8 +301,8 @@ async function renderDashboard() {
       <div class="card">
         <div class="card__title">最近注册用户</div>
         <table class="table">
-          <thead><tr><th>手机号</th><th>昵称</th><th>状态</th><th>注册时间</th></tr></thead>
-          <tbody>${res.recentUsers.map(u => `<tr><td>${u.phone}</td><td>${u.nickname}</td><td><span class="badge ${badgeClass(u.status)}">${u.status}</span></td><td>${formatTime(u.createdAt)}</td></tr>`).join('')}</tbody>
+          <thead><tr><th>手机号</th><th>邮箱</th><th>昵称</th><th>状态</th><th>注册时间</th></tr></thead>
+          <tbody>${res.recentUsers.map(u => `<tr><td>${u.phone}</td><td>${u.email || '-'}</td><td>${u.nickname}</td><td><span class="badge ${badgeClass(u.status)}">${u.status}</span></td><td>${formatTime(u.createdAt)}</td></tr>`).join('')}</tbody>
         </table>
       </div>
       <div class="card">
@@ -329,7 +329,7 @@ async function renderUsers() {
   const c = document.getElementById('pageContent');
   c.innerHTML = `
     <div class="search-bar">
-      <input type="text" placeholder="搜索昵称/手机号/ID" value="${userSearch}" oninput="userSearch=this.value;pagination.page=1" onkeydown="if(event.key==='Enter')renderUsers()">
+      <input type="text" placeholder="搜索昵称/手机号/邮箱/ID" value="${userSearch}" oninput="userSearch=this.value;pagination.page=1" onkeydown="if(event.key==='Enter')renderUsers()">
       <select onchange="userStatus=this.value;pagination.page=1;renderUsers()">
         <option value="all" ${userStatus==='all'?'selected':''}>全部状态</option>
         <option value="active" ${userStatus==='active'?'selected':''}>正常</option>
@@ -341,11 +341,12 @@ async function renderUsers() {
     </div>
     <div class="card">
       <table class="table">
-        <thead><tr><th>ID</th><th>手机号</th><th>昵称</th><th>性别</th><th>漂流币</th><th>状态</th><th>注册时间</th><th>操作</th></tr></thead>
+        <thead><tr><th>ID</th><th>手机号</th><th>邮箱</th><th>昵称</th><th>性别</th><th>漂流币</th><th>状态</th><th>注册时间</th><th>操作</th></tr></thead>
         <tbody>
           ${res.users.map(u => `<tr>
             <td style="font-size:11px;color:#999">${u.id.slice(0,12)}...</td>
             <td>${u.phone}</td>
+            <td>${u.email || '-'}</td>
             <td>${u.nickname}</td>
             <td>${u.gender==='male'?'男':u.gender==='female'?'女':'-'}</td>
             <td>${u.coins}</td>
@@ -369,6 +370,7 @@ async function viewUser(id) {
   openModal('用户详情', `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
       <div><b>手机号:</b> ${u.phone}</div>
+      <div><b>邮箱:</b> ${u.email || '未设置'}</div>
       <div><b>昵称:</b> ${u.nickname || '未设置'}</div>
       <div><b>性别:</b> ${u.gender || '未设置'}</div>
       <div><b>状态:</b> <span class="badge ${badgeClass(u.status)}">${u.status}</span></div>

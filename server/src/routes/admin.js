@@ -81,7 +81,7 @@ router.get('/dashboard', adminAuth, (req, res) => {
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, 10)
     .map(u => ({
-      id: u.id, phone: u.phone, nickname: u.nickname || '未设置',
+      id: u.id, phone: u.phone, email: u.email || '', nickname: u.nickname || '未设置',
       createdAt: u.createdAt, status: u.status
     }));
   
@@ -112,6 +112,7 @@ router.get('/users', adminAuth, (req, res) => {
     users = users.filter(u =>
       (u.nickname && u.nickname.toLowerCase().includes(q)) ||
       u.phone.includes(q) ||
+      (u.email && u.email.toLowerCase().includes(q)) ||
       u.id.includes(q)
     );
   }
@@ -125,7 +126,7 @@ router.get('/users', adminAuth, (req, res) => {
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(start, start + parseInt(pageSize))
     .map(u => ({
-      id: u.id, phone: u.phone, nickname: u.nickname || '未设置',
+      id: u.id, phone: u.phone, email: u.email || '', nickname: u.nickname || '未设置',
       gender: u.gender, role: u.role, coins: u.coins,
       status: u.status, restrictions: u.restrictions,
       totalRecharged: u.totalRecharged, totalInvited: u.totalInvited,
