@@ -1,0 +1,24 @@
+name: Keep Render Alive
+
+# 作用：每 10 分钟访问一次 Render 的健康检查接口，
+# 防止免费实例因 15 分钟无请求而「冷启动」(首屏/首次 API 卡 30~50 秒)。
+# 仅对公开仓库免费，私有仓库会消耗 Actions 额度。
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'   # UTC，每 10 分钟执行一次
+  workflow_dispatch:         # 也可在 Actions 页面手动「Run workflow」
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping Render health endpoint
+        run: |
+          code=$(curl -sS -o /dev/null -w "%{http_code}" -m 30 "https://drift-island-api.onrender.com/api/health" || true)
+          if [ "$code" = "200" ]; then
+            echo "OK: Render is warm (HTTP $code)"
+          else
+            echo "WARN: ping returned HTTP '$code' (service may be starting or down)"
+          fi
