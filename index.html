@@ -1012,9 +1012,9 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 const API_BASE = window.DRIFT_API_BASE || '/api';
 const TOKEN_KEY = 'drift_island_token';
 
-function getToken() { return localStorage.getItem(TOKEN_KEY); }
-function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
-function clearToken() { localStorage.removeItem(TOKEN_KEY); }
+function getToken() { return sessionStorage.getItem(TOKEN_KEY); }
+function setToken(t) { sessionStorage.setItem(TOKEN_KEY, t); }
+function clearToken() { sessionStorage.removeItem(TOKEN_KEY); }
 
 async function api(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...options.headers };
@@ -3055,7 +3055,7 @@ function showAgreement(type) {
     <br><p><b>2. 信息使用</b></p><p>收集的信息仅用于提供应用功能、身份验证和防滥用。我们不会向第三方出售您的信息。</p>
     <br><p><b>3. 信息安全</b></p><p>我们采取技术措施保护您的信息安全，手机号加密存储。</p>
     <br><p><b>4. 信息删除</b></p><p>您可以随时注销账号，注销后所有个人数据将被删除。</p>
-    <br><p><b>5. Cookie</b></p><p>本应用使用 localStorage 存储 JWT 令牌，不使用跟踪 Cookie。</p>`;
+    <br><p><b>5. Cookie</b></p><p>本应用使用会话级存储（sessionStorage）临时保存登录令牌，关闭页面或切出 App（如切出微信）后令牌即失效，再次打开需重新登录。不使用跟踪 Cookie。</p>`;
   }
   navigate('agreement');
 }
@@ -3093,6 +3093,18 @@ async function init() {
   }
   navigateTo('login', true);
 }
+
+/* 切到后台即清除登录态：微信 / App 内切出再点链接必须重新登录 */
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    clearToken();
+    return;
+  }
+  // 切回前台：若已无登录态且不在登录 / 欢迎页，强制回到登录页
+  if (!getToken() && currentPage && currentPage !== 'login' && currentPage !== 'welcome') {
+    navigateTo('login', true);
+  }
+});
 
 init();
 </script>
