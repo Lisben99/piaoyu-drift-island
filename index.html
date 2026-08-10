@@ -276,6 +276,8 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .message-item__preview{font-size:13px;color:#718082;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
 .message-item__badge{display:flex;align-items:center;gap:6px}
 .message-item__unread{min-width:18px;height:18px;border-radius:9px;background:#ef7b62;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
+.tab-item{position:relative}
+.tab-badge{position:absolute;top:4px;left:calc(50% + 8px);min-width:16px;height:16px;border-radius:8px;background:#ef7b62;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;box-sizing:border-box}
 .message-status-tag{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600}
 .tag-active{background:rgba(31,122,116,.1);color:#1f7a74}
 .tag-expired{background:rgba(231,76,60,.08);color:#e74c3c}
@@ -1038,7 +1040,29 @@ function renderTabBar(containerId, active) {
     { id: 'settings', label: '我的', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a6 6 0 016-6h4a6 6 0 016 6v2"/></svg>' }
   ];
   const c = $(containerId); if (!c) return;
-  c.innerHTML = tabs.map(t => `<div class="tab-item ${active===t.id?'active':''}" onclick="navigate('${t.id}')">${t.icon}<span>${t.label}</span></div>`).join('');
+  const unread = (window.unreadTotal && window.unreadTotal > 0) ? window.unreadTotal : 0;
+  c.innerHTML = tabs.map(t => {
+    const badge = (t.id === 'messages' && unread > 0) ? `<span class="tab-badge">${unread > 99 ? '99+' : unread}</span>` : '';
+    return `<div class="tab-item ${active===t.id?'active':''}" onclick="navigate('${t.id}')">${t.icon}<span>${t.label}</span>${badge}</div>`;
+  }).join('');
+}
+
+// 重新渲染当前页的 tab 栏，使未读角标即时更新
+function updateTabBadges() {
+  const page = currentPage || 'home';
+  const container = 'tabbar-' + page;
+  if ($(container)) renderTabBar(container, page);
+}
+
+// 拉取一次会话列表，用权威未读数刷新底部「消息」tab 角标
+async function refreshUnread() {
+  try {
+    const res = await api('/chat/sessions');
+    if (res && res.success) {
+      window.unreadTotal = (res.sessions || []).reduce((a, s) => a + (s.unreadCount || 0), 0);
+      updateTabBadges();
+    }
+  } catch (e) {}
 }
 
 /* ================================================================
@@ -1152,6 +1176,7 @@ $('loginBtn').onclick = async function() {
         navigateTo('role', true);
       } else {
         navigateTo('home', true);
+        refreshUnread();
       }
     } else {
       showToast(res.error || '登录失败');
@@ -1177,7 +1202,7 @@ $('pwdLoginBtn').onclick = async function() {
       setToken(res.token);
       currentUser = res.user;
       if (!res.user.role) navigateTo('role', true);
-      else navigateTo('home', true);
+      else { navigateTo('home', true); refreshUnread(); }
     } else {
       showToast(res.error || '登录失败');
     }
@@ -1524,6 +1549,9 @@ async function renderMessages() {
         const color = avatarColor(name);
         const preview = s.lastMessage ? (s.lastMessage.content || (s.lastMessage.image ? '[图片]' : '开始聊天吧')) : '开始聊天吧';
         const statusTag = s.status === 'active' ? '' : `<span class="message-status-tag ${statusTagClass(s.status)}">${statusLabel(s.status)}</span>`;
+        const unread = s.unreadCount || 0;
+        const unreadBadge = unread > 0 ? `<span class="message-item__unread">${unread > 99 ? '99+' : unread}</span>` : '';
+        const badgeHtml = unreadBadge || statusTag;
         if (chatMultiSelect) {
           const selected = selectedSessions.has(s.id);
           return `<div class="message-item message-item--select ${selected ? 'is-selected' : ''}" onclick="toggleSessionSelect('${s.id}')">
@@ -1536,7 +1564,7 @@ async function renderMessages() {
               </div>
               <div class="message-item__preview">${preview}</div>
             </div>
-            <div class="message-item__badge">${statusTag}</div>
+            <div class="message-item__badge">${badgeHtml}</div>
           </div>`;
         }
         return `<div class="msg-swipe" data-id="${s.id}">
@@ -1558,12 +1586,16 @@ async function renderMessages() {
               </div>
               <div class="message-item__preview">${preview}</div>
             </div>
-            <div class="message-item__badge">${statusTag}</div>
+            <div class="message-item__badge">${badgeHtml}</div>
           </div>
         </div>`;
       }).join('');
     } else {
       $('messagesList').innerHTML = `<div class="empty-state"><div class="empty-state__icon">💬</div><div class="empty-state__title">还没有消息</div><div class="empty-state__desc">去大厅和感兴趣的人聊聊吧</div></div>`;
+      window.unreadTotal = 0;
+    }
+    if (res && res.success) {
+      window.unreadTotal = (res.sessions || []).reduce((a, s) => a + (s.unreadCount || 0), 0);
     }
   } catch (e) {}
   renderMessagesNav();
@@ -1683,6 +1715,10 @@ async function openChat(sessionId) {
     if (res.success) {
       renderChatPage(res.session, res.messages);
       connectWS();
+      // 标记会话已读，清零该会话未读角标
+      api('/chat/sessions/' + sessionId + '/read', { method: 'POST' }).catch(() => {});
+      window.unreadTotal = Math.max(0, (window.unreadTotal || 0) - 1);
+      updateTabBadges();
     }
   } catch (e) { showToast('加载失败'); }
 }
@@ -1866,7 +1902,16 @@ function connectWS() {
         if (msg.data.sessionId === currentChatSessionId) {
           appendMessage(msg.data, false);
         }
-        if (currentPage !== 'chat') showToast('收到新消息');
+        if (currentPage !== 'chat' && msg.data.sessionId !== currentChatSessionId) {
+          showToast('收到新消息');
+          // 不在该会话时累加未读角标；在消息页则直接刷新列表拿到权威未读数
+          if (currentPage === 'messages') {
+            renderMessages();
+          } else {
+            window.unreadTotal = (window.unreadTotal || 0) + 1;
+            updateTabBadges();
+          }
+        }
       } else if (msg.type === 'permanent_chat_request') {
         showToast('收到续聊请求');
         if (currentPage === 'chat') openChat(currentChatSessionId);
@@ -2695,6 +2740,7 @@ async function init() {
         } else {
           navigateTo('home', true);
           connectWS();
+          refreshUnread();
         }
         return;
       }

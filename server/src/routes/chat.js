@@ -165,7 +165,8 @@ router.post('/start', auth, async (req, res) => {
     permanentRequestedAt: null,
     permanentResponseDeadline: null,
     hiddenFor: [],
-    clearedAt: {}
+    clearedAt: {},
+    lastReadAt: {}
   };
   db().chatSessions.push(session);
   
@@ -229,10 +230,16 @@ router.get('/sessions', auth, (req, res) => {
       const otherUserId = s.userA === req.user.id ? s.userB : s.userA;
       const otherUser = findUserById(otherUserId);
       const clearedAt = (s.clearedAt && s.clearedAt[req.user.id]) || 0;
-      const lastMessage = db().messages
-        .filter(m => m.sessionId === s.id && m.createdAt > clearedAt)
+      const lastReadAt = (s.lastReadAt && s.lastReadAt[req.user.id]) || 0;
+      const visibleMessages = db().messages
+        .filter(m => m.sessionId === s.id && m.createdAt > clearedAt);
+      const lastMessage = visibleMessages
         .sort((a, b) => b.createdAt - a.createdAt)[0];
-      
+      // 未读 = 对方发来的、且晚于我上次阅读时间的消息数
+      const unreadCount = visibleMessages
+        .filter(m => m.senderId !== req.user.id && m.createdAt > lastReadAt)
+        .length;
+
       return {
         id: s.id,
         otherUserId,
@@ -244,6 +251,7 @@ router.get('/sessions', auth, (req, res) => {
         expiresAt: s.expiresAt,
         lastMessageAt: s.lastMessageAt,
         lastMessage: lastMessage ? { content: lastMessage.content, image: lastMessage.image || null, createdAt: lastMessage.createdAt, senderId: lastMessage.senderId } : null,
+        unreadCount,
         permanentRequested: s.permanentRequested,
         permanentRequestedBy: s.permanentRequested ? s.initiatedBy : null,
         permanentResponseDeadline: s.permanentResponseDeadline
@@ -280,6 +288,21 @@ router.get('/sessions/:id/messages', auth, (req, res) => {
     .slice(-100); // Last 100 messages (after this user's clear)
 
   res.json({ success: true, messages, session: sessionWithOther });
+});
+
+// Mark a session as read (clears the unread count for the current user)
+router.post('/sessions/:id/read', auth, (req, res) => {
+  const session = findChatSessionById(req.params.id);
+  if (!session) {
+    return res.json({ success: false, error: '会话不存在' });
+  }
+  if (session.userA !== req.user.id && session.userB !== req.user.id) {
+    return res.json({ success: false, error: '无权操作' });
+  }
+  session.lastReadAt = session.lastReadAt || {};
+  session.lastReadAt[req.user.id] = Date.now();
+  save();
+  res.json({ success: true });
 });
 
 // Hide a session for the current user (delete/hide from my list only)
