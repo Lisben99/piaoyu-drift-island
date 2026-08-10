@@ -5,6 +5,7 @@ server/.npm-cache/
 # Database (local dev only)
 server/data/db.json
 data/db.json
+data/*.bak
 
 # Dev artifacts
 audit-report.html

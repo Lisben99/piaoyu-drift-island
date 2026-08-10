@@ -110,6 +110,7 @@ npm start                             # = node src/index.js
 | 服务 | 开关变量 | 状态 | 需要的密钥变量 |
 | --- | --- | --- | --- |
 | 短信 | `SMS_PROVIDER` | ✅ 已对接（阿里云「短信认证」Dypnsapi；余额耗尽时暂停） | `ALIYUN_SMS_KEY`, `ALIYUN_SMS_SECRET`（SIGN/TEMPLATE 已内置默认值） |
+| 邮箱验证码 | `EMAIL_PROVIDER` | ✅ 已对接（Resend HTTPS API；未配置 Key 时回退 dev） | `RESEND_API_KEY`, `EMAIL_FROM`（可选） |
 | 支付 | `PAYMENT_PROVIDER` | ⏳ 占位桩（待对接微信支付） | `WECHAT_PAY_MCHID`, `WECHAT_PAY_APPID`, `WECHAT_PAY_SERIAL`, `WECHAT_PAY_PRIVATE_KEY`, `WECHAT_PAY_APIV3` |
 | 内容审核 | `MODERATION_PROVIDER` | ✅ 已对接（腾讯云 TMS） | `TENCENT_SECRET_ID`, `TENCENT_SECRET_KEY` |
 | 签名 | `JWT_SECRET` | 已自动生成 | — |
@@ -182,6 +183,41 @@ npm start                             # = node src/index.js
 - 发布一条含明显违规词（如「赌博」「诈骗」）的内容，应被腾讯云拦截并返回不通过；正常内容正常通过。
 
 > 🔒 密钥仅存 Render，不进 git；请勿写入仓库文件。
+
+### 6.3 启用邮箱验证码登录（Resend）
+
+> 适用场景：用户可用「邮箱 + 邮件验证码」注册/登录，绕过短信成本或作为备用通道。Render 免费实例屏蔽出站 SMTP（465/587），因此走 **Resend HTTPS API**（443 端口），无需额外依赖。
+
+**第一步：注册 Resend 并获取 API Key**
+1. 打开 https://resend.com 注册账号。
+2. 进入 API Keys 页面，创建一个 Key（以 `re_` 开头）。
+3. （推荐）在「Domains」里添加并验证你的域名 `piaoyuisland.xyz` 或子域名（如 `mail.piaoyuisland.xyz`），验证通过后可从该域名发件。
+
+**第二步：在 Render 填入环境变量**
+到 Render Dashboard → `drift-island-api` → Environment，新增以下变量：
+
+| Key | Value | 是否必填 |
+| --- | --- | --- |
+| `EMAIL_PROVIDER` | `resend` | 是（`render.yaml` 已默认设置） |
+| `RESEND_API_KEY` | `<你的 re_ 开头 Key>` | 是 |
+| `EMAIL_FROM` | `漂屿 <noreply@piaoyuisland.xyz>` 或 Resend 默认 `漂屿 <onboarding@resend.dev>` | 否（未配置时回退 Resend 默认地址） |
+
+> - 如果还没在 Resend 验证自有域名，`EMAIL_FROM` 必须保持 `漂屿 <onboarding@resend.dev>`，且只能给**你自己在 Resend 验证过的邮箱**发测试邮件；验证域名后即可对外发件。
+> - 如果只填 `RESEND_API_KEY` 不填 `EMAIL_FROM`，系统会自动使用 `漂屿 <onboarding@resend.dev>`。
+> - `RESEND_API_KEY` 是密钥，**只填 Render Environment，不要写进仓库**。
+
+保存后 Render 自动重新部署。
+
+**第三步：验证**
+- 访问健康检查 `GET /api/health`，响应里的 `email_provider` 应为 `resend`。
+- 查看 Render 启动日志，应出现 `Email Provider: resend ✓ RESEND_API_KEY 已配置`。
+- 在前端 `index.html` / `register.html` 切换到「邮箱登录/注册」，输入邮箱获取验证码，应能收到真实邮件；回填后成功登录。
+
+**实现要点（维护参考）**：
+- 代码位置：`server/src/services/email.js`。
+- 三种模式：`dev`（本地生成验证码并返回 `devCode`）、`resend`（真实邮件）、`smtp`（兼容通道，线上通常不可用）。
+- 验证码 5 分钟有效，同一邮箱 60 秒防刷。
+- 校验在本地完成（邮件服务商不提供闭环校验接口）。
 
 ---
 

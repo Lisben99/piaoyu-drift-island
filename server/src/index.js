@@ -105,10 +105,15 @@ async function start() {
     const smsTpl = process.env.ALIYUN_SMS_TEMPLATE || '100001(系统赠送)';
     console.log(`  SMS Provider:      ${smsMode}${smsMode === 'aliyun' ? (smsCreds ? ' ✓ 密钥已配置' : ' ✗ 缺少 ALIYUN_SMS_KEY/SECRET（将回退 dev）') : ' (本地验证码)'}`);
     if (smsMode === 'aliyun') console.log(`  SMS Sign/Template: ${smsSign} / ${smsTpl}`);
+    const emailMode = process.env.EMAIL_PROVIDER || 'dev';
+    const resendCreds = !!process.env.RESEND_API_KEY;
+    const emailFrom = process.env.EMAIL_FROM || '漂屿 <onboarding@resend.dev>';
+    console.log(`  Email Provider:    ${emailMode}${emailMode === 'resend' ? (resendCreds ? ' ✓ RESEND_API_KEY 已配置' : ' ✗ 缺少 RESEND_API_KEY（将回退 dev）') : ''}`);
+    if (emailMode === 'resend') console.log(`  Email From:        ${emailFrom}`);
     console.log(`  Payment Provider:  ${process.env.PAYMENT_PROVIDER || 'dev (simulated)'}`);
     console.log(`  Moderation:        ${process.env.MODERATION_PROVIDER || 'local (keyword filter)'}`);
     console.log(`\n  Production env vars:`);
-    console.log(`  SMS_PROVIDER=aliyun PAYMENT_PROVIDER=wechat MODERATION_PROVIDER=tencent DATABASE_URL=...`);
+    console.log(`  SMS_PROVIDER=aliyun EMAIL_PROVIDER=resend RESEND_API_KEY=... EMAIL_FROM=... DATABASE_URL=...`);
     console.log(`\n`);
   });
 }
