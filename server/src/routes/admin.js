@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const { adminAuth } = require('../middleware/auth');
-const { db, save, genId, findUserById, findBottleById, addCoinTransaction, addAuditLog, findAdminById, createBot, getBotProfiles, findBotProfileByBotId, updateBotProfile } = require('../db');
+const { db, save, genId, findUserById, findBottleById, getMomentById, addCoinTransaction, addAuditLog, findAdminById, createBot, getBotProfiles, findBotProfileByBotId, updateBotProfile } = require('../db');
 const { signAdminToken } = require('../utils/jwt');
 const { comparePassword, hashPassword } = require('../utils/crypto');
 const { PACKAGES, refundOrder, confirmPayment, rejectOrder } = require('../services/payment');
@@ -71,6 +71,7 @@ router.get('/dashboard', adminAuth, (req, res) => {
   const totalUsers = humanUsers.length;
   const dailyActive = humanUsers.filter(u => u.lastLoginAt && u.lastLoginAt >= todayStart).length;
   const totalBottles = database.bottles.filter(b => !b.deleted).length;
+  const totalMoments = database.moments.filter(m => !m.deleted).length;
   const totalSessions = database.chatSessions.length;
   const totalRecharged = database.rechargeOrders
     .filter(o => o.status === 'paid')
@@ -106,7 +107,7 @@ router.get('/dashboard', adminAuth, (req, res) => {
   res.json({
     success: true,
     stats: {
-      totalUsers, dailyActive, totalBottles, totalSessions,
+      totalUsers, dailyActive, totalBottles, totalMoments, totalSessions,
       totalRecharged, totalCoinsInCirculation,
       pendingReports, pendingOrders, pendingSupport, penalizedAccounts,
       newUsersToday, deletedUsers, bannedUsers
@@ -258,6 +259,87 @@ router.delete('/bottles/:id', adminAuth, (req, res) => {
   bottle.adminDeleted = true;
   bottle.adminDeletedBy = req.admin.id;
   addAuditLog(req.admin.id, 'delete_bottle', bottle.id, '管理员删除漂流瓶');
+  save();
+  res.json({ success: true });
+});
+
+// ===== Moment (动态) management =====
+// List all moments (content moderation). Supports search + status filter + pagination.
+router.get('/moments', adminAuth, (req, res) => {
+  const { search, status, page = 1, pageSize = 20 } = req.query;
+  let moments = db().moments;
+  if (status === 'deleted') {
+    moments = moments.filter(m => m.deleted);
+  } else {
+    moments = moments.filter(m => !m.deleted);
+    if (status === 'image') moments = moments.filter(m => (m.images || []).length > 0);
+  }
+  if (search) {
+    const q = String(search).toLowerCase();
+    moments = moments.filter(m =>
+      (m.content && m.content.toLowerCase().includes(q)) ||
+      (m.userId && m.userId.toLowerCase().includes(q))
+    );
+  }
+  const total = moments.length;
+  const start = (parseInt(page) - 1) * parseInt(pageSize);
+  const paged = moments
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .slice(start, start + parseInt(pageSize))
+    .map(m => {
+      const author = findUserById(m.userId) || {};
+      const imgs = m.images || [];
+      return {
+        id: m.id,
+        content: m.content || '',
+        imageCount: imgs.length,
+        preview: imgs[0] || '',
+        authorId: m.userId,
+        authorNickname: author.nickname || '用户',
+        authorGender: author.gender || '',
+        likeCount: (m.likes || []).length,
+        commentCount: (m.comments || []).length,
+        createdAt: m.createdAt,
+        deleted: !!m.deleted
+      };
+    });
+  res.json({ success: true, moments: paged, total });
+});
+
+// Moment detail (all images + comments) for the moderation modal.
+router.get('/moments/:id', adminAuth, (req, res) => {
+  const m = getMomentById(req.params.id);
+  if (!m) return res.json({ success: false, error: '动态不存在' });
+  const author = findUserById(m.userId) || {};
+  res.json({
+    success: true,
+    moment: {
+      id: m.id,
+      content: m.content || '',
+      images: m.images || [],
+      authorId: m.userId,
+      authorNickname: author.nickname || '用户',
+      authorGender: author.gender || '',
+      likeCount: (m.likes || []).length,
+      createdAt: m.createdAt,
+      deleted: !!m.deleted,
+      comments: (m.comments || []).map(c => {
+        const cu = findUserById(c.userId) || {};
+        return { id: c.id, userId: c.userId, nickname: cu.nickname || '用户', content: c.content, createdAt: c.createdAt };
+      })
+    }
+  });
+});
+
+// Admin delete a moment (marks deleted + audit log).
+router.delete('/moments/:id', adminAuth, (req, res) => {
+  const m = getMomentById(req.params.id);
+  if (!m) return res.json({ success: false, error: '动态不存在' });
+  if (m.deleted) return res.json({ success: false, error: '动态已删除' });
+  m.deleted = true;
+  m.adminDeleted = true;
+  m.adminDeletedBy = req.admin.id;
+  addAuditLog(req.admin.id, 'delete_moment', m.id, `管理员删除动态（作者 ${m.userId || '未知'}）`);
   save();
   res.json({ success: true });
 });

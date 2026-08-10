@@ -57,6 +57,10 @@ input,textarea,select{font-family:inherit;outline:none;resize:none}
 .uid{font-family:monospace;font-size:11px;color:#556;word-break:break-all;display:inline-block;max-width:220px;cursor:pointer;vertical-align:top}
 .uid:hover{color:#1f7a74;text-decoration:underline}
 .table__actions{display:flex;gap:6px}
+.moment-content-cell{max-width:320px;white-space:pre-wrap;word-break:break-word;line-height:1.5}
+.moment-thumb{width:46px;height:46px;object-fit:cover;border-radius:6px;cursor:pointer;vertical-align:middle;border:1px solid #eee}
+.moment-thumb:hover{opacity:.85}
+.moment-detail-img{width:100%;border-radius:8px;border:1px solid #eee}
 .btn-sm{padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600}
 .btn-primary{background:#1f7a74;color:#fff}
 .btn-danger{background:#e74c3c;color:#fff}
@@ -157,6 +161,7 @@ input,textarea,select{font-family:inherit;outline:none;resize:none}
       <div class="sidebar__item active" onclick="switchTab('dashboard')">📊 数据概览</div>
       <div class="sidebar__item" onclick="switchTab('users')">👥 用户管理</div>
       <div class="sidebar__item" onclick="switchTab('bottles')">🍾 漂流瓶管理</div>
+      <div class="sidebar__item" onclick="switchTab('moments')">📸 动态管理</div>
       <div class="sidebar__item" onclick="switchTab('coins')">🪙 漂流币管理</div>
       <div class="sidebar__item" onclick="switchTab('orders')">💰 充值订单 <span class="sidebar__badge hidden" id="orderBadge"></span></div>
       <div class="sidebar__item" onclick="switchTab('redeem')">🎟️ 卡密管理</div>
@@ -289,10 +294,10 @@ function adminLogout() {
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.sidebar__item').forEach((el, i) => {
-    const tabs = ['dashboard','users','bottles','coins','orders','redeem','reports','support','bots','config','audit'];
+    const tabs = ['dashboard','users','bottles','moments','coins','orders','redeem','reports','support','bots','config','audit'];
     el.classList.toggle('active', tabs[i] === tab);
   });
-  const titles = { dashboard:'数据概览', users:'用户管理', bottles:'漂流瓶管理', coins:'漂流币管理', orders:'充值订单', redeem:'卡密管理', reports:'举报管理', support:'客服工单', bots:'机器人管理', config:'业务配置', audit:'审计日志' };
+  const titles = { dashboard:'数据概览', users:'用户管理', bottles:'漂流瓶管理', moments:'动态管理', coins:'漂流币管理', orders:'充值订单', redeem:'卡密管理', reports:'举报管理', support:'客服工单', bots:'机器人管理', config:'业务配置', audit:'审计日志' };
   document.getElementById('pageTitle').textContent = titles[tab];
   pagination = { page: 1, pageSize: 20, total: 0 };
   renderTab();
@@ -351,6 +356,7 @@ async function renderDashboard() {
       <div class="stat-card"><div class="stat-card__label">今日新增注册</div><div class="stat-card__value">${s.newUsersToday}</div></div>
       <div class="stat-card"><div class="stat-card__label">日活用户</div><div class="stat-card__value">${s.dailyActive}</div></div>
       <div class="stat-card"><div class="stat-card__label">漂流瓶总量</div><div class="stat-card__value">${s.totalBottles}</div></div>
+      <div class="stat-card"><div class="stat-card__label">社区动态</div><div class="stat-card__value">${s.totalMoments}</div></div>
       <div class="stat-card"><div class="stat-card__label">聊天会话</div><div class="stat-card__value">${s.totalSessions}</div></div>
       <div class="stat-card"><div class="stat-card__label">充值总额</div><div class="stat-card__value">¥${s.totalRecharged}</div></div>
       <div class="stat-card"><div class="stat-card__label">漂流币流通</div><div class="stat-card__value">${s.totalCoinsInCirculation}</div></div>
@@ -517,6 +523,67 @@ async function deleteBottle(id) {
   if (!confirm('确定删除这条漂流瓶？')) return;
   const res = await api(`/bottles/${id}`, { method: 'DELETE' });
   if (res.success) { showToast('已删除'); renderBottles(); }
+  else showToast(res.error || '删除失败');
+}
+
+/* ===== Moments (动态管理) ===== */
+let momentSearch = '', momentStatus = 'all';
+async function renderMoments() {
+  const res = await api(`/moments?search=${encodeURIComponent(momentSearch)}&status=${momentStatus}&page=${pagination.page}&pageSize=${pagination.pageSize}`);
+  if (!res.success) return;
+  pagination.total = res.total;
+  const c = document.getElementById('pageContent');
+  c.innerHTML = `
+    <div class="search-bar">
+      <input type="text" placeholder="搜索动态内容 / 作者ID" value="${momentSearch}" oninput="momentSearch=this.value;pagination.page=1" onkeydown="if(event.key==='Enter')renderMoments()">
+      <select onchange="momentStatus=this.value;pagination.page=1;renderMoments()">
+        <option value="all" ${momentStatus==='all'?'selected':''}>全部动态</option>
+        <option value="image" ${momentStatus==='image'?'selected':''}>含图片</option>
+        <option value="deleted" ${momentStatus==='deleted'?'selected':''}>已删除</option>
+      </select>
+      <button class="btn-sm btn-primary" onclick="pagination.page=1;renderMoments()">搜索</button>
+    </div>
+    <div class="card">
+      <table class="table">
+        <thead><tr><th>内容</th><th>图片</th><th>作者</th><th>性别</th><th>点赞</th><th>评论</th><th>发布时间</th><th>操作</th></tr></thead>
+        <tbody>
+          ${res.moments.map(m => `<tr>
+            <td class="moment-content-cell">${m.content ? escapeHtml(m.content) : '<span style="color:#999">（仅图片）</span>'}</td>
+            <td>${m.imageCount ? `<img src="${m.preview}" class="moment-thumb" onclick="viewMoment('${m.id}')" title="点击查看全部图片与评论"> ×${m.imageCount}` : '-'}</td>
+            <td>${m.authorNickname}</td>
+            <td>${m.authorGender==='male'?'男':m.authorGender==='female'?'女':'-'}</td>
+            <td>${m.likeCount}</td>
+            <td>${m.commentCount}</td>
+            <td>${formatTime(m.createdAt)}</td>
+            <td>${m.deleted ? '<span class="badge badge-banned">已删除</span>' : `<button class="btn-sm btn-danger" onclick="deleteMomentAdmin('${m.id}')">删除</button>`}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      ${renderPagination()}
+    </div>`;
+}
+
+async function viewMoment(id) {
+  const res = await api(`/moments/${id}`);
+  if (!res.success) { showToast(res.error || '加载失败'); return; }
+  const m = res.moment;
+  const imgs = (m.images || []).map(src => `<img src="${src}" class="moment-detail-img">`).join('');
+  openModal('动态详情 - ' + m.authorNickname, `
+    <div style="margin-bottom:12px">
+      <div style="font-size:13px;color:#666;margin-bottom:6px"><b>作者：</b>${m.authorNickname}（${m.authorGender==='male'?'男':m.authorGender==='female'?'女':'未知'}） ${fmtId(m.authorId)}</div>
+      <div style="font-size:13px;color:#666;margin-bottom:8px"><b>发布时间：</b>${formatTime(m.createdAt)}　<b>点赞：</b>${m.likeCount}${m.deleted?'　<span class="badge badge-banned">已删除</span>':''}</div>
+      <div style="white-space:pre-wrap;word-break:break-word;line-height:1.6">${m.content ? escapeHtml(m.content) : '<span style="color:#999">（仅图片）</span>'}</div>
+    </div>
+    ${imgs ? `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0">${imgs}</div>` : ''}
+    <h4 style="margin:16px 0 8px">评论（${m.comments.length}）</h4>
+    <div style="max-height:220px;overflow-y:auto">${(m.comments||[]).map(c => `<div style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px"><b>${escapeHtml(c.nickname)}</b> <span style="color:#999;font-size:12px">${formatTime(c.createdAt)}</span><div style="margin-top:2px">${escapeHtml(c.content)}</div></div>`).join('') || '<div style="color:#999">暂无评论</div>'}</div>
+  `, m.deleted ? '<button class="btn-sm btn-ghost" onclick="closeModal()">关闭</button>' : `<button class="btn-sm btn-danger" onclick="deleteMomentAdmin('${m.id}')">删除该动态</button>`);
+}
+
+async function deleteMomentAdmin(id) {
+  if (!confirm('确定删除这条动态？删除后用户端将不再显示。')) return;
+  const res = await api(`/moments/${id}`, { method: 'DELETE' });
+  if (res.success) { showToast('已删除'); closeModal(); renderMoments(); }
   else showToast(res.error || '删除失败');
 }
 
