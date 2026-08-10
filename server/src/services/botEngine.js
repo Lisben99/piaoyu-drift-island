@@ -289,7 +289,7 @@ async function runProactivePost() {
     id: genId('bottle'),
     content,
     authorId: bot.userId,
-    authorGender: '',               // bot label handled on frontend
+    authorGender: normalizeBotGender(bot.genderDisplay),
     anonymous: false,
     status: 'displaying',
     deleted: false,

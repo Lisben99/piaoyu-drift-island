@@ -71,7 +71,7 @@ router.get('/', (req, res) => {
       content: b.content,
       authorId: b.authorId,
       authorNickname: author ? author.nickname : '匿名用户',
-      authorGender: b.authorGender,
+      authorGender: (author && author.gender) || b.authorGender || '',
       authorAvatar: author ? author.avatar : '',
       anonymous: false,
       authorAccountType: author ? (author.account_type || 'HUMAN') : 'HUMAN',
@@ -110,6 +110,7 @@ router.get('/:id', (req, res) => {
     bottle: {
       ...bottle,
       authorNickname: author ? author.nickname : '匿名用户',
+      authorGender: (author && author.gender) || bottle.authorGender || '',
       authorAvatar: author ? author.avatar : '',
       authorAccountType: author ? (author.account_type || 'HUMAN') : 'HUMAN',
       replies: (bottle.replies || []).map(r => ({
@@ -150,7 +151,7 @@ router.post('/:id/reply', auth, async (req, res) => {
   const reply = recordBottleReply(bottle, {
     senderId: req.user.id,
     senderNickname: req.user.nickname || '匿名用户',
-    senderGender: req.user.role,
+    senderGender: req.user.gender,
     senderAccountType: req.user.account_type || 'HUMAN',
     anonymous: false,
     content: content.trim()
@@ -195,7 +196,7 @@ router.post('/', auth, async (req, res) => {
     id: genId('bottle'),
     content: content.trim(),
     authorId: req.user.id,
-    authorGender: req.user.role,
+    authorGender: req.user.gender,
     anonymous: !!anonymous,
     status: 'displaying',
     deleted: false,
