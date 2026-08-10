@@ -53,6 +53,9 @@ input,textarea,select{font-family:inherit;outline:none;resize:none}
 .table th{text-align:left;padding:10px 12px;border-bottom:2px solid #f0f0f0;color:#666;font-weight:600;white-space:nowrap}
 .table td{padding:10px 12px;border-bottom:1px solid #f5f5f5}
 .table tr:hover{background:#fafafa}
+/* Full (non-truncated) ID cell with hover preview + click-to-copy */
+.uid{font-family:monospace;font-size:11px;color:#556;word-break:break-all;display:inline-block;max-width:220px;cursor:pointer;vertical-align:top}
+.uid:hover{color:#1f7a74;text-decoration:underline}
 .table__actions{display:flex;gap:6px}
 .btn-sm{padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600}
 .btn-primary{background:#1f7a74;color:#fff}
@@ -250,6 +253,11 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+// Render a full (never truncated) ID. Click copies it; hover shows the complete value.
+function fmtId(id) {
+  if (!id) return '-';
+  return `<span class="uid" title="点击复制完整ID：${escapeHtml(id)}" onclick="copyText('${escapeHtml(id)}')">${escapeHtml(id)}</span>`;
+}
 
 /* ===== Login ===== */
 document.getElementById('adminLoginBtn').onclick = async function() {
@@ -340,6 +348,7 @@ async function renderDashboard() {
   c.innerHTML = `
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-card__label">总注册用户</div><div class="stat-card__value">${s.totalUsers}</div></div>
+      <div class="stat-card"><div class="stat-card__label">今日新增注册</div><div class="stat-card__value">${s.newUsersToday}</div></div>
       <div class="stat-card"><div class="stat-card__label">日活用户</div><div class="stat-card__value">${s.dailyActive}</div></div>
       <div class="stat-card"><div class="stat-card__label">漂流瓶总量</div><div class="stat-card__value">${s.totalBottles}</div></div>
       <div class="stat-card"><div class="stat-card__label">聊天会话</div><div class="stat-card__value">${s.totalSessions}</div></div>
@@ -349,6 +358,8 @@ async function renderDashboard() {
       <div class="stat-card"><div class="stat-card__label">未解决工单</div><div class="stat-card__value warning">${s.pendingSupport}</div></div>
       <div class="stat-card"><div class="stat-card__label">待处理举报</div><div class="stat-card__value warning">${s.pendingReports}</div></div>
       <div class="stat-card"><div class="stat-card__label">处罚账号</div><div class="stat-card__value danger">${s.penalizedAccounts}</div></div>
+      <div class="stat-card"><div class="stat-card__label">封禁账号</div><div class="stat-card__value danger">${s.bannedUsers}</div></div>
+      <div class="stat-card"><div class="stat-card__label">累计注销用户</div><div class="stat-card__value danger">${s.deletedUsers}</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="card">
@@ -384,6 +395,7 @@ async function renderUsers() {
         <option value="restricted" ${userStatus==='restricted'?'selected':''}>受限</option>
         <option value="frozen" ${userStatus==='frozen'?'selected':''}>冻结</option>
         <option value="banned" ${userStatus==='banned'?'selected':''}>封禁</option>
+        <option value="deleted" ${userStatus==='deleted'?'selected':''}>已注销</option>
       </select>
       <button class="btn-sm btn-primary" onclick="pagination.page=1;renderUsers()">搜索</button>
     </div>
@@ -392,7 +404,7 @@ async function renderUsers() {
         <thead><tr><th>ID</th><th>手机号</th><th>邮箱</th><th>昵称</th><th>性别</th><th>漂流币</th><th>状态</th><th>注册时间</th><th>操作</th></tr></thead>
         <tbody>
           ${res.users.map(u => `<tr>
-            <td style="font-size:11px;color:#999">${u.id.slice(0,12)}...</td>
+            <td>${fmtId(u.id)}</td>
             <td>${u.phone}</td>
             <td>${u.email || '-'}</td>
             <td>${u.nickname}</td>
@@ -421,12 +433,14 @@ async function viewUser(id) {
       <div><b>邮箱:</b> ${u.email || '未设置'}</div>
       <div><b>昵称:</b> ${u.nickname || '未设置'}</div>
       <div><b>性别:</b> ${u.gender || '未设置'}</div>
+      <div><b>用户ID:</b> ${fmtId(u.id)}</div>
       <div><b>状态:</b> <span class="badge ${badgeClass(u.status)}">${u.status}</span></div>
       <div><b>漂流币:</b> ${u.coins}</div>
       <div><b>累计充值:</b> ¥${u.totalRecharged || 0}</div>
       <div><b>累计邀请:</b> ${u.totalInvited || 0}</div>
       <div><b>注册时间:</b> ${formatTime(u.createdAt)}</div>
       <div><b>最后登录:</b> ${formatTime(u.lastLoginAt)}</div>
+      <div><b>注销时间:</b> ${u.deletedAt ? formatTime(u.deletedAt) : '-'}</div>
       <div><b>限制发布:</b> ${u.restrictions?.publish ? '是' : '否'}</div>
       <div><b>限制聊天:</b> ${u.restrictions?.chat ? '是' : '否'}</div>
     </div>
@@ -530,7 +544,7 @@ async function renderCoins() {
       <div class="card__title">最近人工调整</div>
       <table class="table">
         <thead><tr><th>用户ID</th><th>数量</th><th>说明</th><th>时间</th></tr></thead>
-        <tbody>${(res.adminAdjusts||[]).map(t => `<tr><td style="font-size:11px">${t.userId.slice(0,12)}...</td><td style="color:${t.amount>0?'#27ae60':'#e74c3c'};font-weight:700">${t.amount>0?'+':''}${t.amount}</td><td>${t.description}</td><td>${formatTime(t.createdAt)}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:#999">暂无记录</td></tr>'}</tbody>
+        <tbody>${(res.adminAdjusts||[]).map(t => `<tr><td>${fmtId(t.userId)}</td><td style="color:${t.amount>0?'#27ae60':'#e74c3c'};font-weight:700">${t.amount>0?'+':''}${t.amount}</td><td>${t.description}</td><td>${formatTime(t.createdAt)}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:#999">暂无记录</td></tr>'}</tbody>
       </table>
     </div>`;
 }
@@ -721,7 +735,7 @@ async function renderReports() {
         <tbody>
           ${res.reports.map(r => `<tr>
             <td>${r.targetType}</td>
-            <td style="font-size:11px">${r.targetId.slice(0,12)}...</td>
+            <td>${fmtId(r.targetId)}</td>
             <td>${r.reason}</td>
             <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${r.description || '-'}</td>
             <td><span class="badge ${badgeClass(r.status)}">${r.status}</span></td>
@@ -1083,7 +1097,7 @@ async function renderAudit() {
           ${res.logs.map(l => `<tr>
             <td>${l.adminId}</td>
             <td><span class="badge badge-active">${l.action}</span></td>
-            <td style="font-size:11px">${l.target}</td>
+            <td>${fmtId(l.target)}</td>
             <td>${l.description}</td>
             <td>${formatTime(l.createdAt)}</td>
           </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:#999">暂无日志</td></tr>'}

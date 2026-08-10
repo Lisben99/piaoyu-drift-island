@@ -81,6 +81,12 @@ router.get('/dashboard', adminAuth, (req, res) => {
   const pendingOrders = database.rechargeOrders.filter(o => o.status === 'submitted').length;
   const pendingSupport = database.supportTickets.filter(t => t.status === 'pending' || t.status === 'replied').length;
   const penalizedAccounts = database.users.filter(u => u.status === 'banned' || u.status === 'frozen' || u.status === 'restricted').length;
+  // 今日新增注册（活跃人类用户，不含已注销/BOT）
+  const newUsersToday = humanUsers.filter(u => u.createdAt && u.createdAt >= todayStart).length;
+  // 累计注销用户
+  const deletedUsers = database.users.filter(u => u.status === 'deleted').length;
+  // 累计封禁账号（从「处罚账号」中独立出来，便于单独跟踪）
+  const bannedUsers = database.users.filter(u => u.status === 'banned').length;
   
   // Recent users (humans only)
   const recentUsers = database.users
@@ -102,7 +108,8 @@ router.get('/dashboard', adminAuth, (req, res) => {
     stats: {
       totalUsers, dailyActive, totalBottles, totalSessions,
       totalRecharged, totalCoinsInCirculation,
-      pendingReports, pendingOrders, pendingSupport, penalizedAccounts
+      pendingReports, pendingOrders, pendingSupport, penalizedAccounts,
+      newUsersToday, deletedUsers, bannedUsers
     },
     botStats: botEngine.getBotStats(),
     recentUsers,
@@ -113,19 +120,25 @@ router.get('/dashboard', adminAuth, (req, res) => {
 // User management - list
 router.get('/users', adminAuth, (req, res) => {
   const { search, status, page = 1, pageSize = 20 } = req.query;
-  let users = db().users.filter(u => u.status !== 'deleted');
+  let users;
+  if (status === 'deleted') {
+    // 查看已注销账号（默认列表隐藏注销用户，便于审核）
+    users = db().users.filter(u => u.status === 'deleted');
+  } else {
+    users = db().users.filter(u => u.status !== 'deleted');
+    if (status && status !== 'all') {
+      users = users.filter(u => u.status === status);
+    }
+  }
   
   if (search) {
     const q = search.toLowerCase();
     users = users.filter(u =>
       (u.nickname && u.nickname.toLowerCase().includes(q)) ||
-      u.phone.includes(q) ||
+      (u.phone && u.phone.includes(q)) ||
       (u.email && u.email.toLowerCase().includes(q)) ||
       u.id.includes(q)
     );
-  }
-  if (status && status !== 'all') {
-    users = users.filter(u => u.status === status);
   }
   
   const total = users.length;
