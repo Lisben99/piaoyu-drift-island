@@ -330,12 +330,12 @@ function scheduleChatReply(sessionId, humanUserId, _content) {
   const delay = rand(cfg.bot_chat_reply_delay_min_seconds || 3, cfg.bot_chat_reply_delay_max_seconds || 8) * 1000;
   if (pendingChatReplies.has(sessionId)) clearTimeout(pendingChatReplies.get(sessionId));
   const t = setTimeout(() => {
-    runChatReply(sessionId, bot).catch(e => console.error('[BotEngine] chat reply error', e));
+    runChatReply(sessionId, bot, _content).catch(e => console.error('[BotEngine] chat reply error', e));
   }, delay);
   pendingChatReplies.set(sessionId, t);
 }
 
-async function runChatReply(sessionId, bot) {
+async function runChatReply(sessionId, bot, currentMessage) {
   pendingChatReplies.delete(sessionId);
   const session = db().chatSessions.find(s => s.id === sessionId);
   if (!session || session.status === 'expired' || session.status === 'blocked') return;
@@ -344,15 +344,19 @@ async function runChatReply(sessionId, bot) {
   const humanUserId = session.userA === bot.userId ? session.userB : session.userA;
 
   // Build recent conversation context so the AI stays coherent.
-  const history = db().messages
+  // Exclude the latest human turn (currentMessage) — it is forwarded to the
+  // provider via `message` so it is not duplicated in the prompt.
+  const allMsgs = db().messages
     .filter(m => m.sessionId === sessionId && m.content)
-    .sort((a, b) => a.createdAt - b.createdAt)
+    .sort((a, b) => a.createdAt - b.createdAt);
+  const history = allMsgs
+    .slice(0, -1) // drop the current human turn
     .slice(-12)
     .map(m => ({ role: m.senderId === bot.userId ? 'assistant' : 'user', content: m.content }));
 
   let content = null;
   if (cfg.enable_ai_reply) {
-    content = await aiProvider.generateReply({ persona: bot.personaPrompt, mode: 'chat', history });
+    content = await aiProvider.generateReply({ persona: bot.personaPrompt, mode: 'chat', history, message: currentMessage });
   }
   if (!content) content = CHAT_TEMPLATES[Math.floor(Math.random() * CHAT_TEMPLATES.length)];
   if (!content) return;

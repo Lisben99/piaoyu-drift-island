@@ -69,6 +69,12 @@ function buildMessages({ message, persona, mode, history }) {
         msgs.push({ role: h.role === 'assistant' ? 'assistant' : 'user', content: String(h.content) });
       }
     }
+    // Always append the latest user turn so the model sees what was just said,
+    // even if the caller only passed it via `message` (not inside `history`).
+    // This makes the chat mode robust regardless of how callers assemble history.
+    if (message && message.trim()) {
+      msgs.push({ role: 'user', content: message.trim() });
+    }
     return msgs;
   }
 
