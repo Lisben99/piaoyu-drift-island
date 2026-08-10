@@ -503,7 +503,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
         <h2 class="auth-title">登录</h2>
 
         <!-- 验证码登录 -->
-        <div id="codeLoginForm" class="form-stack">
+        <div id="codeLoginForm" class="form-stack hidden">
           <div class="seg">
             <button type="button" class="seg-item active" id="tabPhone">手机</button>
             <button type="button" class="seg-item" id="tabEmail">邮箱</button>
@@ -541,7 +541,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
         </div>
 
         <!-- 密码登录 -->
-        <div id="pwdLoginForm" class="form-stack hidden">
+        <div id="pwdLoginForm" class="form-stack">
           <div>
             <label class="field-label">账号（手机号或邮箱）</label>
             <div class="input-wrap">
@@ -559,7 +559,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
         </div>
 
         <div class="auth-foot-row">
-          <a href="javascript:void(0)" class="auth-link" id="togglePwdLogin">使用密码登录</a>
+          <a href="javascript:void(0)" class="auth-link" id="togglePwdLogin">使用验证码登录</a>
           <a href="javascript:void(0)" class="auth-link" id="forgotPwdLink">忘记密码</a>
           <a href="register.html" class="auth-link">注册账号</a>
         </div>
@@ -1141,9 +1141,9 @@ function resetLoginView() {
   switchIdentifier('phone');
   $('auth-code-step').classList.add('hidden');
   if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
-  $('codeLoginForm').classList.remove('hidden');
-  $('pwdLoginForm').classList.add('hidden');
-  $('togglePwdLogin').textContent = '使用密码登录';
+  $('codeLoginForm').classList.add('hidden');
+  $('pwdLoginForm').classList.remove('hidden');
+  $('togglePwdLogin').textContent = '使用验证码登录';
   $('phoneInput').value = '';
   $('emailInput').value = '';
   $('codeInput').value = '';
