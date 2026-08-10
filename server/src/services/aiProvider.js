@@ -26,7 +26,7 @@ const PROVIDER_DEFAULTS = {
   qwen: { baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
   glm: { baseURL: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash' },
   moonshot: { baseURL: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k' },
-  siliconflow: { baseURL: 'https://api.siliconflow.cn/v1', model: 'Qwen/Qwen2.5-7B-Instruct' },
+  siliconflow: { baseURL: 'https://api.siliconflow.cn/v1', model: 'Qwen/Qwen3-8B' },
   'openai-compatible': { baseURL: '', model: '' }
 };
 
