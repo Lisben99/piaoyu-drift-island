@@ -1310,7 +1310,7 @@ async function renderLobby() {
             <div class="bottle-card__status">${statusLabel(b.status)}</div>
             <div class="bottle-card__actions">
               <button class="bottle-card__chat-btn chat-btn-reply" onclick="openBottleReplies('${b.id}')">回复${b.replyCount ? '(' + b.replyCount + ')' : ''}</button>
-              ${isSelf || isAnon ? '' : `<button class="bottle-card__chat-btn chat-btn-primary" onclick="startChat('${b.authorId}','${b.content.slice(0,20)}...')">${isBot ? '和助手聊聊' : '聊聊'}</button>`}
+              ${isSelf || isAnon ? '' : `<button class="bottle-card__chat-btn chat-btn-primary" onclick="startChat('${b.authorId}')">${isBot ? '和助手聊聊' : '聊聊'}</button>`}
               <button class="bottle-card__report" onclick="navigate('report'); window._reportTarget={type:'bottle',id:'${b.id}'}">举报</button>
             </div>
           </div>

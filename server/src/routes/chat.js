@@ -262,14 +262,24 @@ router.get('/sessions/:id/messages', auth, (req, res) => {
   if (session.userA !== req.user.id && session.userB !== req.user.id) {
     return res.json({ success: false, error: '无权查看' });
   }
-  
+
+  const otherUserId = session.userA === req.user.id ? session.userB : session.userA;
+  const otherUser = findUserById(otherUserId);
+  const sessionWithOther = {
+    ...session,
+    otherUserId,
+    otherNickname: otherUser ? otherUser.nickname : '未知用户',
+    otherAvatar: otherUser ? otherUser.avatar : '',
+    otherGender: otherUser ? otherUser.gender : ''
+  };
+
   const clearedAt = (session.clearedAt && session.clearedAt[req.user.id]) || 0;
   const messages = db().messages
     .filter(m => m.sessionId === session.id && m.createdAt > clearedAt)
     .sort((a, b) => a.createdAt - b.createdAt)
     .slice(-100); // Last 100 messages (after this user's clear)
-  
-  res.json({ success: true, messages, session });
+
+  res.json({ success: true, messages, session: sessionWithOther });
 });
 
 // Hide a session for the current user (delete/hide from my list only)
