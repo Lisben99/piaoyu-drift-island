@@ -99,7 +99,12 @@ async function start() {
     console.log(`  Health:    http://localhost:${PORT}/api/health`);
     console.log(`========================================\n`);
     console.log(`  Database:          ${USE_PG ? 'PostgreSQL' : 'JSON file'}`);
-    console.log(`  SMS Provider:      ${process.env.SMS_PROVIDER || 'dev (console output)'}`);
+    const smsMode = process.env.SMS_PROVIDER || 'dev';
+    const smsCreds = !!(process.env.ALIYUN_SMS_KEY && process.env.ALIYUN_SMS_SECRET);
+    const smsSign = process.env.ALIYUN_SMS_SIGN || '恒创联众(系统赠送)';
+    const smsTpl = process.env.ALIYUN_SMS_TEMPLATE || '100001(系统赠送)';
+    console.log(`  SMS Provider:      ${smsMode}${smsMode === 'aliyun' ? (smsCreds ? ' ✓ 密钥已配置' : ' ✗ 缺少 ALIYUN_SMS_KEY/SECRET（将回退 dev）') : ' (本地验证码)'}`);
+    if (smsMode === 'aliyun') console.log(`  SMS Sign/Template: ${smsSign} / ${smsTpl}`);
     console.log(`  Payment Provider:  ${process.env.PAYMENT_PROVIDER || 'dev (simulated)'}`);
     console.log(`  Moderation:        ${process.env.MODERATION_PROVIDER || 'local (keyword filter)'}`);
     console.log(`\n  Production env vars:`);

@@ -54,6 +54,9 @@ function getClient() {
 async function sendSMSAliyun(phone) {
   const signName = process.env.ALIYUN_SMS_SIGN || ALIYUN_SMS_SIGN_DEFAULT;
   const templateCode = process.env.ALIYUN_SMS_TEMPLATE || ALIYUN_SMS_TEMPLATE_DEFAULT;
+  // 诊断日志：发码前把实际使用的签名/模板打印出来，便于在 Render 日志里快速定位
+  // 「签名不存在 / 模板不合法」等配置问题（短信认证的签名、模板均为系统赠送，暂不支持自定义）。
+  console.log(`[SMS][ALIYUN] send -> phone=${phone} signName=${signName} templateCode=${templateCode}`);
   const client = getClient();
   const Dypnsapi = require('@alicloud/dypnsapi20170525');
   const req = new Dypnsapi.SendSmsVerifyCodeRequest({
