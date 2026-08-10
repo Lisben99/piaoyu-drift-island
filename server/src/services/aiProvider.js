@@ -10,8 +10,8 @@
  * the engine falls back to templates and costs zero. Never throws.
  *
  * Configure via environment variables (secrets stay out of db.json):
- *   AI_PROVIDER   deepseek | openai | qwen | glm | moonshot | openai-compatible
- *                 (optional; defaults to 'openai' so a plain AI_API_KEY = OpenAI)
+ *   AI_PROVIDER   deepseek | openai | qwen | glm | moonshot | siliconflow | openai-compatible
+ *                 (optional; defaults to 'siliconflow' so a plain AI_API_KEY = 硅基流动)
  *   AI_API_KEY    your provider key (required to actually call the model)
  *   AI_BASE_URL   optional override of the API base URL
  *   AI_MODEL      optional override of the model name
@@ -26,13 +26,15 @@ const PROVIDER_DEFAULTS = {
   qwen: { baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
   glm: { baseURL: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash' },
   moonshot: { baseURL: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k' },
+  siliconflow: { baseURL: 'https://api.siliconflow.cn/v1', model: 'Qwen/Qwen2.5-7B-Instruct' },
   'openai-compatible': { baseURL: '', model: '' }
 };
 
 function resolveConfig() {
-  // Default to OpenAI when no provider is set, so a plain AI_API_KEY = OpenAI.
-  // Set AI_PROVIDER to override (e.g. glm / deepseek / qwen / moonshot).
-  const provider = (process.env.AI_PROVIDER || 'openai').toLowerCase();
+  // Default to 硅基流动 (SiliconFlow) when no provider is set: new users get
+  // free credits and 9B-and-below models are permanently free, so a plain
+  // AI_API_KEY is enough to enable AI at zero cost. Set AI_PROVIDER to override.
+  const provider = (process.env.AI_PROVIDER || 'siliconflow').toLowerCase();
   const def = PROVIDER_DEFAULTS[provider];
   if (!def) return null;
   const baseURL = process.env.AI_BASE_URL || def.baseURL;
@@ -162,13 +164,14 @@ function isConfigured() {
 function providerLabel() {
   const cfg = resolveConfig();
   if (!cfg) return null;
-  const provider = (process.env.AI_PROVIDER || 'openai').toLowerCase();
+  const provider = (process.env.AI_PROVIDER || 'siliconflow').toLowerCase();
   const names = {
     glm: '智谱 GLM-4-Flash',
     deepseek: 'DeepSeek',
     qwen: '通义千问',
     openai: 'OpenAI',
     moonshot: 'Kimi',
+    siliconflow: '硅基流动 SiliconFlow',
     'openai-compatible': '自定义兼容端点'
   };
   const base = names[provider] || provider;
