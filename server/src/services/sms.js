@@ -153,15 +153,18 @@ async function verifyCode(phone, code) {
         phoneNumber: phone,
         verifyCode: code,
         countryCode: '86',
-        caseAuthPolicy: 0
+        // 1=验证码大小写不敏感（短信认证接口文档规定取值只能是 1 或 2，0 会报 isv.ValidateFail）
+        caseAuthPolicy: 1
       });
       const RuntimeOptions = require('@alicloud/tea-util').RuntimeOptions;
       const resp = await client.checkSmsVerifyCodeWithOptions(req, new RuntimeOptions());
       const body = resp && resp.body;
-      // 阿里云校验通过：Code === 'OK' 或 VerifyResult === true
-      const ok = body && (body.Code === 'OK' || body.VerifyResult === true);
+      console.log('[SMS][ALIYUN] CheckSmsVerifyCode raw response:', JSON.stringify(body));
+      // 阿里云返回结构：body.code==='OK' 且 body.model.verifyResult==='PASS' 才算真正通过
+      const ok = body && body.code === 'OK' && body.model && body.model.verifyResult === 'PASS';
       if (ok) return { success: true };
-      return { success: false, error: '验证码不正确或已过期' };
+      const why = (body && body.model && body.model.verifyResult) || (body && body.message) || '验证码不正确或已过期';
+      return { success: false, error: '验证码校验失败：' + why };
     } catch (e) {
       console.error('[SMS][ALIYUN] 校验失败:', e.message);
       return { success: false, error: '验证码校验失败：' + e.message };
