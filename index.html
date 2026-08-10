@@ -1771,16 +1771,16 @@ async function sendChatMsg() {
   const content = input.value.trim();
   if (!content) return;
   input.value = '';
-  
-  // Send via WebSocket
-  if (ws && ws.readyState === 1) {
-    ws.send(JSON.stringify({ type: 'chat_message', data: { sessionId: currentChatSessionId, content } }));
-  } else {
-    // Fallback: use API
-    try {
-      const res = await api('/chat/start', { method: 'POST', body: JSON.stringify({ targetUserId: null, firstMessage: content }) });
-    } catch (e) {}
+
+  // Ensure WebSocket is connected before sending.
+  if (!ws || ws.readyState !== 1) {
+    connectWS();
+    if (!ws || ws.readyState !== 1) {
+      showToast('聊天连接未建立，请刷新页面后重试');
+      return;
+    }
   }
+  ws.send(JSON.stringify({ type: 'chat_message', data: { sessionId: currentChatSessionId, content } }));
 }
 
 // 选择并发送图片消息
@@ -1841,6 +1841,9 @@ async function respondPermanent(accept) {
 /* ================================================================
    WEBSOCKET
    ================================================================ */
+let wsReconnectTimer = null;
+let wsReconnectAttempts = 0;
+
 function connectWS() {
   if (ws && ws.readyState <= 1) return;
   const token = getToken();
@@ -1848,7 +1851,12 @@ function connectWS() {
   const wsHost = window.DRIFT_WS_HOST || location.host;
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(`${proto}//${wsHost}/ws?token=${token}`);
-  
+
+  ws.onopen = function() {
+    wsReconnectAttempts = 0;
+    if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+  };
+
   ws.onmessage = function(event) {
     try {
       const msg = JSON.parse(event.data);
@@ -1870,8 +1878,16 @@ function connectWS() {
       }
     } catch (e) {}
   };
-  
-  ws.onclose = function() { ws = null; };
+
+  ws.onclose = function() {
+    ws = null;
+    // Auto reconnect with exponential backoff (max 30s).
+    if (!wsReconnectTimer && wsReconnectAttempts < 10) {
+      const delay = Math.min(1000 * Math.pow(1.5, wsReconnectAttempts), 30000);
+      wsReconnectAttempts++;
+      wsReconnectTimer = setTimeout(() => { wsReconnectTimer = null; connectWS(); }, delay);
+    }
+  };
   ws.onerror = function() { ws = null; };
 }
 

@@ -312,22 +312,42 @@ function postIntervalMs() {
 // and gracefully no-ops when bots/private-chat are disabled or capped.
 function scheduleChatReply(sessionId, humanUserId, _content) {
   const cfg = config();
-  if (!cfg.enable_bot || !cfg.enable_bot_private_chat) return;
+  if (!cfg.enable_bot) {
+    console.log('[BotEngine][chat] skip: enable_bot=false');
+    return;
+  }
+  if (!cfg.enable_bot_private_chat) {
+    console.log('[BotEngine][chat] skip: enable_bot_private_chat=false');
+    return;
+  }
 
   const session = db().chatSessions.find(s => s.id === sessionId);
-  if (!session) return;
+  if (!session) {
+    console.log('[BotEngine][chat] skip: session not found', sessionId);
+    return;
+  }
 
   const botUserId = session.userA === humanUserId ? session.userB : session.userA;
   const botUser = findUserById(botUserId);
-  if (!botUser || (botUser.account_type || 'HUMAN') === 'HUMAN') return; // only reply when recipient is a bot
+  if (!botUser || (botUser.account_type || 'HUMAN') === 'HUMAN') {
+    console.log('[BotEngine][chat] skip: recipient is not a bot', botUserId);
+    return; // only reply when recipient is a bot
+  }
 
   const bot = getEnabledBots().find(b => b.userId === botUserId);
-  if (!bot) return; // bot disabled or unknown
+  if (!bot) {
+    console.log('[BotEngine][chat] skip: bot profile disabled/unknown', botUserId);
+    return; // bot disabled or unknown
+  }
 
   const maxReplies = cfg.bot_daily_max_replies || 200;
-  if ((bot.dailyReplies || 0) >= (bot.dailyMaxReplies != null ? bot.dailyMaxReplies : maxReplies)) return;
+  if ((bot.dailyReplies || 0) >= (bot.dailyMaxReplies != null ? bot.dailyMaxReplies : maxReplies)) {
+    console.log('[BotEngine][chat] skip: daily reply cap reached', bot.displayName, bot.dailyReplies);
+    return;
+  }
 
   const delay = rand(cfg.bot_chat_reply_delay_min_seconds || 3, cfg.bot_chat_reply_delay_max_seconds || 8) * 1000;
+  console.log(`[BotEngine][chat] will reply in ${Math.round(delay / 1000)}s`, bot.displayName, 'session=', sessionId);
   if (pendingChatReplies.has(sessionId)) clearTimeout(pendingChatReplies.get(sessionId));
   const t = setTimeout(() => {
     runChatReply(sessionId, bot, _content).catch(e => console.error('[BotEngine] chat reply error', e));
@@ -338,7 +358,10 @@ function scheduleChatReply(sessionId, humanUserId, _content) {
 async function runChatReply(sessionId, bot, currentMessage) {
   pendingChatReplies.delete(sessionId);
   const session = db().chatSessions.find(s => s.id === sessionId);
-  if (!session || session.status === 'expired' || session.status === 'blocked') return;
+  if (!session || session.status === 'expired' || session.status === 'blocked') {
+    console.log('[BotEngine][chat] abort: session expired/blocked/missing', sessionId);
+    return;
+  }
 
   const cfg = config();
   const humanUserId = session.userA === bot.userId ? session.userB : session.userA;
@@ -355,15 +378,18 @@ async function runChatReply(sessionId, bot, currentMessage) {
     .map(m => ({ role: m.senderId === bot.userId ? 'assistant' : 'user', content: m.content }));
 
   let content = null;
+  let source = 'template';
   if (cfg.enable_ai_reply) {
     content = await aiProvider.generateReply({ persona: bot.personaPrompt, mode: 'chat', history, message: currentMessage });
+    if (content) source = 'ai';
   }
   if (!content) content = CHAT_TEMPLATES[Math.floor(Math.random() * CHAT_TEMPLATES.length)];
+  console.log(`[BotEngine][chat] reply source=${source} content="${content}" bot=${bot.displayName}`);
   if (!content) return;
 
   if (cfg.enable_content_moderation !== false) {
     const mod = await moderate(content);
-    if (!mod.pass) { console.warn('[BotEngine] chat reply blocked by moderation:', mod.reason); return; }
+    if (!mod.pass) { console.warn('[BotEngine][chat] reply blocked by moderation:', mod.reason); return; }
   }
 
   const message = {
@@ -382,7 +408,8 @@ async function runChatReply(sessionId, bot, currentMessage) {
 
   // Deliver to the human in real time (bot itself is not a WS client).
   const { sendToUser } = require('../services/websocket');
-  sendToUser(humanUserId, { type: 'message_received', data: { ...message, sessionId } });
+  const delivered = sendToUser(humanUserId, { type: 'message_received', data: { ...message, sessionId } });
+  console.log(`[BotEngine][chat] reply delivered=${delivered} user=${humanUserId}`);
 }
 
 function startProactivePosts() {

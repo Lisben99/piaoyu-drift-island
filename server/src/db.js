@@ -430,29 +430,29 @@ const BOT_SEEDS = [
   },
   {
     displayName: '夜聊搭子',
-    genderDisplay: 'neutral',
-    personaPrompt: '你是个习惯晚睡、喜欢深夜聊天的AI搭子，语气轻松随性，偶尔俏皮，回复简短（10-40字），多顺着对方的话问下去。',
+    genderDisplay: 'male',
+    personaPrompt: '你是个习惯晚睡、喜欢深夜聊天的普通男生，语气轻松随性，偶尔俏皮，回复简短（10-40字），多顺着对方的话问下去。',
     speakingStyle: '随性、俏皮',
     activityWeight: 1.0
   },
   {
     displayName: '听海的人',
-    genderDisplay: 'neutral',
-    personaPrompt: '你是个安静善于倾听的AI朋友，语气温和，少说多问，鼓励对方表达，不打断不评判，回复简短自然。',
+    genderDisplay: 'female',
+    personaPrompt: '你是个安静善于倾听的普通女生，语气温和，少说多问，鼓励对方表达，不打断不评判，回复简短自然。',
     speakingStyle: '温和、安静',
     activityWeight: 0.9
   },
   {
     displayName: '元气小太阳',
-    genderDisplay: 'neutral',
-    personaPrompt: '你是个充满元气、积极向上的AI伙伴，语气轻快，偶尔用emoji，回复简短（10-40字），擅长接话和抛小问题。',
+    genderDisplay: 'female',
+    personaPrompt: '你是个充满元气、积极向上的普通女生，语气轻快，偶尔用emoji，回复简短（10-40字），擅长接话和抛小问题。',
     speakingStyle: '轻快、阳光',
     activityWeight: 1.0
   },
   {
     displayName: '慢半拍',
-    genderDisplay: 'neutral',
-    personaPrompt: '你是个慢节奏、佛系的AI朋友，语气松弛，不急着给建议，常回以轻松的感慨或反问，回复简短自然。',
+    genderDisplay: 'male',
+    personaPrompt: '你是个慢节奏、佛系的普通男生，语气松弛，不急着给建议，常回以轻松的感慨或反问，回复简短自然。',
     speakingStyle: '松弛、佛系',
     activityWeight: 0.8
   }
@@ -460,7 +460,16 @@ const BOT_SEEDS = [
 
 // Create a BOT-account-type user + its bot profile. account_type allows the
 // DB to distinguish bots from humans (AGENTS §5.2 / §25 rule 5).
+// Normalize bot gender so the frontend never shows "岛民". Only 'male'/'female'
+// are valid; legacy 'neutral'/empty/unknown values default to 'male'.
+function normalizeBotGender(genderDisplay) {
+  const g = String(genderDisplay || '').toLowerCase();
+  if (g === 'male' || g === 'female') return g;
+  return 'male';
+}
+
 function createBot(displayName, genderDisplay, personaPrompt, speakingStyle, activityWeight) {
+  const normalizedGender = normalizeBotGender(genderDisplay);
   const user = {
     id: genId('u'),
     phone: '',
@@ -469,7 +478,7 @@ function createBot(displayName, genderDisplay, personaPrompt, speakingStyle, act
     nickname: displayName,
     avatar: '',
     bio: '在漂屿随便逛逛，聊聊日常。',
-    gender: genderDisplay || 'neutral',
+    gender: normalizedGender,
     role: '',
     status: 'active',
     restrictions: { publish: false, chat: false },
@@ -492,7 +501,7 @@ function createBot(displayName, genderDisplay, personaPrompt, speakingStyle, act
     personaPrompt: personaPrompt || '',
     speakingStyle: speakingStyle || '',
     activityWeight: activityWeight || 1.0,
-    genderDisplay: genderDisplay || 'neutral',
+    genderDisplay: normalizedGender,
     enabled: true,
     dailyPosts: 0,
     dailyReplies: 0,
@@ -505,8 +514,32 @@ function createBot(displayName, genderDisplay, personaPrompt, speakingStyle, act
 }
 
 // Seed the default bot pool exactly once (when botProfiles is empty).
+// Also migrate legacy bot genders from 'neutral' to 'male'/'female' and sync
+// the user table so the frontend always shows a real gender label.
 function seedBotsIfNeeded() {
   if (!cache.botProfiles) cache.botProfiles = [];
+  let migrated = false;
+  const migrationMap = { '晚风': 'male', '夜聊搭子': 'male', '听海的人': 'female', '元气小太阳': 'female', '慢半拍': 'male' };
+  for (const p of cache.botProfiles) {
+    const normalized = normalizeBotGender(p.genderDisplay);
+    if (p.genderDisplay !== normalized) {
+      p.genderDisplay = normalized;
+      migrated = true;
+    }
+    const user = cache.users.find(u => u.id === p.userId);
+    if (user && user.gender !== normalized) {
+      user.gender = normalized;
+      migrated = true;
+    }
+    // For already-created bots whose displayName maps to a seed, prefer seed gender.
+    if (migrationMap[p.displayName] && p.genderDisplay !== migrationMap[p.displayName]) {
+      p.genderDisplay = migrationMap[p.displayName];
+      if (user) user.gender = migrationMap[p.displayName];
+      migrated = true;
+    }
+  }
+  if (migrated) saveNow();
+
   if (cache.botProfiles.length > 0) return false;
   for (const s of BOT_SEEDS) {
     createBot(s.displayName, s.genderDisplay, s.personaPrompt, s.speakingStyle, s.activityWeight);
@@ -537,6 +570,15 @@ function updateBotProfile(botId, updates) {
   const allowed = ['displayName', 'avatar', 'personaPrompt', 'speakingStyle', 'activityWeight', 'genderDisplay', 'enabled', 'dailyMaxPosts', 'dailyMaxReplies'];
   for (const k of allowed) {
     if (updates[k] !== undefined) p[k] = updates[k];
+  }
+  // Normalize gender after admin edit and sync back to the user record.
+  const normalized = normalizeBotGender(p.genderDisplay);
+  if (p.genderDisplay !== normalized) {
+    p.genderDisplay = normalized;
+  }
+  const user = cache.users.find(u => u.id === p.userId);
+  if (user && user.gender !== normalized) {
+    user.gender = normalized;
   }
   save();
   return p;
