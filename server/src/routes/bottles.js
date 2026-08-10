@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
-const { db, save, genId, findBottleById, getActiveBottles, addCoinTransaction, findUserById } = require('../db');
+const { db, save, genId, findBottleById, getActiveBottles, addCoinTransaction, findUserById, createNotification, getUnreadNotificationCount } = require('../db');
 const { moderate } = require('../services/moderation');
 const botEngine = require('../services/botEngine');
 
@@ -24,6 +24,24 @@ function recordBottleReply(bottle, data) {
   };
   bottle.replies.push(reply);
   save();
+
+  // Notify the bottle author that someone replied (skip self / anonymous author).
+  if (data.senderId && data.senderId !== bottle.authorId) {
+    const actor = findUserById(data.senderId);
+    const notif = createNotification({
+      userId: bottle.authorId,
+      type: 'bottle_replied',
+      title: '收到新回复',
+      content: (actor ? (actor.nickname || '匿名用户') : '有人') + ' 回复了你的漂流瓶',
+      refId: bottle.id,
+      refType: 'bottle',
+      actorId: data.senderId
+    });
+    if (notif) {
+      const { sendToUser } = require('../services/websocket');
+      sendToUser(bottle.authorId, { type: 'notification', data: { id: notif.id, unreadCount: getUnreadNotificationCount(bottle.authorId) } });
+    }
+  }
   return reply;
 }
 
@@ -63,7 +81,9 @@ router.get('/', (req, res) => {
         createdAt: b.createdAt,
         replyCount: b.replies ? b.replies.length : 0,
         authorAccountType: 'HUMAN',
-        expiresAt: b.createdAt + db().config.bottle_display_hours * 3600000
+        expiresAt: b.createdAt + db().config.bottle_display_hours * 3600000,
+        likeCount: b.likes ? b.likes.length : 0,
+        likedByMe: !!(b.likes && userId && b.likes.includes(userId))
       };
     }
     return {
@@ -78,7 +98,9 @@ router.get('/', (req, res) => {
       status: b.status,
       createdAt: b.createdAt,
       replyCount: b.replies ? b.replies.length : 0,
-      expiresAt: b.createdAt + db().config.bottle_display_hours * 3600000
+      expiresAt: b.createdAt + db().config.bottle_display_hours * 3600000,
+      likeCount: b.likes ? b.likes.length : 0,
+      likedByMe: !!(b.likes && userId && b.likes.includes(userId))
     };
   });
   
@@ -262,9 +284,49 @@ router.get('/my/list', auth, (req, res) => {
       content: b.content,
       status: b.status,
       anonymous: b.anonymous,
-      createdAt: b.createdAt
+      createdAt: b.createdAt,
+      likeCount: b.likes ? b.likes.length : 0,
+      replyCount: b.replies ? b.replies.length : 0
     }))
   });
+});
+
+// Like / unlike a bottle (toggle). Notifies the author on a new like.
+router.post('/:id/like', auth, (req, res) => {
+  const bottle = findBottleById(req.params.id);
+  if (!bottle || bottle.deleted) {
+    return res.json({ success: false, error: '漂流瓶不存在' });
+  }
+  bottle.likes = bottle.likes || [];
+  const uid = req.user.id;
+  const idx = bottle.likes.indexOf(uid);
+  let liked;
+  if (idx >= 0) {
+    bottle.likes.splice(idx, 1);
+    liked = false;
+  } else {
+    bottle.likes.push(uid);
+    liked = true;
+  }
+  save();
+
+  // Notify the author on a NEW like (skip self / anonymous author).
+  if (liked && bottle.authorId) {
+    const notif = createNotification({
+      userId: bottle.authorId,
+      type: 'bottle_liked',
+      title: '收到点赞',
+      content: (req.user.nickname || '匿名用户') + ' 赞了你的漂流瓶',
+      refId: bottle.id,
+      refType: 'bottle',
+      actorId: uid
+    });
+    if (notif) {
+      const { sendToUser } = require('../services/websocket');
+      sendToUser(bottle.authorId, { type: 'notification', data: { id: notif.id, unreadCount: getUnreadNotificationCount(bottle.authorId) } });
+    }
+  }
+  res.json({ success: true, liked, likeCount: bottle.likes.length });
 });
 
 module.exports = router;

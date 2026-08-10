@@ -180,8 +180,8 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 <script>
 const API_BASE = window.DRIFT_API_BASE || '/api';
 const TOKEN_KEY = 'drift_island_token';
-function getToken() { return localStorage.getItem(TOKEN_KEY); }
-function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
+function getToken() { return sessionStorage.getItem(TOKEN_KEY); }
+function setToken(t) { sessionStorage.setItem(TOKEN_KEY, t); }
 function $(id) { return document.getElementById(id); }
 function showToast(msg) {
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
@@ -243,18 +243,31 @@ function switchRegMode(mode) {
   $('regEmailField').classList.toggle('hidden', mode !== 'email');
 }
 
-function startCountdown() {
-  let sec = 60;
-  const btn = $('regResendBtn');
-  btn.disabled = true; btn.style.opacity = '.4';
-  countdownTimer = setInterval(() => {
+function startCountdown(buttons, seconds = 60) {
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+  const btns = (Array.isArray(buttons) ? buttons : [buttons]).filter(Boolean);
+  let sec = seconds;
+  btns.forEach(btn => { btn.disabled = true; btn.style.opacity = '.4'; });
+  const tick = () => {
     sec--;
-    btn.textContent = `${sec}s 后重发`;
+    const text = sec > 0 ? `${sec}s 后重发` : '重新发送';
+    btns.forEach(btn => { btn.textContent = text; });
     if (sec <= 0) {
       clearInterval(countdownTimer); countdownTimer = null;
-      btn.textContent = '重新发送'; btn.disabled = false; btn.style.opacity = '1';
+      btns.forEach(btn => { btn.disabled = false; btn.style.opacity = '1'; });
     }
-  }, 1000);
+  };
+  tick();
+  countdownTimer = setInterval(tick, 1000);
+}
+
+function resetCodeButtons() {
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+  [$('regSendCodeBtn'), $('regResendBtn')].forEach(btn => {
+    if (!btn) return;
+    btn.disabled = false; btn.style.opacity = '1';
+    btn.textContent = btn.id === 'regResendBtn' ? '重新发送' : '获取验证码';
+  });
 }
 
 async function doSendCode() {
@@ -278,14 +291,14 @@ async function doSendCode() {
     btn.innerHTML = '获取验证码'; btn.disabled = false;
     return;
   }
-  btn.innerHTML = '获取验证码'; btn.disabled = false;
   if (res && res.success) {
     if (isEmail) loginEmail = target; else loginPhone = target;
     $('regCodeStep').classList.remove('hidden');
     $('regCodeLabel').textContent = (isEmail ? '验证码已发送至邮箱 ' : '短信验证码已发送至 ') + target;
     $('regDevCodeHint').textContent = res.devCode ? `开发模式验证码：${res.devCode}` : '';
-    startCountdown();
+    startCountdown([$('regSendCodeBtn'), $('regResendBtn')], 60);
   } else {
+    btn.innerHTML = '获取验证码'; btn.disabled = false;
     showToast((res && res.error) || '发送失败');
   }
 }
@@ -332,7 +345,7 @@ $('regGenderFemale').onclick = () => { regGender = 'female'; $('regGenderFemale'
 
 $('regChangeBtn').onclick = function() {
   $('regCodeStep').classList.add('hidden');
-  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+  resetCodeButtons();
 };
 
 // Prefill invite code from share link (e.g. register.html?inv=XXXX)

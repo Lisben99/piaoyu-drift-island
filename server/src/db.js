@@ -101,6 +101,7 @@ function createDefaultDB() {
     redeemCodes: [],
     botProfiles: [],
     blacklist: [],
+    notifications: [],
     config: { ...DEFAULT_CONFIG },
     admins: [DEFAULT_ADMIN]
   };
@@ -397,6 +398,58 @@ function getPendingReportsCount() {
   return cache.reports.filter(r => r.status === 'pending').length;
 }
 
+// ===== Notification helpers (in-app notification center) =====
+// Creates an in-app notification for a user. `type` is one of:
+//   'bottle_replied' | 'bottle_liked' | 'chat_message' | 'bottle_picked' (reserved)
+// `refId`/`refType` point at the related entity (bottle id / chat session id).
+// Skips writing if the recipient is the actor (no self-notify) unless forced.
+function createNotification({ userId, type, title, content, refId = null, refType = null, actorId = null }) {
+  if (!userId) return null;
+  if (userId === actorId) return null; // never notify yourself about your own action
+  const notif = {
+    id: genId('ntf'),
+    userId,
+    type,
+    title: title || '',
+    content: content || '',
+    refId,
+    refType,
+    actorId,
+    read: false,
+    createdAt: Date.now()
+  };
+  cache.notifications.push(notif);
+  save();
+  return notif;
+}
+
+// List a user's notifications, newest first. Supports pagination and unreadOnly.
+function getUserNotifications(userId, { limit = 30, offset = 0, unreadOnly = false } = {}) {
+  let list = cache.notifications.filter(n => n.userId === userId);
+  if (unreadOnly) list = list.filter(n => !n.read);
+  list.sort((a, b) => b.createdAt - a.createdAt);
+  const total = list.length;
+  const items = list.slice(offset, offset + limit);
+  return { items, total };
+}
+
+function getUnreadNotificationCount(userId) {
+  return cache.notifications.filter(n => n.userId === userId && !n.read).length;
+}
+
+// Mark notifications as read. If `ids` is provided, only those are marked;
+// otherwise all of the user's notifications are marked read.
+function markNotificationsRead(userId, ids = null) {
+  let changed = 0;
+  for (const n of cache.notifications) {
+    if (n.userId !== userId) continue;
+    if (ids && !ids.includes(n.id)) continue;
+    if (!n.read) { n.read = true; changed++; }
+  }
+  if (changed > 0) save();
+  return changed;
+}
+
 // Admin helpers
 function findAdminByUsername(username) {
   return cache.admins.find(a => a.username === username);
@@ -670,6 +723,11 @@ module.exports = {
   findChatSessionById,
   findChatSessionByUsers,
   getPendingReportsCount,
+  // Notification helpers
+  createNotification,
+  getUserNotifications,
+  getUnreadNotificationCount,
+  markNotificationsRead,
   findAdminByUsername,
   findAdminById,
   addAuditLog,

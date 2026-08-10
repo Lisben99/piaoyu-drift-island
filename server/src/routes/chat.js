@@ -4,7 +4,37 @@
 const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
-const { db, save, genId, findUserById, findChatSessionById, findChatSessionByUsers, addCoinTransaction } = require('../db');
+const { db, save, genId, findUserById, findChatSessionById, findChatSessionByUsers, addCoinTransaction, createNotification, getUnreadNotificationCount } = require('../db');
+
+// Notify a chat recipient of a new incoming message (skip bots / self).
+function notifyNewMessage(recipientId, sessionId, fromUserId) {
+  if (!recipientId || recipientId === fromUserId) return;
+  const recipient = findUserById(recipientId);
+  if (!recipient) return;
+  if ((recipient.account_type || 'HUMAN') === 'BOT') return; // bots don't need notifications
+  const actor = findUserById(fromUserId);
+  const notif = createNotification({
+    userId: recipientId,
+    type: 'chat_message',
+    title: '新私信',
+    content: (actor ? (actor.nickname || '匿名用户') : '有人') + ' 给你发了一条消息',
+    refId: sessionId,
+    refType: 'chat',
+    actorId: fromUserId
+  });
+  if (notif) {
+    const { sendToUser } = require('../services/websocket');
+    sendToUser(recipientId, { type: 'notification', data: { id: notif.id, unreadCount: getUnreadNotificationCount(recipientId) } });
+  }
+}
+
+// Friendly display name for the other side of a chat (handles deleted / empty-nickname users).
+function safeNickname(user) {
+  if (!user) return '漂流瓶友';
+  if (user.status === 'deleted') return '已注销用户';
+  return user.nickname || '漂流瓶友';
+}
+
 const { moderate } = require('../services/moderation');
 const { sendToUser } = require('../services/websocket');
 const botEngine = require('../services/botEngine');
@@ -76,6 +106,7 @@ router.post('/start', auth, async (req, res) => {
             type: 'message_received',
             data: { ...message, sessionId: session.id }
           });
+          notifyNewMessage(targetUserId, session.id, req.user.id);
           botEngine.scheduleChatReply(session.id, req.user.id, firstMessage);
         }
         return res.json({ success: true, session, coins: req.user.coins });
@@ -102,6 +133,7 @@ router.post('/start', auth, async (req, res) => {
           type: 'message_received',
           data: { ...message, sessionId: session.id }
         });
+        notifyNewMessage(targetUserId, session.id, req.user.id);
       }
       return res.json({ success: true, session, coins: req.user.coins });
     }
@@ -133,6 +165,7 @@ router.post('/start', auth, async (req, res) => {
           type: 'message_received',
           data: { ...message, sessionId: session.id }
         });
+        notifyNewMessage(targetUserId, session.id, req.user.id);
       }
       return res.json({ success: true, session, coins: req.user.coins });
     }
@@ -190,6 +223,7 @@ router.post('/start', auth, async (req, res) => {
       type: 'message_received',
       data: { ...message, sessionId: session.id }
     });
+    notifyNewMessage(targetUserId, session.id, req.user.id);
     botEngine.scheduleChatReply(session.id, req.user.id, firstMessage);
   }
   
@@ -243,9 +277,9 @@ router.get('/sessions', auth, (req, res) => {
       return {
         id: s.id,
         otherUserId,
-        otherNickname: otherUser ? otherUser.nickname : '未知用户',
-        otherAvatar: otherUser ? otherUser.avatar : '',
-        otherGender: otherUser ? otherUser.gender : '',
+        otherNickname: safeNickname(otherUser),
+        otherAvatar: otherUser && otherUser.status !== 'deleted' ? otherUser.avatar : '',
+        otherGender: otherUser && otherUser.status !== 'deleted' ? otherUser.gender : '',
         status: s.status,
         startedAt: s.startedAt,
         expiresAt: s.expiresAt,
@@ -253,7 +287,7 @@ router.get('/sessions', auth, (req, res) => {
         lastMessage: lastMessage ? { content: lastMessage.content, image: lastMessage.image || null, createdAt: lastMessage.createdAt, senderId: lastMessage.senderId } : null,
         unreadCount,
         permanentRequested: s.permanentRequested,
-        permanentRequestedBy: s.permanentRequested ? s.initiatedBy : null,
+        permanentRequestedBy: s.permanentRequested ? s.permanentRequesterId : null,
         permanentResponseDeadline: s.permanentResponseDeadline
       };
     });
@@ -276,9 +310,10 @@ router.get('/sessions/:id/messages', auth, (req, res) => {
   const sessionWithOther = {
     ...session,
     otherUserId,
-    otherNickname: otherUser ? otherUser.nickname : '未知用户',
-    otherAvatar: otherUser ? otherUser.avatar : '',
-    otherGender: otherUser ? otherUser.gender : ''
+    otherNickname: safeNickname(otherUser),
+    otherAvatar: otherUser && otherUser.status !== 'deleted' ? otherUser.avatar : '',
+    otherGender: otherUser && otherUser.status !== 'deleted' ? otherUser.gender : '',
+    permanentRequestedBy: session.permanentRequested ? session.permanentRequesterId : null
   };
 
   const clearedAt = (session.clearedAt && session.clearedAt[req.user.id]) || 0;
