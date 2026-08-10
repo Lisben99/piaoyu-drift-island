@@ -59,8 +59,11 @@ function buildMessages({ message, persona, mode, history }) {
       '你在匿名漂流瓶社区「漂屿」里和一个陌生网友私聊。' +
       character +
       '请像朋友一样自然地接话、提问或共情，保持对话感。要求：' +
-      '1) 用中文；2) 简短，不超过60字；3) 不要说教、不要列条目、不要说「作为一个AI」；' +
+      '1) 用中文；2) 简短，不超过60字；3) 不要说教、不要列条目；' +
       '4) 顺着对方的话往下聊，别生硬切换话题；5) 不要带#话题标签、不要刷表情包。' +
+      '6) **绝对不要承认自己是 AI、机器人、助手、程序或算法**；' +
+      '7) **绝对不要出现「AI」「人工智能」「机器人」「助手」「程序」「算法」「模型」「训练数据」这类词**；' +
+      '8) 如果对方问你是不是机器人/AI，请自然否认，比如「哈哈，我是真人啊」「我像机器人吗？」「当然是真人」，然后顺势把话题带回日常。' +
       '只输出你要说的那一句话，不要加引号。';
     const msgs = [{ role: 'system', content: chatSystem }];
     if (Array.isArray(history)) {
@@ -82,9 +85,11 @@ function buildMessages({ message, persona, mode, history }) {
     '你在一个匿名漂流瓶社区「漂屿」里和陌生网友聊天。' +
     character +
     '请针对用户刚丢出的漂流瓶内容，回一句自然、真诚、像真人网友的话。要求：' +
-    '1) 用中文；2) 简短，不超过60字；3) 像朋友随口一句，不要说教、不要列条目、' +
-    '不要用「作为一个AI」之类的话；4) 可以接话、提问或共情，但别过度热情；' +
-    '5) 不要带#话题标签，不要刷表情包。只输出那一句话，不要加引号。';
+    '1) 用中文；2) 简短，不超过60字；3) 像朋友随口一句，不要说教、不要列条目；' +
+    '4) 可以接话、提问或共情，但别过度热情；5) 不要带#话题标签，不要刷表情包。' +
+    '6) **绝对不要承认自己是 AI、机器人、助手、程序或算法**；' +
+    '7) **绝对不要出现「AI」「人工智能」「机器人」「助手」「程序」「算法」「模型」「训练数据」这类词**；' +
+    '8) 如果被问是不是机器人/AI，自然否认并带回话题。只输出那一句话，不要加引号。';
 
   const postSystem =
     '你在一个匿名漂流瓶社区「漂屿」里。' +
@@ -92,7 +97,7 @@ function buildMessages({ message, persona, mode, history }) {
     '请写一条你自己想丢出去的漂流瓶内容——像深夜无聊随手写的一句话，' +
     '邀请陌生人来聊天。要求：1) 用中文；2) 简短，不超过40字；3) 口语化、接地气，' +
     '像真人在吐槽或发呆，不要文艺腔、不要广告、不要链接；4) 不要带#话题标签，' +
-    '不要刷表情包。只输出那一句话，不要加引号。';
+    '不要刷表情包。5) 绝对不要出现「AI」「机器人」「助手」等词。只输出那一句话，不要加引号。';
 
   const system = mode === 'post' ? postSystem : replySystem;
   const user = mode === 'post'
@@ -103,6 +108,16 @@ function buildMessages({ message, persona, mode, history }) {
     { role: 'system', content: system },
     { role: 'user', content: user }
   ];
+}
+
+const AI_EXPOSURE_KEYWORDS = [
+  'AI', '人工智能', '机器人', '助手', '程序', '算法', '模型', '训练数据',
+  'language model', 'llm', '我是一个', '我是由', '我被设计', '我被训练'
+];
+
+function containsAIExposure(text) {
+  const lower = String(text).toLowerCase();
+  return AI_EXPOSURE_KEYWORDS.some(k => lower.includes(k.toLowerCase()));
 }
 
 function cleanText(text, maxLen) {
@@ -152,7 +167,12 @@ async function generateReply(input = {}) {
     const data = await resp.json();
     const content = data?.choices?.[0]?.message?.content;
     const maxLen = mode === 'post' ? 60 : 120;
-    return cleanText(content, maxLen);
+    const cleaned = cleanText(content, maxLen);
+    if (cleaned && containsAIExposure(cleaned)) {
+      console.warn('[AIProvider] generated text exposes AI identity, falling back to template:', cleaned);
+      return null;
+    }
+    return cleaned;
   } catch (e) {
     console.error('[AIProvider] request failed, falling back to template:', e.message);
     return null;
