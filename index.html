@@ -27,6 +27,8 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .nav-bar__back{display:flex;align-items:center;gap:2px;color:#172b2d;font-size:16px;font-weight:500}
 .nav-bar__title{position:absolute;left:50%;transform:translateX(-50%);font-size:16px;font-weight:600;color:#172b2d;white-space:nowrap}
 .nav-bar__right{display:flex;align-items:center;gap:8px}
+.nav-bar__icon-btn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:10px;background:#1f7a74;color:#fff;font-size:18px;font-weight:600}
+.nav-bar__icon-btn svg{width:18px;height:18px;stroke:currentColor;stroke-width:2.5;fill:none}
 .nav-bar__spacer{width:60px}
 
 /* ===== Pages ===== */
@@ -107,7 +109,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .welcome{flex:1;display:flex;flex-direction:column}
 .welcome-cover{padding:6px 2px 0;text-align:left}
 .welcome-cover .brand-lockup{margin-bottom:14px}
-.auth-art{position:relative;height:165px;margin:6px -4px 8px}
+.auth-art{position:relative;height:200px;margin:6px -4px 4px;border-radius:18px;overflow:hidden;box-shadow:0 8px 24px rgba(31,122,116,.12)}
 .welcome-slogan{margin:4px 2px 0;text-align:left}
 .welcome-slogan-title{font-size:26px;font-weight:800;color:#172b2d;margin:0 0 8px;letter-spacing:2px}
 .welcome-slogan-sub{font-size:14px;font-weight:600;color:#1f7a74;margin:0 0 10px}
@@ -117,6 +119,14 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .welcome-legal a{color:#1f7a74;font-weight:600;text-decoration:none}
 .ghost-button{display:block;text-align:center;padding:14px;border-radius:14px;background:#fff;border:1.5px solid #1f7a74;color:#1f7a74;font-size:16px;font-weight:700;text-decoration:none}
 .back-arrow{width:36px;height:36px;border:none;background:rgba(0,0,0,.05);border-radius:50%;font-size:22px;line-height:1;color:#172b2d;cursor:pointer;margin-bottom:4px}
+/* ===== Home quick-entry (首屏快捷登录/注册) ===== */
+.home-entry{margin:8px 2px 0;padding:18px 16px;background:#fff;border-radius:18px;box-shadow:0 6px 20px rgba(23,43,45,.06);display:flex;flex-direction:column;gap:12px}
+.agree-row{display:flex;align-items:flex-start;gap:8px;font-size:11px;color:#9aa3a1;line-height:1.6;cursor:pointer}
+.agree-row input[type=checkbox]{width:16px;height:16px;margin-top:1px;accent-color:#1f7a74;flex-shrink:0;cursor:pointer}
+.agree-row a{color:#1f7a74;font-weight:600;text-decoration:none}
+.home-entry-foot{display:flex;justify-content:space-between;font-size:13px;margin-top:2px}
+.home-entry-note{text-align:center;font-size:11px;color:#b0b8b7;margin-top:2px}
+.primary-button:disabled{opacity:.5;cursor:not-allowed}
 .auth-foot-row{margin-top:18px;display:flex;justify-content:space-between;font-size:13px}
 .seg{display:flex;gap:8px;background:#f1f4f4;border-radius:12px;padding:4px;margin-bottom:4px}
 .seg-item{flex:1;border:none;background:transparent;padding:10px 0;border-radius:9px;font-size:14px;font-weight:600;color:#718082;cursor:pointer;transition:.15s}
@@ -464,7 +474,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
   <div class="page" id="page-login">
     <div class="auth-page">
 
-      <!-- 进入 / 欢迎页 -->
+      <!-- 进入 / 欢迎页（升级版：插画 + 手机号/邮箱快捷输入 + 协议勾选） -->
       <div id="welcomeView" class="welcome">
         <div class="welcome-cover">
           <div class="brand-lockup">
@@ -472,29 +482,104 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
             <div><span class="brand-name">漂屿</span><span class="brand-caption">DRIFT ISLAND</span></div>
           </div>
         </div>
+
+        <!-- 升级插画：太阳 + 海岛 + 棕榈 + 海浪 + 带帆漂流瓶 -->
         <div class="auth-art">
-          <svg viewBox="0 0 360 165" style="width:100%;height:100%" preserveAspectRatio="xMidYMid slice">
-            <circle cx="280" cy="45" r="28" fill="#dfa948" opacity=".75"/>
-            <path d="M0 140 Q60 120 120 138 T240 135 T360 138 L360 165 L0 165 Z" fill="#1f7a74" opacity=".18"/>
-            <path d="M0 148 Q70 132 140 146 T280 144 T360 147 L360 165 L0 165 Z" fill="#1f7a74" opacity=".28"/>
-            <ellipse cx="180" cy="148" rx="40" ry="9" fill="#1f7a74" opacity=".15"/>
-            <g transform="translate(160,95) rotate(-12)">
-              <path d="M0 0 L40 0 L40 28 Q40 35 33 35 L7 35 Q0 35 0 28 Z" fill="rgba(255,255,255,.75)" stroke="#1f7a74" stroke-width="1.5"/>
-              <path d="M0 0 L40 0 L36 7 L4 7 Z" fill="#1f7a74" opacity=".2"/>
-              <rect x="15" y="8" width="10" height="3" rx="1" fill="#1f7a74" opacity=".3"/>
+          <svg viewBox="0 0 360 200" style="width:100%;height:100%" preserveAspectRatio="xMidYMid slice">
+            <defs>
+              <linearGradient id="haSky" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#eaf7f4"/>
+                <stop offset="1" stop-color="#cdeae6"/>
+              </linearGradient>
+              <linearGradient id="haSea" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#2a9d98"/>
+                <stop offset="1" stop-color="#1f7a74"/>
+              </linearGradient>
+              <radialGradient id="haSun" cx="0.5" cy="0.5" r="0.5">
+                <stop offset="0" stop-color="#ffd98a" stop-opacity=".9"/>
+                <stop offset="1" stop-color="#ffd98a" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <rect width="360" height="200" fill="url(#haSky)"/>
+            <!-- 太阳 + 光晕 + 光芒 -->
+            <circle cx="286" cy="52" r="48" fill="url(#haSun)"/>
+            <circle cx="286" cy="52" r="24" fill="#f4b740"/>
+            <g stroke="#f4b740" stroke-width="3" stroke-linecap="round" opacity=".8">
+              <line x1="286" y1="6" x2="286" y2="18"/>
+              <line x1="332" y1="52" x2="344" y2="52"/>
+              <line x1="319" y1="19" x2="327" y2="11"/>
+              <line x1="319" y1="85" x2="327" y2="93"/>
+              <line x1="253" y1="19" x2="245" y2="11"/>
+            </g>
+            <!-- 云 -->
+            <g fill="#ffffff" opacity=".85">
+              <ellipse cx="80" cy="46" rx="30" ry="13"/>
+              <ellipse cx="106" cy="42" rx="22" ry="11"/>
+              <ellipse cx="150" cy="30" rx="20" ry="9"/>
+            </g>
+            <!-- 海鸥 -->
+            <path d="M158 58 q6 -7 12 0 q6 -7 12 0" fill="none" stroke="#5b6b6a" stroke-width="2" stroke-linecap="round"/>
+            <!-- 海岛 + 棕榈 -->
+            <path d="M150 150 q40 -26 92 -6 q14 6 24 4 l0 18 l-150 0 z" fill="#e7c98f"/>
+            <path d="M150 156 q50 -16 112 -2 l0 14 l-112 0 z" fill="#d9b873"/>
+            <path d="M205 140 q4 -26 -2 -40" fill="none" stroke="#8a6d3b" stroke-width="4" stroke-linecap="round"/>
+            <g fill="#2a9d98">
+              <path d="M203 100 q-22 -10 -34 2 q20 -2 34 6 z"/>
+              <path d="M203 100 q22 -10 34 2 q-20 -2 -34 6 z"/>
+              <path d="M203 100 q-6 -20 -18 -26 q14 8 18 26 z"/>
+              <path d="M203 100 q6 -20 18 -26 q-14 8 -18 26 z"/>
+            </g>
+            <!-- 海面 -->
+            <path d="M0 150 Q90 138 180 150 T360 150 L360 200 L0 200 Z" fill="url(#haSea)" opacity=".92"/>
+            <path d="M0 162 Q90 152 180 162 T360 162 L360 200 L0 200 Z" fill="#1f7a74" opacity=".5"/>
+            <!-- 带帆漂流瓶 -->
+            <g transform="translate(70,116) rotate(-10)">
+              <path d="M0 0 L44 0 L44 30 Q44 40 34 40 L10 40 Q0 40 0 30 Z" fill="rgba(255,255,255,.88)" stroke="#1f7a74" stroke-width="2"/>
+              <path d="M0 0 L44 0 L40 8 L4 8 Z" fill="#1f7a74" opacity=".22"/>
+              <rect x="18" y="9" width="8" height="4" rx="1" fill="#1f7a74" opacity=".35"/>
+              <rect x="20" y="-12" width="4" height="12" fill="#1f7a74"/>
+              <path d="M22 -12 l15 6 l-15 4 z" fill="#ef7b62"/>
+              <circle cx="22" cy="23" r="4" fill="#ef7b62" opacity=".7"/>
             </g>
           </svg>
         </div>
+
         <div class="welcome-slogan">
           <h1 class="welcome-slogan-title">遇见·倾听·共鸣</h1>
           <p class="welcome-slogan-sub">把心事交给海风</p>
           <p class="welcome-slogan-desc">这里没有熟人，也没有标签。让真心在陌生人的岛屿轻轻靠岸。</p>
         </div>
-        <div class="welcome-actions">
-          <button class="primary-button" id="goLoginBtn" type="button">登录</button>
-          <a href="register.html" class="ghost-button">创建账号</a>
+
+        <!-- 快捷登录 / 注册入口 -->
+        <div class="home-entry">
+          <div class="seg">
+            <button type="button" class="seg-item active" id="homeTabPhone">手机</button>
+            <button type="button" class="seg-item" id="homeTabEmail">邮箱</button>
+          </div>
+          <div id="homePhoneField">
+            <div class="input-wrap">
+              <span class="prefix">+86</span>
+              <input class="plain-input" type="tel" maxlength="11" placeholder="请输入 11 位手机号" id="homePhoneInput" />
+            </div>
+          </div>
+          <div id="homeEmailField" class="hidden">
+            <div class="input-wrap">
+              <input class="plain-input" type="email" placeholder="请输入邮箱地址" id="homeEmailInput" />
+            </div>
+          </div>
+
+          <label class="agree-row">
+            <input type="checkbox" id="homeAgree" />
+            <span>我已阅读并同意 <a href="javascript:void(0)" onclick="showAgreement('user')">《用户协议》</a> 与 <a href="javascript:void(0)" onclick="showAgreement('privacy')">《隐私政策》</a>，且已满 18 周岁</span>
+          </label>
+
+          <button class="primary-button" id="homeGetCodeBtn" type="button" disabled>获取验证码</button>
+          <div class="home-entry-foot">
+            <a href="javascript:void(0)" class="auth-link" id="homePwdLink">使用密码登录</a>
+            <a href="register.html" class="auth-link">注册账号</a>
+          </div>
+          <div class="home-entry-note">未注册的手机号 / 邮箱，验证后将自动创建账号</div>
         </div>
-        <p class="welcome-legal">登录即表示同意 <a href="javascript:void(0)" onclick="showAgreement('user')">《用户协议》</a> 与 <a href="javascript:void(0)" onclick="showAgreement('privacy')">《隐私政策》</a>，并确认已满 18 周岁</p>
       </div>
 
       <!-- 登录页（点“登录”后展开） -->
@@ -702,8 +787,13 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
     <div class="nav-bar">
       <div class="nav-bar__back" onclick="navigateBack()">←</div>
       <div class="nav-bar__title">漂流大厅</div>
-      <div class="lobby-coin" onclick="navigate('coin-center')">
-        <span>🪙</span><span id="lobbyCoins">0</span>
+      <div class="nav-bar__right">
+        <div class="lobby-coin" onclick="navigate('coin-center')">
+          <span>🪙</span><span id="lobbyCoins">0</span>
+        </div>
+        <button class="nav-bar__icon-btn" onclick="navigate('publish')" aria-label="发布漂流瓶">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
       </div>
     </div>
     <div class="lobby-content">
@@ -714,7 +804,6 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
       </div>
       <div id="lobbyList"></div>
     </div>
-    <button onclick="navigate('publish')" style="position:absolute;bottom:24px;right:20px;width:56px;height:56px;border-radius:50%;background:#1f7a74;color:#fff;font-size:24px;box-shadow:0 6px 16px rgba(31,122,116,.3);display:flex;align-items:center;justify-content:center;z-index:10">✎</button>
   </div>
 
   <!-- ===== PAGE: Publish ===== -->
@@ -1201,8 +1290,37 @@ function startCountdown() {
 $('tabPhone').onclick = () => switchIdentifier('phone');
 $('tabEmail').onclick = () => switchIdentifier('email');
 $('sendCodeBtn').onclick = () => doSendCode();
-$('goLoginBtn').onclick = () => { resetLoginView(); $('welcomeView').classList.add('hidden'); $('loginView').classList.remove('hidden'); };
 $('backToWelcome').onclick = () => { $('loginView').classList.add('hidden'); $('welcomeView').classList.remove('hidden'); };
+
+/* ---- 首屏快捷登录 / 注册入口 ---- */
+let homeMode = 'phone';
+function switchHomeIdentifier(mode) {
+  homeMode = mode;
+  $('homeTabPhone').classList.toggle('active', mode === 'phone');
+  $('homeTabEmail').classList.toggle('active', mode === 'email');
+  $('homePhoneField').classList.toggle('hidden', mode !== 'phone');
+  $('homeEmailField').classList.toggle('hidden', mode !== 'email');
+}
+$('homeTabPhone').onclick = () => switchHomeIdentifier('phone');
+$('homeTabEmail').onclick = () => switchHomeIdentifier('email');
+$('homeAgree').onchange = () => { $('homeGetCodeBtn').disabled = !$('homeAgree').checked; };
+$('homePwdLink').onclick = () => { resetLoginView(); $('welcomeView').classList.add('hidden'); $('loginView').classList.remove('hidden'); };
+$('homeGetCodeBtn').onclick = async () => {
+  if (!$('homeAgree').checked) { showToast('请先阅读并同意用户协议与隐私政策'); return; }
+  const val = (homeMode === 'phone' ? $('homePhoneInput') : $('homeEmailInput')).value.trim();
+  if (homeMode === 'phone' && !/^1[3-9]\d{9}$/.test(val)) { showToast('请输入正确的手机号'); return; }
+  if (homeMode === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) { showToast('请输入正确的邮箱地址'); return; }
+  // 复用现有验证码登录流：预填账号 → 切到 code 登录视图 → 发码
+  resetLoginView();
+  switchIdentifier(homeMode);
+  if (homeMode === 'phone') $('phoneInput').value = val; else $('emailInput').value = val;
+  $('pwdLoginForm').classList.add('hidden');
+  $('codeLoginForm').classList.remove('hidden');
+  $('togglePwdLogin').textContent = '使用密码登录';
+  $('welcomeView').classList.add('hidden');
+  $('loginView').classList.remove('hidden');
+  await doSendCode();
+};
 $('togglePwdLogin').onclick = () => {
   const toPwd = $('pwdLoginForm').classList.contains('hidden');
   $('pwdLoginForm').classList.toggle('hidden', !toPwd);
