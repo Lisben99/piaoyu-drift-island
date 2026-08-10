@@ -190,8 +190,21 @@ npm start                             # = node src/index.js
 
 **第一步：注册 Resend 并获取 API Key**
 1. 打开 https://resend.com 注册账号。
-2. 进入 API Keys 页面，创建一个 Key（以 `re_` 开头）。
-3. （推荐）在「Domains」里添加并验证你的域名 `piaoyuisland.xyz` 或子域名（如 `mail.piaoyuisland.xyz`），验证通过后可从该域名发件。
+2. 进入 API Keys 页面，创建一个 Key（以 `re_` 开头，**只显示一次，立即保存**）。
+
+**第一步（补）：验证自有域名（生产必需，否则只能发给你自己账号的邮箱）**
+Resend 免费版未验证域名前，邮件**只能发往你 Resend 账号下的邮箱**，无法发给任意用户。要让任意邮箱都能收验证码，必须验证 `piaoyuisland.xyz`：
+
+1. Resend 左侧 **Domains** → **Add Domain** → 填 `piaoyuisland.xyz`（Region 选 Tokyo 即可）→ Add。
+2. 页面展开 **DNS Records**，会列出 3~4 条记录（值被截断，**务必点每条右侧复制按钮取完整值**）：
+   - `TXT` 主机 `resend._domainkey` → DKIM 公钥（很长）
+   - `MX` 主机 `send`（优先级 `10`）→ `feedback-xxx.us-east-1.amazonses.com`
+   - `TXT` 主机 `send` → `v=spf1 include:amazonses.com ~all`
+   - `TXT` 主机 `_dmarc` → `v=DMARC1; p=none;`
+3. 回阿里云 DNS 解析设置，**逐条添加**上述记录（与 www CNAME / @ A 记录并存，不冲突）。
+4. 等 1~3 分钟，回 Resend 点 **「I've added the records」**，状态变为 **Verified** ✅（有时需十几分钟）。
+5. 验证通过后，Render 的 `EMAIL_FROM` 才能设为 `漂屿 <noreply@piaoyuisland.xyz>`；否则保持 `漂屿 <onboarding@resend.dev>`。
+6. `Enable Receiving` 保持关闭（我们只发邮件，不收）。
 
 **第二步：在 Render 填入环境变量**
 到 Render Dashboard → `drift-island-api` → Environment，新增以下变量：
