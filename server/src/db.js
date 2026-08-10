@@ -102,6 +102,7 @@ function createDefaultDB() {
     botProfiles: [],
     blacklist: [],
     notifications: [],
+    moments: [],
     config: { ...DEFAULT_CONFIG },
     admins: [DEFAULT_ADMIN]
   };
@@ -296,7 +297,11 @@ function createUser(phone, email, password = null) {
     inviteCode: genId('inv'),
     checkin: { lastDate: null, consecutive: 0 },
     createdAt: Date.now(),
-    lastLoginAt: Date.now()
+    lastLoginAt: Date.now(),
+    latitude: null,
+    longitude: null,
+    locationEnabled: false,
+    locationUpdatedAt: null
   };
   cache.users.push(user);
   addCoinTransaction(user.id, config.new_user_bonus, 'new_user_bonus', '新用户注册赠送');
@@ -324,6 +329,10 @@ function reactivateUser(user, { phone = null, email = null, password = null, rol
   user.restrictions = { publish: false, chat: false };
   user.checkin = { lastDate: null, consecutive: 0 };
   user.lastLoginAt = Date.now();
+  user.latitude = null;
+  user.longitude = null;
+  user.locationEnabled = false;
+  user.locationUpdatedAt = null;
   save();
   return user;
 }
@@ -379,6 +388,121 @@ function getActiveBottles(filters = {}) {
     if (filters.userId && b.authorId !== filters.userId) return false;
     return true;
   });
+}
+
+// ===== Moment (动态) helpers =====
+// A "moment" is a user post (text + optional images) shown in the community feed
+// and on a user's personal profile. Images are stored as compressed data URLs.
+function createMoment(userId, { content = '', images = [] } = {}) {
+  const moment = {
+    id: genId('mo'),
+    userId,
+    content: String(content || '').slice(0, 1000),
+    images: Array.isArray(images)
+      ? images.filter(i => typeof i === 'string' && i.startsWith('data:image/')).slice(0, 9)
+      : [],
+    likes: [],
+    comments: [],
+    deleted: false,
+    createdAt: Date.now()
+  };
+  cache.moments.push(moment);
+  save();
+  return moment;
+}
+
+function getMomentById(id) {
+  return cache.moments.find(m => m.id === id);
+}
+
+// List non-deleted moments, newest first, with pagination.
+//   userId  -> only this user's moments (personal feed)
+//   community -> all users' moments (community feed)
+function listMoments({ userId = null, community = false, limit = 20, offset = 0 } = {}) {
+  let list = cache.moments.filter(m => !m.deleted);
+  if (userId) list = list.filter(m => m.userId === userId);
+  list.sort((a, b) => b.createdAt - a.createdAt);
+  const total = list.length;
+  const items = list.slice(offset, offset + limit);
+  return { items, total };
+}
+
+function deleteMoment(momentId, userId) {
+  const m = getMomentById(momentId);
+  if (!m || m.deleted) return false;
+  if (m.userId !== userId) return false;
+  m.deleted = true;
+  save();
+  return true;
+}
+
+// Toggle the current user's like on a moment. Returns { liked, likeCount } or null.
+function toggleMomentLike(momentId, userId) {
+  const m = getMomentById(momentId);
+  if (!m || m.deleted) return null;
+  const idx = (m.likes || []).indexOf(userId);
+  let liked;
+  if (idx >= 0) { m.likes.splice(idx, 1); liked = false; }
+  else { m.likes.push(userId); liked = true; }
+  save();
+  return { liked, likeCount: m.likes.length };
+}
+
+function addMomentComment(momentId, userId, content) {
+  const m = getMomentById(momentId);
+  if (!m || m.deleted) return null;
+  const comment = {
+    id: genId('mc'),
+    userId,
+    content: String(content || '').slice(0, 300),
+    createdAt: Date.now()
+  };
+  m.comments.push(comment);
+  save();
+  return comment;
+}
+
+function updateUserLocation(userId, latitude, longitude) {
+  const u = findUserById(userId);
+  if (!u) return null;
+  u.latitude = latitude;
+  u.longitude = longitude;
+  u.locationEnabled = true;
+  u.locationUpdatedAt = Date.now();
+  save();
+  return u;
+}
+
+// Haversine distance (km) between two lat/lng points.
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const toRad = d => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Nearby human users (excludes bots) who have enabled & recently refreshed location.
+function getNearbyUsers(latitude, longitude, { radiusKm = 50, limit = 100, excludeUserId = null, maxAgeMs = 1000 * 60 * 60 * 24 } = {}) {
+  const now = Date.now();
+  const candidates = cache.users.filter(u =>
+    u &&
+    u.status === 'active' &&
+    u.account_type !== 'BOT' &&
+    u.locationEnabled &&
+    typeof u.latitude === 'number' &&
+    typeof u.longitude === 'number' &&
+    u.id !== excludeUserId &&
+    (now - (u.locationUpdatedAt || 0)) < maxAgeMs
+  );
+  return candidates
+    .map(u => ({ user: u, distance: haversineKm(latitude, longitude, u.latitude, u.longitude) }))
+    .filter(x => x.distance <= radiusKm)
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, limit);
 }
 
 // Chat session helpers
@@ -720,6 +844,15 @@ module.exports = {
   addCoinTransaction,
   findBottleById,
   getActiveBottles,
+  // Moment (动态) helpers
+  createMoment,
+  getMomentById,
+  listMoments,
+  deleteMoment,
+  toggleMomentLike,
+  addMomentComment,
+  updateUserLocation,
+  getNearbyUsers,
   findChatSessionById,
   findChatSessionByUsers,
   getPendingReportsCount,

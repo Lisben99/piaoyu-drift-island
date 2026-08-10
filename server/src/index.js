@@ -44,6 +44,7 @@ app.use('/api/invite', require('./routes/invite'));
 app.use('/api/profile', require('./routes/profile'));
 app.use('/api/reports', require('./routes/report'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/moments', require('./routes/moments'));
 app.use('/api/blacklist', require('./routes/blacklist'));
 app.use('/api/support', require('./routes/support').user);
 app.use('/api/admin', require('./routes/admin'));

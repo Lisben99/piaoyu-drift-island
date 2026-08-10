@@ -301,7 +301,8 @@ router.get('/me', (req, res) => {
     inviteCode: user.inviteCode,
     checkin: user.checkin,
     totalRecharged: user.totalRecharged,
-    totalInvited: user.totalInvited
+    totalInvited: user.totalInvited,
+    locationEnabled: !!user.locationEnabled
   });
 });
 
