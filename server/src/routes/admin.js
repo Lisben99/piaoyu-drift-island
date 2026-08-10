@@ -9,6 +9,7 @@ const { signAdminToken } = require('../utils/jwt');
 const { comparePassword, hashPassword } = require('../utils/crypto');
 const { PACKAGES, refundOrder, confirmPayment, rejectOrder } = require('../services/payment');
 const botEngine = require('../services/botEngine');
+const aiProvider = require('../services/aiProvider');
 
 // Admin login
 router.post('/login', (req, res) => {
@@ -416,7 +417,7 @@ router.get('/bots', adminAuth, (req, res) => {
       nickname: user ? user.nickname : ''
     };
   });
-  res.json({ success: true, bots: profiles, aiConfigured: botEngine.isAIConfigured() });
+  res.json({ success: true, bots: profiles, aiConfigured: aiProvider.isConfigured(), aiProvider: aiProvider.providerLabel() });
 });
 
 // Create a new bot
