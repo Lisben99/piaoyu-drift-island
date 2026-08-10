@@ -100,9 +100,10 @@ function aliyunEnabled() {
   return false;
 }
 
-async function sendVerificationCode(phone) {
-  // 发送间隔控制
-  const last = lastSendAt.get(phone);
+async function sendVerificationCode(phone, purpose = 'login') {
+  // 发送间隔控制（按「联系方式 + 用途」独立限频，避免登录发码与找回密码发码互相干扰）
+  const key = phone + ':' + purpose;
+  const last = lastSendAt.get(key);
   if (last) {
     const elapsed = (Date.now() - last) / 1000;
     if (elapsed < SEND_INTERVAL_SECONDS) {
@@ -110,7 +111,7 @@ async function sendVerificationCode(phone) {
       return { success: false, error: `请${wait}秒后再试` };
     }
   }
-  lastSendAt.set(phone, Date.now());
+  lastSendAt.set(key, Date.now());
 
   // 开发模式：本地生成并存储验证码
   if (!aliyunEnabled()) {

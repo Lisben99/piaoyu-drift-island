@@ -32,7 +32,7 @@ router.post('/sms/send', async (req, res) => {
   if (!phone || !/^1[3-9]\d{9}$/.test(phone)) {
     return res.json({ success: false, error: '请输入正确的手机号' });
   }
-  const result = await sendVerificationCode(phone);
+  const result = await sendVerificationCode(phone, 'login');
   res.json(result);
 });
 
@@ -42,7 +42,7 @@ router.post('/email/send', async (req, res) => {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.json({ success: false, error: '请输入正确的邮箱地址' });
   }
-  const result = await sendEmailVerificationCode(email);
+  const result = await sendEmailVerificationCode(email, 'login');
   res.json(result);
 });
 
@@ -149,6 +149,64 @@ router.post('/login', async (req, res) => {
 
   const token = signUserToken(user);
   res.json({ success: true, token, user: publicUser(user) });
+});
+
+// Forgot password: send a verification code to email/phone (account must already exist)
+router.post('/reset/send', async (req, res) => {
+  const { type, phone, email } = req.body;
+  if (type !== 'phone' && type !== 'email') {
+    return res.json({ success: false, error: '找回方式不正确' });
+  }
+  if (type === 'email') {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.json({ success: false, error: '请输入正确的邮箱地址' });
+    }
+    const user = findUserByEmail(email);
+    if (!user) return res.json({ success: false, error: '该邮箱未注册，请先注册' });
+    const result = await sendEmailVerificationCode(email, 'reset');
+    return res.json(result);
+  }
+  if (!phone || !/^1[3-9]\d{9}$/.test(phone)) {
+    return res.json({ success: false, error: '请输入正确的手机号' });
+  }
+  const user = findUserByPhone(phone);
+  if (!user) return res.json({ success: false, error: '该手机号未注册，请先注册' });
+  const result = await sendVerificationCode(phone, 'reset');
+  return res.json(result);
+});
+
+// Forgot password: verify the code and set a new password
+router.post('/reset/confirm', async (req, res) => {
+  const { type, phone, email, code, password } = req.body;
+  if (type !== 'phone' && type !== 'email') {
+    return res.json({ success: false, error: '找回方式不正确' });
+  }
+  if (!code) {
+    return res.json({ success: false, error: '请输入验证码' });
+  }
+  if (!password || password.length < 6) {
+    return res.json({ success: false, error: '新密码至少 6 位' });
+  }
+  let user, verifyResult;
+  if (type === 'email') {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.json({ success: false, error: '请输入正确的邮箱地址' });
+    }
+    user = findUserByEmail(email);
+    if (!user) return res.json({ success: false, error: '该邮箱未注册，请先注册' });
+    verifyResult = await verifyEmailCode(email, code);
+  } else {
+    if (!phone || !/^1[3-9]\d{9}$/.test(phone)) {
+      return res.json({ success: false, error: '请输入正确的手机号' });
+    }
+    user = findUserByPhone(phone);
+    if (!user) return res.json({ success: false, error: '该手机号未注册，请先注册' });
+    verifyResult = await verifyCode(phone, code);
+  }
+  if (!verifyResult.success) return res.json(verifyResult);
+
+  setUserPassword(user.id, password);
+  res.json({ success: true });
 });
 
 // Get current user info

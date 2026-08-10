@@ -108,9 +108,10 @@ async function sendSmtp(email, code) {
   });
 }
 
-async function sendVerificationCode(email) {
-  // 发送间隔控制
-  const last = lastSendAt.get(email);
+async function sendVerificationCode(email, purpose = 'login') {
+  // 发送间隔控制（按「联系方式 + 用途」独立限频，避免登录发码与找回密码发码互相干扰）
+  const key = email + ':' + purpose;
+  const last = lastSendAt.get(key);
   if (last) {
     const elapsed = (Date.now() - last) / 1000;
     if (elapsed < SEND_INTERVAL_SECONDS) {
@@ -118,7 +119,7 @@ async function sendVerificationCode(email) {
       return { success: false, error: `请${wait}秒后再试` };
     }
   }
-  lastSendAt.set(email, Date.now());
+  lastSendAt.set(key, Date.now());
 
   const code = generateCode();
   const database = db.db();
