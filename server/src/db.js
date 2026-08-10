@@ -49,7 +49,7 @@ const DEFAULT_CONFIG = {
   enable_bot: true,
   enable_ai_reply: true,            // template-first by default; AI only if a provider key is present
   enable_bot_public_post: true,
-  enable_bot_private_chat: false,
+  enable_bot_private_chat: true,     // on by default so a fresh deploy talks to users immediately
   enable_ads: false,
   enable_recharge: false,
   enable_daily_reward: true,
