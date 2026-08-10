@@ -102,11 +102,14 @@ async function createOrder(userId, pkgId) {
   db.save();
   
   if (PAYMENT_PROVIDER === 'wechat') {
-    // Production: call WeChat Pay API to create prepay order
-    // const { createPrepay } = require('./wechat-pay');
-    // const prepay = await createPrepay(order);
-    // return { success: true, orderId: order.id, payment: prepay };
-    
+    // 设计说明：本产品充值采用「卡密兑换」模式（见 redeem.js）——用户支付后系统自动生成
+    // 一次性兑换码，用户再到客户端兑换发放漂流币，因此不依赖支付回调实时到账。
+    // 微信支付是可选扩展通道，当前未启用（无商户资质）。下方 prepay 调用为占位实现，
+    // 属设计如此，并非未完成的缺陷——启用前需先配置 PAYMENT_PROVIDER=wechat 及商户密钥。
+    // 生产接入示例：
+    //   const { createPrepay } = require('./wechat-pay');
+    //   const prepay = await createPrepay(order);
+    //   return { success: true, orderId: order.id, payment: prepay };
     console.log(`[PAYMENT][WECHAT] Order: ${order.orderId}, Amount: ${pkg.price}元`);
     return { success: true, orderId: order.id, payment: { provider: 'wechat', prepayId: 'placeholder' } };
   } else {

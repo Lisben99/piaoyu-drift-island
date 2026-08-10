@@ -6,6 +6,17 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f7f5ef">
 <title>漂屿 · DRIFT ISLAND</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="漂屿 DRIFT ISLAND">
+<meta property="og:title" content="漂屿 · 把心事交给海风">
+<meta property="og:description" content="遇见·倾听·共鸣。这里没有熟人，也没有标签，让真心在陌生人的岛屿轻轻靠岸。">
+<meta property="og:image" content="https://lisben99.github.io/piaoyu-drift-island/og-cover.png">
+<meta property="og:url" content="https://lisben99.github.io/piaoyu-drift-island/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="漂屿 · 把心事交给海风">
+<meta name="twitter:description" content="遇见·倾听·共鸣。让真心在陌生人的岛屿轻轻靠岸。">
+<meta name="twitter:image" content="https://lisben99.github.io/piaoyu-drift-island/og-cover.png">
 <script src="config.js"></script>
 <style>
 /* ===== Reset ===== */
@@ -1099,7 +1110,7 @@ function avatarStyle(name, avatar, color) {
   return `background:${c}`;
 }
 function avatarMarkup(name, avatar, cls, color) {
-  return `<div class="${cls}" style="${avatarStyle(name, avatar, color)}">${avatar ? '' : avatarInitial(name || '?')}</div>`;
+  return `<div class="${cls}" style="${avatarStyle(name, avatar, color)}">${avatar ? '' : escapeHtml(avatarInitial(name || '?'))}</div>`;
 }
 function paintAvatar(el, name, avatar, color) {
   if (!el) return;
@@ -2408,6 +2419,8 @@ async function renderRecharge() {
           actions = `<button class="order-act" onclick="continuePayment('${o.id}')">继续支付</button> <button class="order-act order-act--ghost" onclick="viewOrderDetail('${o.id}')">查看详情</button>`;
         } else if (o.status === 'rejected') {
           actions = `<button class="order-act" onclick="continuePayment('${o.id}')">重新支付</button> <button class="order-act order-act--ghost" onclick="viewOrderDetail('${o.id}')">查看详情</button>`;
+        } else if (o.status === 'expired') {
+          actions = `<span style="font-size:12px;color:#98a2a0">已过期，请重新下单</span> <button class="order-act order-act--ghost" onclick="viewOrderDetail('${o.id}')">查看详情</button>`;
         }
         return `
           <div class="ledger-item">
@@ -2429,6 +2442,7 @@ async function renderRecharge() {
 }
 
 function orderStatusText(s) {
+  if (s === 'expired') return '已过期';
   return s === 'paid' ? '已发放兑换码' : s === 'submitted' ? '待确认' : s === 'rejected' ? '已拒绝' : s === 'refunded' ? '已退款' : '待支付';
 }
 
@@ -2497,6 +2511,7 @@ async function submitPaymentProof() {
 async function continuePayment(orderId) {
   const o = rechargeOrdersList.find(x => x.id === orderId);
   if (!o) { showToast('订单不存在'); return; }
+  if (o.status === 'expired') { showToast('该订单已过期，请重新下单'); $('payPanel').style.display = 'none'; return; }
   const p = payPackages.find(x => x.id === o.packageId);
   if (!p) { showToast('套餐信息缺失，请重新选择'); return; }
   selectedPkg = o.packageId;
@@ -3022,9 +3037,9 @@ async function renderProfile(userId) {
       $('profileContent').innerHTML = `
         <div class="profile-header">
           ${avatarMarkup(p.nickname, p.avatar, 'profile-avatar', color)}
-          <div class="profile-name">${p.nickname}</div>
+          <div class="profile-name">${escapeHtml(p.nickname)}</div>
           <div class="profile-role">${genderText(p.gender)}</div>
-          ${p.bio ? `<div class="profile-bio">${p.bio}</div>` : ''}
+          ${p.bio ? `<div class="profile-bio">${escapeHtml(p.bio)}</div>` : ''}
           <div class="profile-meta">加入于 ${formatTime(p.createdAt)}</div>
         </div>
         <div class="profile-actions">
@@ -3103,6 +3118,16 @@ document.addEventListener('visibilitychange', () => {
   // 切回前台：若已无登录态且不在登录 / 欢迎页，强制回到登录页
   if (!getToken() && currentPage && currentPage !== 'login' && currentPage !== 'welcome') {
     navigateTo('login', true);
+  }
+});
+
+/* 移动端键盘遮挡适配：输入框聚焦后滚到可视区中部，避免被弹起的键盘挡住 */
+document.addEventListener('focusin', (e) => {
+  const el = e.target;
+  if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+    setTimeout(() => {
+      try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) {}
+    }, 300);
   }
 });
 

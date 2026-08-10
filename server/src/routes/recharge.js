@@ -40,8 +40,19 @@ router.post('/order/:id/confirm', auth, (req, res) => {
 });
 
 // My orders
+const ORDER_EXPIRE_MS = 24 * 60 * 60 * 1000; // 未支付的 pending 订单 24 小时后自动过期
 router.get('/orders', auth, (req, res) => {
-  const orders = db().rechargeOrders
+  const database = db();
+  const now = Date.now();
+  let changed = false;
+  database.rechargeOrders.forEach(o => {
+    if (o.userId === req.user.id && o.status === 'pending' && now - o.createdAt > ORDER_EXPIRE_MS) {
+      o.status = 'expired';
+      changed = true;
+    }
+  });
+  if (changed) save();
+  const orders = database.rechargeOrders
     .filter(o => o.userId === req.user.id)
     .sort((a, b) => b.createdAt - a.createdAt);
   res.json({ success: true, orders });

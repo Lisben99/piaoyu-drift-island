@@ -26,12 +26,58 @@ function publicUser(user) {
   };
 }
 
+/* ----------------------------------------------------------------
+   验证码发送防刷（纵深防御第二层；服务层已有 60 秒/号的发送间隔）
+   - 单 IP 在窗口内最多 _IP_MAX 次：防止脚本批量刷不同号码耗光短信/邮件额度
+   - 单联系方式单日最多 _DAILY_MAX 次：防止对同一号长期骚扰式发送
+   ---------------------------------------------------------------- */
+const _IP_WINDOW_MS = 60 * 1000;
+const _IP_MAX = 15;
+const _DAILY_MAX = 20;
+const _sendIpWindow = new Map(); // ip -> { count, ts }
+const _sendDaily = new Map();    // `${target}:${yyyymmdd}` -> count
+
+function _clientIp(req) {
+  const xff = req.headers && req.headers['x-forwarded-for'];
+  if (xff) return String(xff).split(',')[0].trim();
+  return (req.ip || (req.connection && req.connection.remoteAddress) || 'unknown');
+}
+
+function _todayStr() { return new Date().toISOString().slice(0, 10); }
+
+// 返回 null 表示放行；返回字符串表示拦截原因
+function _checkSendAbuse(req, target) {
+  const ip = _clientIp(req);
+  const now = Date.now();
+  const w = _sendIpWindow.get(ip) || { count: 0, ts: now };
+  if (now - w.ts > _IP_WINDOW_MS) { w.count = 0; w.ts = now; }
+  w.count += 1;
+  _sendIpWindow.set(ip, w);
+  if (w.count > _IP_MAX) return '操作过于频繁，请稍后再试';
+
+  const dk = target + ':' + _todayStr();
+  const dc = (_sendDaily.get(dk) || 0) + 1;
+  if (dc > _DAILY_MAX) return '今日验证码发送次数已达上限，请明天再试';
+  _sendDaily.set(dk, dc);
+  return null;
+}
+
+// 每小时清理一次过期的每日计数，避免内存无限增长
+setInterval(() => {
+  const today = _todayStr();
+  for (const k of _sendDaily.keys()) {
+    if (!k.endsWith(':' + today)) _sendDaily.delete(k);
+  }
+}, 60 * 60 * 1000).unref();
+
 // Send SMS verification code
 router.post('/sms/send', async (req, res) => {
   const { phone } = req.body;
   if (!phone || !/^1[3-9]\d{9}$/.test(phone)) {
     return res.json({ success: false, error: '请输入正确的手机号' });
   }
+  const blocked = _checkSendAbuse(req, phone);
+  if (blocked) return res.json({ success: false, error: blocked });
   const result = await sendVerificationCode(phone, 'login');
   res.json(result);
 });
@@ -42,6 +88,8 @@ router.post('/email/send', async (req, res) => {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.json({ success: false, error: '请输入正确的邮箱地址' });
   }
+  const blocked = _checkSendAbuse(req, email);
+  if (blocked) return res.json({ success: false, error: blocked });
   const result = await sendEmailVerificationCode(email, 'login');
   res.json(result);
 });
