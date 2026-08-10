@@ -24,6 +24,10 @@ function auth(req, res, next) {
   if (user.status === 'frozen') {
     return res.status(403).json({ error: '账号已被冻结' });
   }
+  if (user.status === 'deleted') {
+    // 返回 401，复用前端自动清 token + 跳登录逻辑，确保注销后无法继续使用
+    return res.status(401).json({ error: '账号已注销，请重新注册', deleted: true });
+  }
   req.user = user;
   next();
 }

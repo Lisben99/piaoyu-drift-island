@@ -6,7 +6,7 @@ const router = express.Router();
 const { sendVerificationCode, verifyCode } = require('../services/sms');
 const { sendVerificationCode: sendEmailVerificationCode, verifyCode: verifyEmailCode } = require('../services/email');
 const { signUserToken } = require('../utils/jwt');
-const { findUserByPhone, findUserByEmail, createUser, setUserPassword, verifyPassword, db, save } = require('../db');
+const { findUserByPhone, findUserByEmail, createUser, reactivateUser, setUserPassword, verifyPassword, db, save } = require('../db');
 const { applyInvite } = require('../services/invite');
 
 // Shape the user object returned to clients (avoids leaking passwordHash)
@@ -128,6 +128,17 @@ router.post('/register', async (req, res) => {
 
   const existing = type === 'email' ? findUserByEmail(email) : findUserByPhone(phone);
   if (existing) {
+    if (existing.status === 'deleted') {
+      // 注销账号可重新注册：复用该记录并重置为全新账号（不重复发放注册奖励）
+      const user = reactivateUser(existing, {
+        phone: type === 'phone' ? phone : null,
+        email: type === 'email' ? email : null,
+        password,
+        role
+      });
+      const token = signUserToken(user);
+      return res.json({ success: true, token, user: publicUser(user), reactivated: true });
+    }
     return res.json({ success: false, error: '该账号已注册，请直接登录' });
   }
 
@@ -158,6 +169,9 @@ router.post('/login', async (req, res) => {
     if (!user) {
       return res.json({ success: false, error: '账号不存在，请先注册' });
     }
+    if (user.status === 'deleted') {
+      return res.json({ success: false, error: '账号已注销，请使用验证码重新注册', deleted: true });
+    }
     if (!verifyPassword(user, password)) {
       // Distinguish "no password set" from "wrong password" for clearer UX
       if (!user.passwordHash) {
@@ -182,6 +196,7 @@ router.post('/login', async (req, res) => {
     if (!verifyResult.success) return res.json(verifyResult);
     user = findUserByEmail(email);
     if (!user) user = createUser(null, email);
+    else if (user.status === 'deleted') reactivateUser(user, { email });
   } else {
     if (!phone || !code) {
       return res.json({ success: false, error: '请输入手机号和验证码' });
@@ -190,6 +205,7 @@ router.post('/login', async (req, res) => {
     if (!verifyResult.success) return res.json(verifyResult);
     user = findUserByPhone(phone);
     if (!user) user = createUser(phone, null);
+    else if (user.status === 'deleted') reactivateUser(user, { phone });
   }
 
   user.lastLoginAt = Date.now();
@@ -269,6 +285,7 @@ router.get('/me', (req, res) => {
   
   const user = findUserByPhone(decoded.phone) || db().users.find(u => u.id === decoded.id);
   if (!user) return res.status(401).json({ error: '用户不存在' });
+  if (user.status === 'deleted') return res.status(401).json({ error: '账号已注销，请重新注册', deleted: true });
   
   res.json({
     id: user.id,

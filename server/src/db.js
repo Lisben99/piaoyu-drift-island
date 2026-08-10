@@ -303,6 +303,30 @@ function createUser(phone, email, password = null) {
   return user;
 }
 
+// Reactivate a soft-deleted account for re-registration / account recovery.
+// Resets the personal profile to defaults while preserving id, createdAt, inviteCode, phone, email.
+function reactivateUser(user, { phone = null, email = null, password = null, role = '' } = {}) {
+  if (phone !== null) user.phone = phone;
+  if (email !== null) user.email = email;
+  user.passwordHash = password ? bcrypt.hashSync(password, 10) : (user.passwordHash || '');
+  user.nickname = '';
+  user.avatar = '';
+  user.bio = '';
+  user.gender = role || '';
+  user.role = role || '';
+  user.status = 'active';
+  user.deletedAt = null;
+  user.coins = 0;
+  user.totalRecharged = 0;
+  user.totalInvited = 0;
+  user.invitedBy = null;
+  user.restrictions = { publish: false, chat: false };
+  user.checkin = { lastDate: null, consecutive: 0 };
+  user.lastLoginAt = Date.now();
+  save();
+  return user;
+}
+
 // Set/reset a user's password (hashed)
 function setUserPassword(userId, password) {
   const user = findUserById(userId);
@@ -637,6 +661,7 @@ module.exports = {
   findUserByEmail,
   findUserByInviteCode,
   createUser,
+  reactivateUser,
   setUserPassword,
   verifyPassword,
   addCoinTransaction,
