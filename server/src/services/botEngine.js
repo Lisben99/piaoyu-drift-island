@@ -317,7 +317,7 @@ function scheduleChatReply(sessionId, humanUserId, _content) {
     return;
   }
   if (!cfg.enable_bot_private_chat) {
-    console.log('[BotEngine][chat] skip: enable_bot_private_chat=false');
+    console.log('[BotEngine][chat] skip: enable_bot_private_chat=false (去 admin 业务配置勾选「允许机器人私聊」并点保存)');
     return;
   }
 

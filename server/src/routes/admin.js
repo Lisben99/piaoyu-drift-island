@@ -380,6 +380,7 @@ router.post('/config', adminAuth, (req, res) => {
   const updates = req.body;
   const oldConfig = { ...db().config };
   Object.assign(db().config, updates);
+  console.log('[Admin] config updated:', JSON.stringify(updates));
   addAuditLog(req.admin.id, 'config_update', 'config', `配置更新: ${JSON.stringify(updates)}`);
   save();
   res.json({ success: true, config: db().config });
