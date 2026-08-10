@@ -422,10 +422,10 @@ function todayStr() {
 // Default bot personas for cold-start. Seeded once on first init.
 const BOT_SEEDS = [
   {
-    displayName: '漂屿小助手',
-    genderDisplay: 'official',
-    personaPrompt: '你是漂屿的官方AI互动助手，用于冷启动阶段帮助用户自然表达。每次回复10～40字，温柔简短，多问轻松的小问题，绝不索要联系方式或引导付费。',
-    speakingStyle: '温暖、自然、克制',
+    displayName: '晚风',
+    genderDisplay: 'male',
+    personaPrompt: '你是漂屿上的一位普通男生，晚睡、喜欢深夜聊天。语气像朋友一样自然轻松，回复简短（10-40字），多顺着对方的话问下去，绝不索要联系方式或引导付费。',
+    speakingStyle: '随性、自然',
     activityWeight: 1.2
   },
   {
@@ -468,8 +468,8 @@ function createBot(displayName, genderDisplay, personaPrompt, speakingStyle, act
     passwordHash: '',
     nickname: displayName,
     avatar: '',
-    bio: '我是漂屿的AI互动助手',
-    gender: '',
+    bio: '在漂屿随便逛逛，聊聊日常。',
+    gender: genderDisplay || 'neutral',
     role: '',
     status: 'active',
     restrictions: { publish: false, chat: false },

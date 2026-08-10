@@ -933,6 +933,7 @@ function avatarColor(name) {
   return colors[Math.abs(h) % colors.length];
 }
 function avatarInitial(name) { const n = (name || '').trim(); return (n || '?')[0].toUpperCase(); }
+function genderText(g) { if (g === 'male') return '男生'; if (g === 'female') return '女生'; return '岛民'; }
 function avatarStyle(name, avatar, color) {
   const c = color || avatarColor(name || '?');
   if (avatar) {
@@ -1294,14 +1295,13 @@ async function renderLobby() {
         const name = isAnon ? '匿名' : (b.authorNickname || '匿名');
         const color = isAnon ? '#98a2a0' : avatarColor(name);
         const isSelf = b.authorId && b.authorId === currentUser?.id;
-        const isBot = b.authorAccountType === 'BOT';
         const avatar = isAnon ? '' : b.authorAvatar;
         return `<div class="bottle-card">
           <div class="bottle-card__head">
             ${avatarMarkup(name, avatar, 'bottle-card__avatar', color)}
             <div>
-              <div class="bottle-card__name">${name}${isSelf?' (我)':''}${isBot?'<span class="reply-bot-tag">官方</span>':''}${isAnon?'<span class="bottle-card__anon">匿名</span>':''}</div>
-              <div class="bottle-card__role">${isAnon ? '神秘岛民' : isBot ? 'AI助手' : (b.authorGender==='male'?'男生':'女生')}</div>
+              <div class="bottle-card__name">${name}${isSelf?' (我)':''}${isAnon?'<span class="bottle-card__anon">匿名</span>':''}</div>
+              <div class="bottle-card__role">${isAnon ? '神秘岛民' : genderText(b.authorGender)}</div>
             </div>
             <div class="bottle-card__time">${formatTime(b.createdAt)}</div>
           </div>
@@ -1310,7 +1310,7 @@ async function renderLobby() {
             <div class="bottle-card__status">${statusLabel(b.status)}</div>
             <div class="bottle-card__actions">
               <button class="bottle-card__chat-btn chat-btn-reply" onclick="openBottleReplies('${b.id}')">回复${b.replyCount ? '(' + b.replyCount + ')' : ''}</button>
-              ${isSelf || isAnon ? '' : `<button class="bottle-card__chat-btn chat-btn-primary" onclick="startChat('${b.authorId}')">${isBot ? '和助手聊聊' : '聊聊'}</button>`}
+              ${isSelf || isAnon ? '' : `<button class="bottle-card__chat-btn chat-btn-primary" onclick="startChat('${b.authorId}')">聊聊</button>`}
               <button class="bottle-card__report" onclick="navigate('report'); window._reportTarget={type:'bottle',id:'${b.id}'}">举报</button>
             </div>
           </div>
@@ -1402,9 +1402,8 @@ async function deleteBottle(id) {
 
 function bottleReplyItemHtml(r) {
   const name = r.anonymous ? '匿名' : (r.senderNickname || '匿名');
-  const botTag = r.senderAccountType === 'BOT' ? '<span class="reply-bot-tag">官方</span>' : '';
   return `<div class="reply-item">
-    <div class="reply-item__head"><span class="reply-item__name">${escapeHtml(name)}${botTag}</span><span class="reply-item__time">${formatTime(r.createdAt)}</span></div>
+    <div class="reply-item__head"><span class="reply-item__name">${escapeHtml(name)}</span><span class="reply-item__time">${formatTime(r.createdAt)}</span></div>
     <div class="reply-item__content">${escapeHtml(r.content)}</div>
   </div>`;
 }
@@ -2618,7 +2617,7 @@ async function renderProfile(userId) {
         <div class="profile-header">
           ${avatarMarkup(p.nickname, p.avatar, 'profile-avatar', color)}
           <div class="profile-name">${p.nickname}</div>
-          <div class="profile-role">${p.gender === 'male' ? '男生' : '女生'}</div>
+          <div class="profile-role">${genderText(p.gender)}</div>
           ${p.bio ? `<div class="profile-bio">${p.bio}</div>` : ''}
           <div class="profile-meta">加入于 ${formatTime(p.createdAt)}</div>
         </div>
