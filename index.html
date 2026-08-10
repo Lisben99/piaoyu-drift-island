@@ -932,7 +932,7 @@ function avatarColor(name) {
   let h = 0; for (const c of (name || '?')) h = h * 31 + c.charCodeAt(0);
   return colors[Math.abs(h) % colors.length];
 }
-function avatarInitial(name) { return (name || '?')[0].toUpperCase(); }
+function avatarInitial(name) { const n = (name || '').trim(); return (n || '?')[0].toUpperCase(); }
 function avatarStyle(name, avatar, color) {
   const c = color || avatarColor(name || '?');
   if (avatar) {
@@ -2417,9 +2417,15 @@ async function loadMySupport() {
 async function renderSettings() {
   try {
     const meRes = await api('/auth/me');
+    // 防御：未登录 / 返回为空 / 非用户对象时，给出友好提示而非空白页或异常头像
+    if (!meRes || !meRes.id) {
+      $('settingsContent').innerHTML = `<div class="empty-state"><div class="empty-state__icon">👤</div><div class="empty-state__title">未登录</div><div class="empty-state__desc">请重新登录后查看「我的」</div></div>`;
+      renderTabBar('tabbar-settings', 'settings');
+      return;
+    }
     if (meRes) {
       currentUser = { ...currentUser, ...meRes };
-      const name = meRes.nickname || (meRes.phone ? meRes.phone.slice(-4) + '号岛民' : '岛民');
+      const name = (meRes.nickname && meRes.nickname.trim()) || (meRes.phone ? meRes.phone.slice(-4) + '号岛民' : '岛民');
       const color = avatarColor(name);
       $('settingsContent').innerHTML = `
         <div class="settings-header">
