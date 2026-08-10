@@ -6,6 +6,7 @@ server/.npm-cache/
 server/data/db.json
 data/db.json
 data/*.bak
+data/*.smsbak
 
 # Dev artifacts
 audit-report.html
