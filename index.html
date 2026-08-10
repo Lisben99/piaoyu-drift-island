@@ -552,19 +552,32 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 
         <!-- 快捷登录 / 注册入口 -->
         <div class="home-entry">
-          <div class="seg">
-            <button type="button" class="seg-item active" id="homeTabPhone">手机</button>
-            <button type="button" class="seg-item" id="homeTabEmail">邮箱</button>
-          </div>
-          <div id="homePhoneField">
+          <!-- 默认：账号密码登录 -->
+          <div id="homePwdForm">
+            <div class="input-wrap" style="margin-bottom:12px">
+              <input class="plain-input" type="text" placeholder="请输入手机号或邮箱" id="homeAccountInput" />
+            </div>
             <div class="input-wrap">
-              <span class="prefix">+86</span>
-              <input class="plain-input" type="tel" maxlength="11" placeholder="请输入 11 位手机号" id="homePhoneInput" />
+              <input class="plain-input" type="password" placeholder="请输入密码" id="homePasswordInput" />
             </div>
           </div>
-          <div id="homeEmailField" class="hidden">
-            <div class="input-wrap">
-              <input class="plain-input" type="email" placeholder="请输入邮箱地址" id="homeEmailInput" />
+
+          <!-- 切换：验证码登录 -->
+          <div id="homeCodeForm" class="hidden">
+            <div class="seg">
+              <button type="button" class="seg-item active" id="homeTabPhone">手机</button>
+              <button type="button" class="seg-item" id="homeTabEmail">邮箱</button>
+            </div>
+            <div id="homePhoneField">
+              <div class="input-wrap">
+                <span class="prefix">+86</span>
+                <input class="plain-input" type="tel" maxlength="11" placeholder="请输入 11 位手机号" id="homePhoneInput" />
+              </div>
+            </div>
+            <div id="homeEmailField" class="hidden">
+              <div class="input-wrap">
+                <input class="plain-input" type="email" placeholder="请输入邮箱地址" id="homeEmailInput" />
+              </div>
             </div>
           </div>
 
@@ -573,12 +586,13 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
             <span>我已阅读并同意 <a href="javascript:void(0)" onclick="showAgreement('user')">《用户协议》</a> 与 <a href="javascript:void(0)" onclick="showAgreement('privacy')">《隐私政策》</a>，且已满 18 周岁</span>
           </label>
 
-          <button class="primary-button" id="homeGetCodeBtn" type="button" disabled>获取验证码</button>
+          <button class="primary-button" id="homeActionBtn" type="button" disabled>登录</button>
           <div class="home-entry-foot">
-            <a href="javascript:void(0)" class="auth-link" id="homePwdLink">使用密码登录</a>
+            <a href="javascript:void(0)" class="auth-link" id="homeToggleLink">使用验证码登录</a>
+            <a href="javascript:void(0)" class="auth-link" id="homeForgotLink">忘记密码</a>
             <a href="register.html" class="auth-link">注册账号</a>
           </div>
-          <div class="home-entry-note">未注册的手机号 / 邮箱，验证后将自动创建账号</div>
+          <div class="home-entry-note" id="homeEntryNote">未设置密码的账号请使用验证码登录</div>
         </div>
       </div>
 
@@ -1294,39 +1308,91 @@ $('backToWelcome').onclick = () => { $('loginView').classList.add('hidden'); $('
 
 /* ---- 首屏快捷登录 / 注册入口 ---- */
 let homeMode = 'phone';
+let homeAuthMode = 'pwd'; // 'pwd' | 'code'
 function switchHomeIdentifier(mode) {
   homeMode = mode;
   $('homeTabPhone').classList.toggle('active', mode === 'phone');
   $('homeTabEmail').classList.toggle('active', mode === 'email');
   $('homePhoneField').classList.toggle('hidden', mode !== 'phone');
   $('homeEmailField').classList.toggle('hidden', mode !== 'email');
+  if (homeAuthMode === 'code') {
+    $('homeEntryNote').textContent = mode === 'phone'
+      ? '未注册的手机号验证后将自动创建账号'
+      : '未注册的邮箱验证后将自动创建账号';
+  }
+  updateHomeActionBtn();
+}
+function switchHomeAuthMode(mode) {
+  homeAuthMode = mode;
+  $('homePwdForm').classList.toggle('hidden', mode !== 'pwd');
+  $('homeCodeForm').classList.toggle('hidden', mode !== 'code');
+  $('homeActionBtn').textContent = mode === 'pwd' ? '登录' : '获取验证码';
+  $('homeToggleLink').textContent = mode === 'pwd' ? '使用验证码登录' : '使用密码登录';
+  $('homeEntryNote').textContent = mode === 'pwd'
+    ? '未设置密码的账号请使用验证码登录'
+    : (homeMode === 'phone' ? '未注册的手机号验证后将自动创建账号' : '未注册的邮箱验证后将自动创建账号');
+  updateHomeActionBtn();
+}
+function updateHomeActionBtn() {
+  const agreed = $('homeAgree').checked;
+  const pwdReady = homeAuthMode === 'pwd' && $('homeAccountInput').value.trim() && $('homePasswordInput').value;
+  const codeReady = homeAuthMode === 'code' && (
+    homeMode === 'phone' ? $('homePhoneInput').value.trim() : $('homeEmailInput').value.trim()
+  );
+  $('homeActionBtn').disabled = !agreed || (!pwdReady && !codeReady);
 }
 $('homeTabPhone').onclick = () => switchHomeIdentifier('phone');
 $('homeTabEmail').onclick = () => switchHomeIdentifier('email');
-$('homeAgree').onchange = () => { $('homeGetCodeBtn').disabled = !$('homeAgree').checked; };
-$('homePwdLink').onclick = () => { resetLoginView(); $('welcomeView').classList.add('hidden'); $('loginView').classList.remove('hidden'); };
-$('homeGetCodeBtn').onclick = async () => {
-  if (!$('homeAgree').checked) { showToast('请先阅读并同意用户协议与隐私政策'); return; }
-  const val = (homeMode === 'phone' ? $('homePhoneInput') : $('homeEmailInput')).value.trim();
-  if (homeMode === 'phone' && !/^1[3-9]\d{9}$/.test(val)) { showToast('请输入正确的手机号'); return; }
-  if (homeMode === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) { showToast('请输入正确的邮箱地址'); return; }
-  // 复用现有验证码登录流：预填账号 → 切到 code 登录视图 → 发码
+$('homeAgree').onchange = () => updateHomeActionBtn();
+$('homeAccountInput').oninput = () => updateHomeActionBtn();
+$('homePasswordInput').oninput = () => updateHomeActionBtn();
+$('homePhoneInput').oninput = () => updateHomeActionBtn();
+$('homeEmailInput').oninput = () => updateHomeActionBtn();
+$('homeToggleLink').onclick = () => switchHomeAuthMode(homeAuthMode === 'pwd' ? 'code' : 'pwd');
+$('homeForgotLink').onclick = () => {
   resetLoginView();
-  switchIdentifier(homeMode);
-  if (homeMode === 'phone') $('phoneInput').value = val; else $('emailInput').value = val;
-  $('pwdLoginForm').classList.add('hidden');
-  $('codeLoginForm').classList.remove('hidden');
-  $('togglePwdLogin').textContent = '使用密码登录';
   $('welcomeView').classList.add('hidden');
-  $('loginView').classList.remove('hidden');
-  await doSendCode();
+  $('loginView').classList.add('hidden');
+  $('resetView').classList.remove('hidden');
 };
-$('togglePwdLogin').onclick = () => {
-  const toPwd = $('pwdLoginForm').classList.contains('hidden');
-  $('pwdLoginForm').classList.toggle('hidden', !toPwd);
-  $('codeLoginForm').classList.toggle('hidden', toPwd);
-  $('togglePwdLogin').textContent = toPwd ? '使用验证码登录' : '使用密码登录';
+$('homeActionBtn').onclick = async () => {
+  if (!$('homeAgree').checked) { showToast('请先阅读并同意用户协议与隐私政策'); return; }
+  if (homeAuthMode === 'pwd') {
+    const account = $('homeAccountInput').value.trim();
+    const password = $('homePasswordInput').value;
+    if (!account) { showToast('请输入账号'); return; }
+    if (!password) { showToast('请输入密码'); return; }
+    const btn = $('homeActionBtn');
+    btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
+    try {
+      const res = await api('/auth/login', { method: 'POST', body: JSON.stringify({ account, password }) });
+      if (res.success) {
+        setToken(res.token);
+        currentUser = res.user;
+        if (!res.user.role) navigateTo('role', true);
+        else { navigateTo('home', true); refreshUnread(); }
+      } else {
+        showToast(res.error || '登录失败');
+      }
+    } catch (e) { showToast('登录失败，请重试'); }
+    btn.innerHTML = '登录'; btn.disabled = false;
+  } else {
+    const val = (homeMode === 'phone' ? $('homePhoneInput') : $('homeEmailInput')).value.trim();
+    if (homeMode === 'phone' && !/^1[3-9]\d{9}$/.test(val)) { showToast('请输入正确的手机号'); return; }
+    if (homeMode === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) { showToast('请输入正确的邮箱地址'); return; }
+    // 复用现有验证码登录流：预填账号 → 切到 code 登录视图 → 发码
+    resetLoginView();
+    switchIdentifier(homeMode);
+    if (homeMode === 'phone') $('phoneInput').value = val; else $('emailInput').value = val;
+    $('pwdLoginForm').classList.add('hidden');
+    $('codeLoginForm').classList.remove('hidden');
+    $('togglePwdLogin').textContent = '使用密码登录';
+    $('welcomeView').classList.add('hidden');
+    $('loginView').classList.remove('hidden');
+    await doSendCode();
+  }
 };
+switchHomeAuthMode('pwd');
 $('resendBtn').onclick = () => { if (!$('resendBtn').disabled) doSendCode(); };
 
 $('loginBtn').onclick = async function() {
