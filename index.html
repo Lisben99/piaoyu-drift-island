@@ -206,6 +206,19 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .bottle-card__status{font-size:11px;color:#98a2a0}
 .bottle-card__actions{display:flex;gap:8px}
 .bottle-card__chat-btn{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600}
+.bottle-card__chat-btn.chat-btn-like.liked{background:#fde8e4;color:#ef7b62;border-color:#f6c9bf}
+.notif-badge{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;border-radius:8px;background:#ef7b62;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;box-sizing:border-box}
+.notif-content{padding:12px}
+.notif-item{display:flex;gap:10px;padding:12px;border-radius:12px;background:#fff;margin-bottom:10px;border:1px solid #eef1f0;cursor:pointer;transition:background .15s}
+.notif-item.unread{background:#f3faf8;border-color:#cfe9e3}
+.notif-item:active{opacity:.7}
+.notif-item__icon{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;background:#eaf4f2;flex-shrink:0}
+.notif-item__body{flex:1;min-width:0}
+.notif-item__title{font-size:14px;font-weight:600;color:#1f3d39;display:flex;align-items:center;gap:6px}
+.notif-item__dot{width:7px;height:7px;border-radius:50%;background:#2bb39a;flex-shrink:0}
+.notif-item__content{font-size:13px;color:#6b7c78;margin-top:3px;line-height:1.45}
+.notif-item__time{font-size:11px;color:#aab4b1;margin-top:4px}
+.notif-empty{text-align:center;color:#aab4b1;padding:48px 0;font-size:14px}
 .chat-btn-primary{background:#1f7a74;color:#fff}
 .chat-btn-active{background:rgba(31,122,116,.1);color:#1f7a74}
 .chat-btn-expired{background:rgba(223,169,72,.12);color:#8a6d2f}
@@ -816,6 +829,10 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
         <div class="lobby-coin" onclick="navigate('coin-center')">
           <span>🪙</span><span id="lobbyCoins">0</span>
         </div>
+        <button class="nav-bar__icon-btn" id="notifBell" onclick="navigate('notifications')" aria-label="通知" style="position:relative">
+          <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+        </button>
         <button class="nav-bar__icon-btn" onclick="navigate('publish')" aria-label="发布漂流瓶">
           <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
         </button>
@@ -828,6 +845,18 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
         <button class="lobby-tab" data-tab="female" onclick="lobbyTab('female')">女生</button>
       </div>
       <div id="lobbyList"></div>
+    </div>
+  </div>
+
+  <!-- ===== PAGE: Notifications ===== -->
+  <div class="page" id="page-notifications">
+    <div class="nav-bar">
+      <div class="nav-bar__back" onclick="navigateBack()">←</div>
+      <div class="nav-bar__title">通知</div>
+      <div class="nav-bar__right"></div>
+    </div>
+    <div class="notif-content">
+      <div id="notificationsList"></div>
     </div>
   </div>
 
@@ -1193,6 +1222,7 @@ function onPageEnter(pageId) {
   if (pageId === 'edit-profile') renderEditProfile();
   if (pageId === 'account-delete') renderAccountDelete();
   if (pageId === 'support') renderSupport();
+  if (pageId === 'notifications') renderNotifications();
 }
 
 /* ================================================================
@@ -1716,6 +1746,7 @@ async function renderLobby() {
           <div class="bottle-card__footer">
             <div class="bottle-card__status">${statusLabel(b.status)}</div>
             <div class="bottle-card__actions">
+              <button class="bottle-card__chat-btn chat-btn-like ${b.likedByMe ? 'liked' : ''}" onclick="toggleLike('${b.id}', this)">👍 ${b.likeCount || 0}</button>
               <button class="bottle-card__chat-btn chat-btn-reply" onclick="openBottleReplies('${b.id}')">回复${b.replyCount ? '(' + b.replyCount + ')' : ''}</button>
               ${isSelf || isAnon ? '' : `<button class="bottle-card__chat-btn chat-btn-primary" onclick="startChat('${b.authorId}')">聊聊</button>`}
               <button class="bottle-card__report" onclick="navigate('report'); window._reportTarget={type:'bottle',id:'${b.id}'}">举报</button>
@@ -1733,6 +1764,87 @@ function lobbyTab(tab) {
   lobbyFilter = tab;
   document.querySelectorAll('.lobby-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   renderLobby();
+}
+
+/* ================================================================
+   NOTIFICATIONS + LIKE
+   ================================================================ */
+async function renderNotifications() {
+  const el = $('notificationsList');
+  if (!el) return;
+  el.innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
+  try {
+    const res = await api('/notifications');
+    if (res && res.success && res.notifications.length) {
+      el.innerHTML = res.notifications.map(notifItemHtml).join('');
+      updateNotifBell(res.unreadCount);
+    } else {
+      el.innerHTML = '<div class="notif-empty">暂时没有通知</div>';
+      updateNotifBell(0);
+    }
+  } catch (e) {
+    el.innerHTML = '<div class="notif-empty">加载失败，请重试</div>';
+  }
+}
+
+function notifItemIcon(type) {
+  if (type === 'bottle_replied') return '💬';
+  if (type === 'bottle_liked') return '👍';
+  if (type === 'chat_message') return '✉️';
+  return '🔔';
+}
+
+function notifItemHtml(n) {
+  const dot = n.read ? '' : '<span class="notif-item__dot"></span>';
+  return `<div class="notif-item ${n.read ? '' : 'unread'}" onclick="onNotifClick('${n.id}','${n.type}','${n.refId || ''}','${n.refType || ''}')">
+    <div class="notif-item__icon">${notifItemIcon(n.type)}</div>
+    <div class="notif-item__body">
+      <div class="notif-item__title">${escapeHtml(n.title)}${dot}</div>
+      <div class="notif-item__content">${escapeHtml(n.content)}</div>
+      <div class="notif-item__time">${formatTime(n.createdAt)}</div>
+    </div>
+  </div>`;
+}
+
+async function onNotifClick(id, type, refId, refType) {
+  try { await api('/notifications/read/' + id, { method: 'POST' }); } catch (e) {}
+  if (type === 'chat_message' && refId) {
+    navigate('messages');
+  } else if ((type === 'bottle_replied' || type === 'bottle_liked') && refId) {
+    openBottleReplies(refId);
+  } else {
+    navigateBack();
+  }
+}
+
+function updateNotifBell(count) {
+  const badge = $('notifBadge');
+  if (!badge) return;
+  if (count && count > 0) {
+    badge.style.display = 'flex';
+    badge.textContent = count > 99 ? '99+' : count;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+async function refreshNotifUnread() {
+  try {
+    const res = await api('/notifications/unread-count');
+    if (res && res.success) updateNotifBell(res.unreadCount);
+  } catch (e) {}
+}
+
+async function toggleLike(bottleId, btn) {
+  try {
+    const res = await api('/bottles/' + bottleId + '/like', { method: 'POST' });
+    if (res && res.success) {
+      btn.classList.toggle('liked', !!res.liked);
+      btn.textContent = '👍 ' + (res.likeCount || 0);
+    } else {
+      showToast(res.error || '操作失败');
+    }
+  } catch (e) {}
 }
 
 /* ================================================================
@@ -2300,6 +2412,12 @@ function connectWS() {
       } else if (msg.type === 'permanent_chat_response') {
         showToast(msg.data.accepted ? '续聊已接受' : '续聊被拒绝');
         if (currentPage === 'chat') openChat(currentChatSessionId);
+      } else if (msg.type === 'notification') {
+        if (msg.data && typeof msg.data.unreadCount === 'number') {
+          updateNotifBell(msg.data.unreadCount);
+        } else {
+          refreshNotifUnread();
+        }
       } else if (msg.type === 'error') {
         showToast(msg.error);
       }
@@ -3127,6 +3245,10 @@ async function init() {
           navigateTo('home', true);
           connectWS();
           refreshUnread();
+          refreshNotifUnread();
+          if (!window.__notifPoll) {
+            window.__notifPoll = setInterval(refreshNotifUnread, 30000);
+          }
         }
         return;
       }
