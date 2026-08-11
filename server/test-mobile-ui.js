@@ -379,9 +379,20 @@ test('personal moments use a changeable cover with the signature below the ident
   assert.match(renderer, /personal-moments-page/);
   assert.doesNotMatch(renderer, /我的朋友圈/);
   const coverChange = extractFunction(html, 'onMomentCoverChange');
-  assert.match(coverChange, /fileToDataURL\(file,\s*1200,\s*0\.72\)/);
+  assert.match(coverChange, /compressMomentCover\(file\)/);
+  assert.doesNotMatch(coverChange, /12\s*\*\s*1024\s*\*\s*1024/);
   assert.match(coverChange, /JSON\.stringify\(\{\s*momentCover\s*\}\)/);
   assert.doesNotThrow(() => new Function(`${renderer};${coverChange};`));
+});
+
+test('personal moments render a WeChat-style date and exact time for every row', () => {
+  const timeline = extractFunction(html, 'momentsTimelineHtml');
+  const item = extractFunction(html, 'ownMomentItemHtml');
+  assert.doesNotMatch(timeline, /moments-date-label/);
+  assert.match(item, /dayStr = '今天'/);
+  assert.match(item, /dayStr = '昨天'/);
+  assert.match(item, /wx-moment-clock/);
+  assert.doesNotThrow(() => new Function(`${timeline};${item};`));
 });
 
 test('comment rows are the reply trigger and outside taps cancel without extra reply controls', () => {

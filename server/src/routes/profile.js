@@ -125,8 +125,11 @@ router.post('/edit', auth, (req, res) => {
   }
   if (momentCover !== undefined) {
     const cover = String(momentCover || '');
-    if (cover && (!/^data:image\/(?:jpeg|png|webp);base64,/i.test(cover) || cover.length > 900000)) {
-      return res.status(400).json({ success: false, error: '封面图片无效或过大' });
+    if (cover && !/^data:image\/(?:jpeg|png|webp);base64,/i.test(cover)) {
+      return res.status(400).json({ success: false, error: '封面图片格式无效，请选择 JPG、PNG 或 WebP' });
+    }
+    if (cover.length > 2500000) {
+      return res.status(413).json({ success: false, error: '封面压缩后仍然过大，请换一张图片' });
     }
     req.user.momentCover = cover;
   }

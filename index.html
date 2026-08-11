@@ -657,19 +657,18 @@ html.keyboard-open #app .main-tab-page.active>[data-scroll-root]{scroll-padding-
 .wx-cover__bio{min-height:52px;padding:12px 18px 15px;background:#fffdf8;border-bottom:1px solid rgba(31,122,116,.08);color:#596966;font-size:13px;line-height:1.5;text-align:right;word-break:break-word;cursor:pointer}
 .wx-cover__bio.is-empty{color:#9aa4a0}
 
-/* 日期分组：左侧日期 + 右侧内容 */
-.moments-date-group{padding:0 0 4px}
-.moments-date-label{text-align:center;font-size:14px;color:#8a8a8a;padding:18px 0 10px;letter-spacing:.5px}
-
 /* 微信风格单条动态：左日期右内容 */
-.wx-moment-row{display:flex;padding:14px 14px 10px;position:relative;background:#fffdf8}
-.wx-moment-row::after{content:'';position:absolute;left:48px;right:0;bottom:0;height:1px;background:#ebedf0}
+.wx-moment-row{display:flex;padding:18px 14px 12px;position:relative;background:#fffdf8}
+.wx-moment-row::after{content:'';position:absolute;left:74px;right:0;bottom:0;height:1px;background:#ebedf0}
 .wx-moment-row:last-child::after{display:none}
 
 /* 左侧日期 */
-.wx-moment-date{width:46px;flex-shrink:0;padding-top:2px;text-align:right;padding-right:10px}
-.wx-moment-month{font-size:11px;color:#8a8a8a;line-height:1.2;margin-bottom:2px}
-.wx-moment-day{font-size:22px;font-weight:600;color:#2b3330;line-height:1.1}
+.wx-moment-date{width:60px;flex-shrink:0;padding:1px 10px 0 0;text-align:left;color:#2b3330}
+.wx-moment-date-main{display:flex;align-items:flex-start;gap:3px;white-space:nowrap}
+.wx-moment-month{font-size:12px;color:#53615e;line-height:1.25;padding-top:4px}
+.wx-moment-day{font-size:24px;font-weight:750;color:#25312f;line-height:1}
+.wx-moment-day.is-word{font-size:19px;letter-spacing:-1px}
+.wx-moment-clock{font-size:10px;color:#9aa4a0;line-height:1.2;margin-top:5px}
 
 /* 右侧内容 */
 .wx-moment-body{flex:1;min-width:0;padding-left:2px}
@@ -1469,7 +1468,17 @@ async function api(path, options = {}) {
   if (token) headers['Authorization'] = 'Bearer ' + token;
   try {
     const res = await fetch(API_BASE + path, { ...options, headers });
-    const data = await res.json();
+    const responseText = await res.text();
+    let data;
+    try {
+      data = responseText ? JSON.parse(responseText) : {};
+    } catch (_) {
+      if (res.status === 413) throw new Error('图片总大小过大，请减少图片数量后重试');
+      throw new Error(res.ok ? '服务器返回异常，请稍后重试' : `请求失败（${res.status}）`);
+    }
+    if (res.status === 413) {
+      throw new Error(data.error || '图片总大小过大，请减少图片数量后重试');
+    }
     if (res.status === 401) {
       clearToken();
       navigateTo('login', true);
@@ -3338,6 +3347,45 @@ function fileToDataURL(file, maxW, quality = 0.8) {
   });
 }
 
+// 封面原图不做文件大小拦截；在设备端按清晰度优先逐级压缩后上传。
+function compressMomentCover(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('图片读取失败，请重新选择'));
+    reader.onload = e => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('当前图片格式无法处理，请选择 JPG、PNG 或 WebP'));
+      img.onload = () => {
+        try {
+          const maxDimensions = [1920, 1600, 1280];
+          const qualities = [0.9, 0.82, 0.74, 0.66, 0.58];
+          const sourceMax = Math.max(img.width, img.height);
+          for (const maxDimension of maxDimensions) {
+            const scale = Math.min(1, maxDimension / sourceMax);
+            const width = Math.max(1, Math.round(img.width * scale));
+            const height = Math.max(1, Math.round(img.height * scale));
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const context = canvas.getContext('2d');
+            if (!context) throw new Error('浏览器无法处理此图片');
+            context.drawImage(img, 0, 0, width, height);
+            for (const quality of qualities) {
+              const dataUrl = canvas.toDataURL('image/jpeg', quality);
+              if (dataUrl.length <= 2200000) return resolve(dataUrl);
+            }
+          }
+          reject(new Error('图片内容过于复杂，压缩后仍无法上传，请换一张图片'));
+        } catch (error) {
+          reject(error instanceof Error ? error : new Error('图片处理失败，请重新选择'));
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 async function doRedeem() {
   const input = $('redeemCodeInput');
   const code = (input.value || '').trim();
@@ -4515,41 +4563,20 @@ async function onMomentCoverChange(event) {
   const file = input && input.files && input.files[0];
   if (input) input.value = '';
   if (!file) return;
-  if (!file.type.startsWith('image/')) { showToast('请选择图片文件'); return; }
-  if (file.size > 12 * 1024 * 1024) { showToast('原图不能超过 12MB'); return; }
+  if (file.type && !file.type.startsWith('image/')) { showToast('请选择图片文件'); return; }
   try {
-    showToast('正在更换封面…');
-    const momentCover = await fileToDataURL(file, 1200, 0.72);
-    if (momentCover.length > 850000) { showToast('图片仍然过大，请换一张'); return; }
+    showToast('正在处理高清封面…');
+    const momentCover = await compressMomentCover(file);
     const res = await api('/profile/edit', { method: 'POST', body: JSON.stringify({ momentCover }) });
     if (!res.success) { showToast(res.error || '封面更换失败'); return; }
     if (currentUser) currentUser.momentCover = momentCover;
     showToast('封面已更新');
     renderUserMoments(currentUser.id);
-  } catch (_) { showToast('封面更换失败'); }
+  } catch (error) { showToast(error && error.message ? error.message : '封面更换失败，请检查网络后重试'); }
 }
 
 function momentsTimelineHtml(moments, isOwn) {
-  const now = new Date();
-  const groups = {};
-  moments.forEach(m => {
-    const d = new Date(m.createdAt);
-    const key = isToday(d, now) ? '今天' : isYesterday(d, now) ? '昨天' : `${d.getMonth() + 1}月${d.getDate()}日`;
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(m);
-  });
-
-  const keys = Object.keys(groups);
-  const inner = keys.map(key => {
-    // "今天"/"昨天" 居中显示；具体日期用左日期右内容
-    let html = '';
-    if (/^今天|昨天$/.test(key)) {
-      html += `<div class="moments-date-label">${key}</div>`;
-    }
-    html += groups[key].map(m => isOwn ? ownMomentItemHtml(m) : momentCardHtml(m)).join('');
-    return `<div class="moments-date-group">${html}</div>`;
-  }).join('');
-
+  const inner = moments.map(m => isOwn ? ownMomentItemHtml(m) : momentCardHtml(m)).join('');
   return isOwn ? `<div class="moments-timeline">${inner}</div>` : inner;
 }
 
@@ -4560,15 +4587,16 @@ function ownMomentItemHtml(m) {
   window._momentCache[m.id] = m;
   const d = new Date(m.createdAt);
   const now = new Date();
-  let monthStr, dayStr;
+  let monthStr, dayStr, wordDate = false;
   if (isToday(d, now)) {
-    monthStr = ''; dayStr = '';
+    monthStr = ''; dayStr = '今天'; wordDate = true;
   } else if (isYesterday(d, now)) {
-    monthStr = '昨天'; dayStr = '';
+    monthStr = ''; dayStr = '昨天'; wordDate = true;
   } else {
     monthStr = `${d.getMonth() + 1}月`;
     dayStr = String(d.getDate());
   }
+  const clockStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
   // 图片网格
   const imagesHtml = (m.images && m.images.length)
@@ -4588,8 +4616,11 @@ function ownMomentItemHtml(m) {
 
   return `<div class="wx-moment-row" id="moment-${m.id}">
     <div class="wx-moment-date">
-      ${monthStr ? `<div class="wx-moment-month">${monthStr}</div>` : ''}
-      ${dayStr ? `<div class="wx-moment-day">${dayStr}</div>` : ''}
+      <div class="wx-moment-date-main">
+        <span class="wx-moment-day${wordDate ? ' is-word' : ''}">${dayStr}</span>
+        ${monthStr ? `<span class="wx-moment-month">${monthStr}</span>` : ''}
+      </div>
+      <div class="wx-moment-clock">${clockStr}</div>
     </div>
     <div class="wx-moment-body">
       ${contentHtml}
@@ -4678,7 +4709,7 @@ async function submitMoment() {
     } else {
       showToast(res.error || '发布失败');
     }
-  } catch (e) { showToast('发布失败'); }
+  } catch (e) { showToast(e && e.message ? e.message : '发布失败，请检查网络后重试'); }
   btn.disabled = false; btn.textContent = '发布';
 }
 
