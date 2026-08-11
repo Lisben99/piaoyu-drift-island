@@ -215,6 +215,7 @@ router.get('/nearby', (req, res) => {
       .filter(m => m.userId === user.id)
       .sort((a, b) => b.createdAt - a.createdAt);
     const latest = userMoments[0];
+    const level = computeUserLevel(user);
     return {
       id: user.id,
       nickname: user.nickname || '用户',
@@ -223,7 +224,8 @@ router.get('/nearby', (req, res) => {
       bio: user.bio || '',
       verified: !!user.verified,
       verifiedType: user.verifiedType || '',
-      level: computeUserLevel(user).level,
+      level: level.level,
+      levelTitle: level.title,
       following: isFollowing(me.id, user.id),
       distance: Math.round(distance * 10) / 10,
       lastActiveAt: user.lastLoginAt || user.createdAt,

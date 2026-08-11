@@ -410,6 +410,33 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .profile-id-row{display:flex;align-items:center;gap:8px}
 .profile-id-badge{font-size:11px;background:#f0ede6;padding:2px 8px;border-radius:4px;color:#718082}
 .profile-level{font-size:10px;background:#fef6e8;padding:2px 6px;border-radius:4px;color:#dfa948;font-weight:700}
+.level-progress-card{margin:0 16px 14px;padding:15px 16px;border-radius:16px;background:linear-gradient(135deg,#fff7e8,#fff);border:1px solid #f2dfb9;box-shadow:0 4px 14px rgba(223,169,72,.08);cursor:pointer}
+.level-progress-card:active{transform:scale(.995)}
+.level-progress-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;min-width:0}
+.level-progress-rank{font-size:16px;font-weight:800;color:#b87917;white-space:nowrap}
+.level-progress-title{font-size:13px;color:#735426;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+.level-progress-arrow{color:#b99a67;flex:none}
+.level-progress-track{height:7px;border-radius:999px;background:#f2e8d7;overflow:hidden}
+.level-progress-fill{height:100%;border-radius:inherit;background:linear-gradient(90deg,#dfa948,#ef7b62);transition:width .3s ease}
+.level-progress-meta{display:flex;justify-content:space-between;gap:8px;margin-top:7px;font-size:11px;color:#8d7a58}
+.level-progress-meta span:last-child{text-align:right}
+.level-detail-content{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 16px calc(24px + env(safe-area-inset-bottom))}
+.level-hero{padding:22px 18px;border-radius:20px;background:linear-gradient(145deg,#1f7a74,#145b57);color:#fff;box-shadow:0 10px 24px rgba(31,122,116,.2)}
+.level-hero .level-progress-rank{color:#fff;font-size:27px}
+.level-hero .level-progress-title{color:rgba(255,255,255,.85);font-size:14px}
+.level-hero .level-progress-track{background:rgba(255,255,255,.2);margin-top:14px}
+.level-hero .level-progress-fill{background:linear-gradient(90deg,#f6d58c,#fff1cc)}
+.level-hero .level-progress-meta{color:rgba(255,255,255,.82)}
+.level-section-card{background:#fff;border-radius:16px;margin-top:14px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.035)}
+.level-section-title{font-size:15px;font-weight:750;color:#2b3330;margin-bottom:12px}
+.level-tier-row,.level-rule-row,.level-history-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0ede6}
+.level-tier-row:last-child,.level-rule-row:last-child,.level-history-row:last-child{border-bottom:none}
+.level-tier-row.current{color:#1f7a74;font-weight:700}
+.level-tier-rank{width:44px;flex:none;font-weight:750}
+.level-tier-title,.level-rule-label,.level-history-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.level-tier-exp,.level-rule-points,.level-history-points{font-size:12px;color:#8b8e88;white-space:nowrap}
+.level-history-points{color:#1f7a74;font-weight:700}
+.level-detail-empty{padding:18px 0;text-align:center;color:#98a2a0;font-size:13px}
 .profile-edit-btn{width:32px;height:32px;border-radius:50%;background:#f0ede6;border:none;color:#718082;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s}
 .profile-edit-btn:hover{background:#e6e4dc}
 /* Assets Card */
@@ -1266,6 +1293,16 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
     <div class="support-content" id="supportContent"></div>
   </div>
 
+  <!-- ===== PAGE: Level Detail ===== -->
+  <div class="page" id="page-level-detail">
+    <div class="nav-bar">
+      <div class="nav-bar__back" onclick="navigateBack()">←</div>
+      <div class="nav-bar__title">我的等级</div>
+      <div class="nav-bar__spacer"></div>
+    </div>
+    <div class="level-detail-content" id="levelDetailContent" data-scroll-root></div>
+  </div>
+
   <!-- ===== PAGE: Settings ===== -->
   <div class="page main-tab-page" id="page-settings">
     <div class="nav-bar">
@@ -1341,6 +1378,10 @@ async function api(path, options = {}) {
       clearToken();
       navigateTo('login', true);
       throw new Error(data.error || '请重新登录');
+    }
+    if (data && data.success !== false) {
+      const awards = Array.isArray(data.experienceAwards) ? data.experienceAwards : [data.experienceAward];
+      awards.filter(Boolean).forEach(handleExperienceAward);
     }
     return data;
   } catch (e) {
@@ -1503,6 +1544,37 @@ function levelBadgeHtml(level, title) {
   if (!level || level < 1) return '';
   return `<span class="level-badge" title="${escapeHtml(title || '')}">Lv.${level}</span>`;
 }
+function renderLevelProgress(summary, variant = 'card') {
+  const source = summary && typeof summary === 'object' ? summary : {};
+  const level = Math.max(1, Math.min(10, Number(source.level) || 1));
+  const title = String(source.title || (level === 1 ? '初到海岸' : '岛民'));
+  const exp = Math.max(0, Number(source.exp) || 0);
+  const nextExp = source.nextExp === null ? null : Math.max(20, Number(source.nextExp) || 20);
+  const progress = nextExp === null ? 100 : Math.max(0, Math.min(100, Number(source.progress) || 0));
+  const progressText = nextExp === null ? '已满级' : `${exp} / ${nextExp}`;
+  const hint = nextExp === null ? '继续积累荣誉经验' : `距下一级还差 ${Math.max(0, nextExp - exp)} 经验`;
+  const arrow = variant === 'card' ? '<span class="level-progress-arrow">›</span>' : '';
+  return `<div class="${variant === 'hero' ? 'level-hero' : 'level-progress-card'}">
+    <div class="level-progress-head">
+      <span class="level-progress-rank">Lv.${level}</span>
+      <span class="level-progress-title">${escapeHtml(title)}</span>${arrow}
+    </div>
+    <div class="level-progress-track"><div class="level-progress-fill" style="width:${progress}%"></div></div>
+    <div class="level-progress-meta"><span>${progressText}</span><span>${hint}</span></div>
+  </div>`;
+}
+function handleExperienceAward(award) {
+  if (!award || !award.leveledUp || !award.level) return;
+  if (!window._shownExperienceEvents) window._shownExperienceEvents = new Set();
+  const key = award.event && award.event.id ? award.event.id : `level:${award.level.level}`;
+  if (window._shownExperienceEvents.has(key)) return;
+  window._shownExperienceEvents.add(key);
+  showModal(
+    '等级提升',
+    `<div style="text-align:center;padding:8px 0"><div style="font-size:38px;margin-bottom:8px">🌟</div><div style="font-size:20px;font-weight:800;color:#1f7a74">Lv.${Number(award.level.level) || 1}</div><div style="margin-top:6px;color:#718082">${escapeHtml(award.level.title || '新的称号')}</div></div>`,
+    [{ text: '查看等级', onClick: () => navigate('level-detail') }, { text: '继续探索', cancel: true }]
+  );
+}
 function statusTagClass(status) {
   const m = { active:'tag-active', expired:'tag-expired', permanent:'tag-permanent', pending_permanent:'tag-pending', blocked:'tag-expired' };
   return m[status] || 'tag-active';
@@ -1540,6 +1612,7 @@ function onPageEnter(pageId) {
   if (pageId === 'invite') renderInvite();
   if (pageId === 'blacklist') renderBlacklist();
   if (pageId === 'settings') renderSettings();
+  if (pageId === 'level-detail') renderLevelDetail();
   if (pageId === 'edit-profile') renderEditProfile();
   if (pageId === 'account-delete') renderAccountDelete();
   if (pageId === 'support') renderSupport();
@@ -2115,6 +2188,7 @@ function notifItemIcon(type) {
   if (type === 'bottle_replied') return '💬';
   if (type === 'bottle_liked') return '♥';
   if (type === 'chat_message') return '✉️';
+  if (type === 'level_up') return '🌟';
   return '🔔';
 }
 
@@ -2134,6 +2208,8 @@ async function onNotifClick(id, type, refId, refType) {
   try { await api('/notifications/read/' + id, { method: 'POST' }); } catch (e) {}
   if (type === 'chat_message' && refId) {
     navigate('messages');
+  } else if (type === 'level_up') {
+    navigate('level-detail');
   } else if ((type === 'bottle_replied' || type === 'bottle_liked') && refId) {
     openBottleReplies(refId);
   } else {
@@ -3366,6 +3442,39 @@ async function loadMySupport() {
   } catch (e) {}
 }
 
+async function renderLevelDetail() {
+  const container = $('levelDetailContent');
+  if (!container) return;
+  container.innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
+  try {
+    const res = await api('/profile/level/me');
+    if (!res || !res.success || !res.level) throw new Error((res && res.error) || '等级信息加载失败');
+    const level = res.level;
+    const tiers = Array.isArray(res.tiers) ? res.tiers : [];
+    const rules = Array.isArray(res.rules) ? res.rules : [];
+    const history = Array.isArray(res.history) ? res.history : [];
+    const tiersHtml = tiers.map(tier => `<div class="level-tier-row ${Number(tier.level) === Number(level.level) ? 'current' : ''}">
+      <span class="level-tier-rank">Lv.${Number(tier.level) || 1}</span>
+      <span class="level-tier-title">${escapeHtml(tier.title || '')}</span>
+      <span class="level-tier-exp">${Number(tier.min) || 0} 经验</span>
+    </div>`).join('');
+    const rulesHtml = rules.map(rule => {
+      const limit = rule.once ? '仅一次' : (rule.dailyLimit ? `每天前 ${rule.dailyLimit} 次` : '不限次数');
+      return `<div class="level-rule-row"><span class="level-rule-label">${escapeHtml(rule.label || '')}<small style="display:block;color:#98a2a0;margin-top:3px">${limit}</small></span><span class="level-rule-points">+${Number(rule.points) || 0}</span></div>`;
+    }).join('');
+    const historyHtml = history.length ? history.map(item => `<div class="level-history-row">
+      <span class="level-history-label">${escapeHtml(item.label || '经验奖励')}<small style="display:block;color:#98a2a0;margin-top:3px">${formatDateTime(item.createdAt)}</small></span>
+      <span class="level-history-points">+${Number(item.points) || 0}</span>
+    </div>`).join('') : '<div class="level-detail-empty">完成互动后，经验记录会出现在这里</div>';
+    container.innerHTML = `${renderLevelProgress(level, 'hero')}
+      <div class="level-section-card"><div class="level-section-title">等级称号</div>${tiersHtml}</div>
+      <div class="level-section-card"><div class="level-section-title">如何获得经验</div>${rulesHtml}</div>
+      <div class="level-section-card"><div class="level-section-title">最近经验</div>${historyHtml}</div>`;
+  } catch (error) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state__icon">🌊</div><div class="empty-state__title">等级信息加载失败</div><div class="empty-state__desc">请检查网络后重试</div><button class="ghost-button" onclick="renderLevelDetail()">重新加载</button></div>`;
+  }
+}
+
 /* ================================================================
    SETTINGS
    ================================================================ */
@@ -3383,8 +3492,7 @@ async function renderSettings() {
       const color = avatarColor(name);
       const profileGenderIcon = genderIcon(meRes.gender);
       const userId = meRes.id ? meRes.id.slice(-6).toUpperCase() : '';
-      // Calculate level based on moments count (simple heuristic)
-      const level = Math.floor((meRes.momentCount || 0) / 5);
+      const levelSummary = { ...meRes, title: meRes.levelTitle };
       $('settingsContent').innerHTML = `
         <!-- User Info Header -->
         <div class="profile-header">
@@ -3397,7 +3505,7 @@ async function renderSettings() {
               </div>
               <div class="profile-id-row">
                 <span class="profile-id-badge">ID ${userId}</span>
-                ${level > 0 ? `<span class="profile-level">LV.${level}</span>` : ''}
+                ${levelBadgeHtml(meRes.level, meRes.levelTitle)}
               </div>
             </div>
             <button class="profile-edit-btn" onclick="navigate('edit-profile')">
@@ -3405,6 +3513,8 @@ async function renderSettings() {
             </button>
           </div>
         </div>
+
+        <div onclick="navigate('level-detail')">${renderLevelProgress(levelSummary)}</div>
 
         <!-- Assets Section -->
         <div class="profile-assets-card">
@@ -3977,7 +4087,7 @@ async function renderNearby() {
           ? `<div class="nearby-card__avatar" style="background-image:url('${u.avatar}')"></div>`
           : `<div class="nearby-card__avatar" style="background:${avatarColor(u.nickname)}">${avatarInitial(u.nickname)}</div>`;
         const bio = (u.latestMoment && u.latestMoment.content) ? u.latestMoment.content : (u.bio || '这个人很神秘~');
-        const badges = `${verifiedBadgeHtml(u.verified, u.verifiedType)}${levelBadgeHtml(u.level, '')}`;
+        const badges = `${genderIcon(u.gender)}${verifiedBadgeHtml(u.verified, u.verifiedType)}${levelBadgeHtml(u.level, u.levelTitle)}`;
         return `<div class="nearby-card">
           ${avatar}
           <div class="nearby-card__body">

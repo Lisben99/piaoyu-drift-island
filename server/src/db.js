@@ -857,6 +857,16 @@ function awardExperience(userId, type, { eventKey, sourceId = null, now = Date.n
   cache.experienceEvents.push(event);
   save();
   const level = computeUserLevel(user);
+  if (level.level > before.level) {
+    createNotification({
+      userId,
+      type: 'level_up',
+      title: `升级到 Lv.${level.level}`,
+      content: `获得新称号：${level.title}`,
+      refId: String(level.level),
+      refType: 'level'
+    });
+  }
   return {
     awarded: awardedPoints,
     reason: 'awarded',
