@@ -7,6 +7,9 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const path = require('path');
+const fs = require('fs');
+const zlib = require('zlib');
+const crypto = require('crypto');
 
 const app = express();
 const server = http.createServer(app);
@@ -20,11 +23,52 @@ app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
 // Serve static files (frontend)
 const webRoot = path.join(__dirname, '..', '..');
+const htmlPayloads = new Map();
+
+function getHtmlPayload(filename) {
+  if (htmlPayloads.has(filename)) return htmlPayloads.get(filename);
+  const raw = fs.readFileSync(path.join(webRoot, filename));
+  const payload = {
+    raw,
+    gzip: zlib.gzipSync(raw, { level: 6 }),
+    br: zlib.brotliCompressSync(raw, {
+      params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 4 }
+    }),
+    etag: `"${crypto.createHash('sha1').update(raw).digest('hex')}"`
+  };
+  htmlPayloads.set(filename, payload);
+  return payload;
+}
+
+function serveHtml(filename) {
+  return (req, res) => {
+    const payload = getHtmlPayload(filename);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=86400');
+    res.setHeader('ETag', payload.etag);
+    res.setHeader('Vary', 'Accept-Encoding');
+    if (req.headers['if-none-match'] === payload.etag) return res.status(304).end();
+    const acceptEncoding = String(req.headers['accept-encoding'] || '');
+    if (acceptEncoding.includes('br')) {
+      res.setHeader('Content-Encoding', 'br');
+      return res.send(payload.br);
+    }
+    if (acceptEncoding.includes('gzip')) {
+      res.setHeader('Content-Encoding', 'gzip');
+      return res.send(payload.gzip);
+    }
+    return res.send(payload.raw);
+  };
+}
+
+app.get(['/', '/index.html'], serveHtml('index.html'));
+app.get(['/admin', '/admin.html'], serveHtml('admin.html'));
 app.use(express.static(webRoot, {
   setHeaders: (res, path) => {
-    // No cache for HTML files
+    // Other HTML entry points receive a short cache; named app shells above
+    // additionally use in-memory Brotli/Gzip payloads and ETags.
     if (path.endsWith('.html')) {
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+      res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=86400');
     }
   }
 }));

@@ -201,7 +201,7 @@ html.keyboard-open #app .main-tab-page.active>[data-scroll-root]{scroll-padding-
 .lobby-tab{flex:1;padding:8px;text-align:center;font-size:13px;font-weight:600;color:#718082;border-radius:8px;transition:all .2s}
 .lobby-tab.active{background:#fff;color:#1f7a74;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 .bottle-list{display:flex;flex-direction:column;gap:10px}
-.bottle-card{background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.03)}
+.bottle-card{background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.03);content-visibility:auto;contain-intrinsic-size:170px}
 .bottle-card__head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .bottle-card__head>div:nth-child(2){flex:1;min-width:0}
 .bottle-card__avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0}
@@ -547,7 +547,7 @@ html.keyboard-open #app .main-tab-page.active>[data-scroll-root]{scroll-padding-
 .community-tab.active{color:#1f7a74;font-weight:700}
 .community-tab.active::after{content:'';position:absolute;left:50%;transform:translateX(-50%);bottom:0;width:28px;height:3px;border-radius:3px;background:#1f7a74}
 .community-content{flex:1;overflow-y:auto;padding:12px 14px 16px;background:#f5f3ee}
-.moment-card{background:#fff;border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.moment-card{background:#fff;border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.04);content-visibility:auto;contain-intrinsic-size:220px}
 .moment-head{display:flex;align-items:flex-start;gap:10px}
 .moment-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:#fff;flex-shrink:0;background:#e9eef0;background-size:cover;background-position:center}
 .moment-meta{flex:1;min-width:0;padding-top:1px}
@@ -651,7 +651,7 @@ html.keyboard-open #app .main-tab-page.active>[data-scroll-root]{scroll-padding-
 .wx-cover__bio.is-empty{color:#9aa4a0}
 
 /* 微信风格单条动态：左日期右内容 */
-.wx-moment-row{display:flex;padding:18px 14px 12px;position:relative;background:#fffdf8}
+.wx-moment-row{display:flex;padding:18px 14px 12px;position:relative;background:#fffdf8;content-visibility:auto;contain-intrinsic-size:180px}
 .wx-moment-row::after{content:'';position:absolute;left:74px;right:0;bottom:0;height:1px;background:#ebedf0}
 .wx-moment-row:last-child::after{display:none}
 
@@ -1450,17 +1450,41 @@ body{background:linear-gradient(145deg,#e9e4d8,#f8eee4);color:var(--island-text)
    ================================================================ */
 const API_BASE = window.DRIFT_API_BASE || '/api';
 const TOKEN_KEY = 'drift_island_token';
+const apiResponseCache = new Map();
+const apiInflightRequests = new Map();
 
 function getToken() { return sessionStorage.getItem(TOKEN_KEY); }
-function setToken(t) { sessionStorage.setItem(TOKEN_KEY, t); }
-function clearToken() { sessionStorage.removeItem(TOKEN_KEY); }
+function resetApiCache() { apiResponseCache.clear(); apiInflightRequests.clear(); }
+function setToken(t) { sessionStorage.setItem(TOKEN_KEY, t); resetApiCache(); }
+function clearToken() { sessionStorage.removeItem(TOKEN_KEY); resetApiCache(); }
+
+function apiCacheDuration(path) {
+  if (/^\/community\/(catalog|topics|prompts\/today)/.test(path)) return 5 * 60 * 1000;
+  if (path === '/coins/balance' || path === '/auth/me') return 8000;
+  if (path === '/chat/sessions') return 3000;
+  if (path === '/notifications/unread-count') return 5000;
+  if (/^\/bottles\?/.test(path)) return 5000;
+  return 0;
+}
 
 async function api(path, options = {}) {
-  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  const { cacheMs, ...requestOptions } = options;
+  const method = String(requestOptions.method || 'GET').toUpperCase();
+  const token = getToken();
+  const cacheKey = `${token || 'guest'}:${path}`;
+  const ttl = cacheMs === undefined ? apiCacheDuration(path) : Math.max(0, Number(cacheMs) || 0);
+  if (method === 'GET') {
+    const cached = apiResponseCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) return cached.data;
+    if (apiInflightRequests.has(cacheKey)) return apiInflightRequests.get(cacheKey);
+  }
+
+  const request = (async () => {
+  const headers = { 'Content-Type': 'application/json', ...requestOptions.headers };
   const token = getToken();
   if (token) headers['Authorization'] = 'Bearer ' + token;
   try {
-    const res = await fetch(API_BASE + path, { ...options, headers });
+    const res = await fetch(API_BASE + path, { ...requestOptions, headers });
     const responseText = await res.text();
     let data;
     try {
@@ -1478,6 +1502,11 @@ async function api(path, options = {}) {
       throw new Error(data.error || '请重新登录');
     }
     if (data && data.success !== false) {
+      if (method === 'GET' && ttl > 0) {
+        apiResponseCache.set(cacheKey, { data, expiresAt: Date.now() + ttl });
+      } else if (method !== 'GET') {
+        apiResponseCache.clear();
+      }
       if (typeof currentUser !== 'undefined' && currentUser && Number.isFinite(Number(data.coins))) {
         currentUser.coins = Number(data.coins);
       }
@@ -1490,6 +1519,14 @@ async function api(path, options = {}) {
       showToast('网络连接失败，请检查网络');
     }
     throw e;
+  }
+  })();
+
+  if (method === 'GET') apiInflightRequests.set(cacheKey, request);
+  try {
+    return await request;
+  } finally {
+    if (method === 'GET' && apiInflightRequests.get(cacheKey) === request) apiInflightRequests.delete(cacheKey);
   }
 }
 
@@ -1747,7 +1784,7 @@ function onPageEnter(pageId) {
   if (pageId === 'account-delete') renderAccountDelete();
   if (pageId === 'support') renderSupport();
   if (pageId === 'notifications') renderNotifications();
-  if (pageId === 'community') { renderTabBar('tabbar-community', 'community'); loadCommunityCatalog(); switchCommunityTab('recommend'); }
+  if (pageId === 'community') { renderTabBar('tabbar-community', 'community'); loadCommunityCatalog(); switchCommunityTab('recommend', true); }
   if (pageId === 'community-search') renderCommunitySearch('');
   if (pageId === 'community-topic') renderCommunityTopic(window._activeTopicId);
   if (pageId === 'user-moments') renderUserMoments(window._viewMomentUser);
@@ -2185,8 +2222,10 @@ $('roleConfirmBtn').onclick = async function() {
    HOME PAGE
    ================================================================ */
 async function renderHome() {
+  const requestId = window._homeRequestId = (window._homeRequestId || 0) + 1;
   try {
     const res = await api('/coins/balance');
+    if (requestId !== window._homeRequestId || currentPage !== 'home') return;
     if (res.success) {
       window._coinPolicy = res;
       const u = currentUser || {};
@@ -2256,11 +2295,15 @@ function confirmLogout() {
 /* ================================================================
    LOBBY
    ================================================================ */
-async function renderLobby() {
+async function renderLobby(forceLoading = false) {
+  const requestId = window._lobbyRequestId = (window._lobbyRequestId || 0) + 1;
   renderTabBar('tabbar-lobby', 'lobby');
-  $('lobbyList').innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
+  if (forceLoading || !window._lobbyLoaded) {
+    $('lobbyList').innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
+  }
   try {
     const res = await api('/bottles?gender=' + lobbyFilter);
+    if (requestId !== window._lobbyRequestId || currentPage !== 'lobby') return;
     if (res.success && res.bottles.length > 0) {
       $('lobbyCoins').textContent = currentUser?.coins || 0;
       $('lobbyList').innerHTML = '<div class="bottle-list">' + res.bottles.map(b => {
@@ -2293,8 +2336,10 @@ async function renderLobby() {
           </div>
         </div>`;
       }).join('') + '</div>';
+      window._lobbyLoaded = true;
     } else {
       $('lobbyList').innerHTML = `<div class="empty-state"><div class="empty-state__icon">🌊</div><div class="empty-state__title">海面平静</div><div class="empty-state__desc">还没有漂流瓶，投入一个试试吧</div></div>`;
+      window._lobbyLoaded = true;
     }
   } catch (e) { $('lobbyList').innerHTML = '<div class="empty-state"><div class="empty-state__icon">📡</div><div class="empty-state__title">加载失败</div><div class="empty-state__desc">请检查网络后重试</div></div>'; }
 }
@@ -2302,7 +2347,7 @@ async function renderLobby() {
 function lobbyTab(tab) {
   lobbyFilter = tab;
   document.querySelectorAll('.lobby-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-  renderLobby();
+  renderLobby(true);
 }
 
 /* ================================================================
@@ -4240,6 +4285,11 @@ window._composeTopicId = '';
 window._composePromptId = '';
 
 async function loadCommunityCatalog() {
+  if (window._communityCatalogLoadedAt && Date.now() - window._communityCatalogLoadedAt < 5 * 60 * 1000) {
+    renderInterestChips();
+    renderDailyPrompt();
+    return;
+  }
   try {
     const [catalog, topics, prompt] = await Promise.all([
       api('/community/catalog'), api('/community/topics'), api('/community/prompts/today')
@@ -4250,6 +4300,7 @@ async function loadCommunityCatalog() {
     }
     if (topics.success) window._communityCatalog.topics = topics.topics || [];
     if (prompt.success) window._communityCatalog.prompt = prompt.prompt || null;
+    window._communityCatalogLoadedAt = Date.now();
     renderInterestChips();
     renderDailyPrompt();
   } catch (_) {}
@@ -4303,7 +4354,7 @@ function momentCardHtml(m) {
     ? avatarMarkup(author.nickname, author.avatar, 'moment-avatar', avatarColor(author.nickname))
     : profileGateAvatarMarkup(author.nickname, author.avatar, 'moment-avatar', avatarColor(author.nickname), author.gender);
   const imagesHtml = (m.images && m.images.length)
-    ? `<div class="moment-imgs imgs-${Math.min(m.images.length, 9)}">${m.images.map(src => `<img src="${src}" class="moment-img" onclick="viewImage(this.src)" alt="图片">`).join('')}</div>`
+    ? `<div class="moment-imgs imgs-${Math.min(m.images.length, 9)}">${m.images.map(src => `<img src="${src}" class="moment-img" loading="lazy" decoding="async" onclick="viewImage(this.src)" alt="图片">`).join('')}</div>`
     : '';
   const commentsHtml = (m.comments && m.comments.length)
     ? `<div class="moment-comments">${m.comments.map(c => `<button type="button" class="moment-comment${c.parentCommentId ? ' is-reply' : ''}" onclick="event.stopPropagation();prepareMomentReply('${m.id}','${c.id}',this)"><span class="mc-name">${escapeHtml(c.nickname)}</span>${c.replyToNickname ? `<span class="mc-reply-to"> 回复 ${escapeHtml(c.replyToNickname)}</span>` : ''}<span>：${escapeHtml(c.content)}</span></button>`).join('')}</div>`
@@ -4353,9 +4404,10 @@ function momentCardHtml(m) {
   </div>`;
 }
 
-function renderCommunityFeed(sort) {
+function renderCommunityFeed(sort, reuseRecent = false) {
   const c = $('communityContent');
   if (!c) return;
+  if (reuseRecent && window._communityRenderedSort === sort && window._communityRenderedAt && Date.now() - window._communityRenderedAt < 8000 && c.children.length) return;
   c.innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
   window._communityOffset = 0;
   window._communitySort = sort;
@@ -4407,6 +4459,10 @@ async function loadMoreCommunity(reset) {
           c.appendChild(btn);
         }
       } else if (lm) lm.remove();
+      if (reset) {
+        window._communityRenderedSort = sort;
+        window._communityRenderedAt = Date.now();
+      }
     } else if (reset) {
       c.innerHTML = '<div class="empty-state"><div class="empty-state__title">加载失败</div></div>';
     }
@@ -4416,12 +4472,12 @@ async function loadMoreCommunity(reset) {
   window._communityLoading = false;
 }
 
-function switchCommunityTab(tab) {
+function switchCommunityTab(tab, reuseRecent = false) {
   window._communityTab = tab;
   $('ctab-recommend').classList.toggle('active', tab === 'recommend');
   $('ctab-latest').classList.toggle('active', tab === 'latest');
   $('ctab-following').classList.toggle('active', tab === 'following');
-  renderCommunityFeed(tab);
+  renderCommunityFeed(tab, reuseRecent);
 }
 
 async function renderNearby() {
@@ -4640,7 +4696,7 @@ function ownMomentItemHtml(m) {
 
   // 图片网格
   const imagesHtml = (m.images && m.images.length)
-    ? `<div class="wx-imgs imgs-${Math.min(m.images.length, 9)}">${m.images.map(src => `<img src="${src}" class="wx-img" onclick="viewImage(this.src)" alt="">`).join('')}</div>`
+    ? `<div class="wx-imgs imgs-${Math.min(m.images.length, 9)}">${m.images.map(src => `<img src="${src}" class="wx-img" loading="lazy" decoding="async" onclick="viewImage(this.src)" alt="">`).join('')}</div>`
     : '';
 
   // 文字内容

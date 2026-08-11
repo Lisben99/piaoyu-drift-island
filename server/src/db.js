@@ -263,6 +263,24 @@ async function saveToPg() {
 // ===== Unified load/save interface =====
 let saveTimer = null;
 let pgInitialized = false;
+let pgSaveInFlight = null;
+let pgSaveQueued = false;
+
+function queuePgSave() {
+  if (pgSaveInFlight) {
+    pgSaveQueued = true;
+    return;
+  }
+  pgSaveInFlight = saveToPg()
+    .catch(e => console.error('[DB] PG save error:', e))
+    .finally(() => {
+      pgSaveInFlight = null;
+      if (pgSaveQueued) {
+        pgSaveQueued = false;
+        queuePgSave();
+      }
+    });
+}
 
 function load() {
   if (USE_PG) {
@@ -289,15 +307,16 @@ async function initDb() {
 function save() {
   if (!cache) return;
   if (USE_PG) {
-    // Debounce PostgreSQL saves (async)
+    // Coalesce rapid writes and keep only one full JSONB update in flight.
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
-      saveToPg().catch(e => console.error('[DB] PG save error:', e));
-    }, 100);
+      saveTimer = null;
+      queuePgSave();
+    }, 250);
   } else {
     // Debounce file saves
     if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => saveToFile(), 100);
+    saveTimer = setTimeout(() => { saveTimer = null; saveToFile(); }, 250);
   }
 }
 
@@ -305,7 +324,7 @@ function saveNow() {
   if (!cache) return;
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
   if (USE_PG) {
-    saveToPg().catch(e => console.error('[DB] PG saveNow error:', e));
+    queuePgSave();
   } else {
     saveToFile();
   }
