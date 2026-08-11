@@ -590,25 +590,75 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .um-act-back{background:#f0ede6;color:#5F5E5A}
 .um-act-chat{background:#1f7a74;color:#fff}
 
-/* ===== Moments Timeline (朋友圈风格) ===== */
+/* ===== WeChat-Style 朋友圈 Timeline ===== */
 .moments-timeline{background:#ededed;min-height:100%;padding-bottom:40px}
-.moments-date-group{margin-bottom:0}
-.moments-date-label{text-align:center;font-size:14px;color:#8a8a8a;padding:16px 0 12px;letter-spacing:.5px}
-.own-moment-item{background:#fff;margin:0;padding:14px 16px 10px;position:relative}
-.own-moment-item::after{content:'';position:absolute;left:16px;right:16px;bottom:0;height:1px;background:#e8e8e8}
-.own-moment-item:last-child::after{display:none}
-.own-moment-item .moment-content{font-size:15px;line-height:1.6;color:#2b3330;margin:0 0 6px;word-break:break-all}
-.own-moment-item .moment-imgs{margin:8px 0 4px}
-.own-moment-item .moment-comments{margin-top:10px;background:#f7f7f7;border-radius:4px;padding:8px 10px}
-.own-moment-item .moment-comment{font-size:13px;line-height:1.65;color:#444}
-.own-moment-item .mc-name{color:#576b95;font-weight:600}
-.own-moment-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:0}
-.own-moment-time{font-size:11px;color:#b0ada4}
-.own-moment-actions{display:flex;gap:18px;align-items:center}
-.own-moment-del{font-size:12px;color:#c0bdb4;font-weight:500;background:none;border:none;cursor:pointer;padding:4px 0}
-.own-moment-del:active{color:#e74c3c}
+
+/* 封面区 */
+.wx-cover{position:relative;height:220px;background:linear-gradient(160deg,#1f7a74 0%,#2a9d98 35%,#e8d5b7 70%,#f5e6d3 100%);overflow:hidden}
+.wx-cover__bg-pattern{position:absolute;inset:0;opacity:.15;background-image:radial-gradient(circle at 30% 40%, rgba(255,255,255,.4) 0%, transparent 50%), radial-gradient(circle at 75% 65%, rgba(31,122,116,.2) 0%, transparent 45%)}
+.wx-cover__nav{position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:center;padding:0 12px;z-index:2}
+.wx-cover__back{width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.12);border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.wx-cover__actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+.wx-cover__action-btn{width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.12);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px}
+.wx-cover__info{position:absolute;bottom:14px;right:16px;display:flex;align-items:flex-end;gap:10px;z-index:2}
+.wx-cover__avatar{width:56px;height:56px;border-radius:8px;border:2.5px solid #fff;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#fff;background:rgba(31,122,116,.7);background-size:cover;background-position:center}
+.wx-cover__name-row{display:flex;align-items:center;gap:6px;padding-bottom:2px}
+.wx-cover__name{font-size:17px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.25)}
+.wx-cover__badge{font-size:11px;background:rgba(0,0,0,.2);color:rgba(255,255,255,.9);padding:1px 6px;border-radius:4px;text-shadow:none}
+
+/* 日期分组：左侧日期 + 右侧内容 */
+.moments-date-group{padding:0 0 4px}
+.moments-date-label{text-align:center;font-size:14px;color:#8a8a8a;padding:18px 0 10px;letter-spacing:.5px}
+
+/* 微信风格单条动态：左日期右内容 */
+.wx-moment-row{display:flex;padding:12px 12px 8px;position:relative;background:#fff}
+.wx-moment-row::after{content:'';position:absolute;left:48px;right:0;bottom:0;height:1px;background:#ebedf0}
+.wx-moment-row:last-child::after{display:none}
+
+/* 左侧日期 */
+.wx-moment-date{width:46px;flex-shrink:0;padding-top:2px;text-align:right;padding-right:10px}
+.wx-moment-month{font-size:11px;color:#8a8a8a;line-height:1.2;margin-bottom:2px}
+.wx-moment-day{font-size:22px;font-weight:600;color:#2b3330;line-height:1.1}
+
+/* 右侧内容 */
+.wx-moment-body{flex:1;min-width:0;padding-left:2px}
+.wx-moment-text{font-size:15px;line-height:1.55;color:#2b3330;margin-bottom:6px;word-break:break-all}
+
+/* 图片网格 —— 微信风格 */
+.wx-imgs{display:grid;gap:4px;margin-bottom:4px}
+.wx-imgs.imgs-1{grid-template-columns:1fr;max-width:220px}
+.wx-imgs.imgs-2{grid-template-columns:1fr 1fr;max-width:280px}
+.wx-imgs.imgs-3,.wx-imgs.imgs-4,.wx-imgs.imgs-5,
+.wx-imgs.imgs-6,.wx-imgs.imgs-7,.wx-imgs.imgs-8,.wx-imgs.imgs-9{grid-template-columns:repeat(3,1fr);max-width:240px}
+.wx-img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:2px;cursor:pointer;background:#f0f0f0}
+
+/* 底部交互栏 */
+.wx-moment-bar{display:flex;align-items:center;padding-top:6px}
+.wx-moment-time{font-size:11px;color:#b0ada4;margin-right:auto}
+.wx-moment-actions{display:flex;gap:16px;align-items:center}
+.wx-like-btn,.wx-cmt-btn{display:flex;align-items:center;gap:3px;font-size:13px;color:#8a8a8a;background:none;border:none;cursor:pointer;padding:2px 0}
+.wx-like-btn.liked{color:#576b95}
+.wx-del-btn{font-size:12px;color:#c0bdb4;background:none;border:none;cursor:pointer;padding:2px 0;margin-left:4px}
+.wx-del-btn:active{color:#e74c3c}
+
+/* 评论区域 */
+.wx-comments{margin-top:6px;background:#f7f7f7;border-radius:4px;padding:6px 8px}
+.wx-comment{font-size:13px;line-height:1.6;color:#444}
+.wx-comment-name{color:#576b95;font-weight:600}
+
+/* 陌生人锁定态 */
+.wx-locked{display:flex;flex-direction:column;align-items:center;padding:60px 20px 20px;text-align:center}
+.wx-locked-icon{font-size:48px;margin-bottom:12px;opacity:.5}
+.wx-locked-title{font-size:16px;font-weight:600;color:#2b3330;margin-bottom:6px}
+.wx-locked-desc{font-size:13px;color:#8a8a8a;line-height:1.55;max-width:260px}
+
+/* 空态 */
+.wx-empty{display:flex;flex-direction:column;align-items:center;padding:60px 20px 20px;text-align:center}
+.wx-empty-icon{font-size:42px;opacity:.35;margin-bottom:10px}
+.wx-empty-text{font-size:14px;color:#8a8a8a}
+
 /* 朋友圈模式：覆盖页面背景 */
-#userMomentsContent>.moments-timeline{margin:-12px -14px -16px;min-height:calc(100vh + 0px)}
+#userMomentsContent>.moments-timeline{margin:-12px -0px -16px;min-height:calc(100vh + 0px)}
 </style>
 </head>
 <body>
@@ -3730,24 +3780,46 @@ async function renderUserMoments(userId) {
   const c = $('userMomentsContent');
   if (!c) return;
   c.innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
+  // 自己的朋友圈：隐藏默认导航栏（封面区自带返回按钮）
+  const pageEl = document.getElementById('page-user-moments');
+  const navBar = pageEl ? pageEl.querySelector('.nav-bar') : null;
+  if (navBar) navBar.style.display = 'none';
   try {
     const res = await api('/moments/user/' + userId);
     if (res.success) {
       const u = res.user;
       const isOwn = currentUser && userId === currentUser.id;
 
+      // 别人的动态：恢复默认导航栏
+      if (!isOwn && navBar) navBar.style.display = '';
+
       let html = '';
 
-      // Own moments: show a minimal Moments-style nav + compose entry
       if (isOwn) {
-        html += `<div style="background:#ededed;padding:10px 16px;display:flex;align-items:center;gap:10px">
-          <div style="flex:1;font-size:15px;font-weight:700;color:#2b3330">我的朋友圈</div>
-          <button onclick="openMomentCompose('moment')" style="font-size:13px;color:#576b95;font-weight:600;background:none;border:none;cursor:pointer;padding:4px 0">发一条</button>
+        // ===== 微信风格封面区 =====
+        const avatarEl = u.avatar
+          ? `<div class="wx-cover__avatar" style="background-image:url('${u.avatar}')"></div>`
+          : `<div class="wx-cover__avatar" style="background:${avatarColor(u.nickname)}">${avatarInitial(u.nickname)}</div>`;
+        html += `<div class="wx-cover">
+          <div class="wx-cover__bg-pattern"></div>
+          <div class="wx-cover__nav">
+            <button class="wx-cover__back" onclick="navigateBack()">‹</button>
+            <div class="wx-cover__actions">
+              <button class="wx-cover__action-btn" onclick="openMomentCompose('moment')">✎</button>
+            </div>
+          </div>
+          <div class="wx-cover__info">
+            ${avatarEl}
+            <div>
+              <div class="wx-cover__name-row">
+                <span class="wx-cover__name">${escapeHtml(u.nickname || '我')}</span>
+              </div>
+              <span class="wx-cover__badge">我的朋友圈</span>
+            </div>
+          </div>
         </div>`;
-      }
-
-      // Only show header for OTHER users' moments; skip for own (redundant)
-      if (!isOwn) {
+      } else {
+        // 别人的主页：简洁头部
         const headerAvatar = u.avatar
           ? `<div class="user-moments-header__avatar" style="background-image:url('${u.avatar}')"></div>`
           : `<div class="user-moments-header__avatar" style="background:${avatarColor(u.nickname)}">${avatarInitial(u.nickname)}</div>`;
@@ -3766,19 +3838,17 @@ async function renderUserMoments(userId) {
 
       if (!res.moments.length) {
         if (isOwn) {
-          html += `<div class="moments-timeline" style="padding-top:80px;text-align:center;color:#b0ada4;font-size:14px">还没有动态，发布一条分享此刻吧~</div>`;
+          html += `<div class="wx-empty"><div class="wx-empty-icon">📝</div><div class="wx-empty-text">还没有朋友圈，发一条分享此刻吧~</div></div>`;
         } else if (!res.canViewCircle) {
-          // Stranger: 朋友圈 is private, only unlocked after chatting.
-          html += `<div class="empty-state" style="margin-top:30px">
-            <div class="empty-state__icon">🔒</div>
-            <div class="empty-state__title">这是 TA 的朋友圈</div>
-            <div class="empty-state__desc">只对自己和聊过天的人可见，和 TA 私聊后即可查看</div>
+          html += `<div class="wx-locked">
+            <div class="wx-locked-icon">🔒</div>
+            <div class="wx-locked-title">这是 TA 的朋友圈</div>
+            <div class="wx-locked-desc">只对自己和聊过天的人可见<br>和 TA 私聊后即可查看</div>
           </div>`;
         } else {
-          html += '<div class="empty-state" style="margin-top:30px"><div class="empty-state__icon">📝</div><div class="empty-state__title">TA 还没有发布朋友圈</div></div>';
+          html += `<div class="wx-empty"><div class="wx-empty-icon">📝</div><div class="wx-empty-text">TA 还没有发布朋友圈</div></div>`;
         }
       } else {
-        // Moments-style: group by date, no per-card avatar/name for own timeline
         html += momentsTimelineHtml(res.moments, isOwn);
       }
       c.innerHTML = html;
@@ -3791,7 +3861,6 @@ async function renderUserMoments(userId) {
 }
 
 function momentsTimelineHtml(moments, isOwn) {
-  // Group by date key: "今天", "昨天", or "M月D日"
   const now = new Date();
   const groups = {};
   moments.forEach(m => {
@@ -3803,10 +3872,13 @@ function momentsTimelineHtml(moments, isOwn) {
 
   const keys = Object.keys(groups);
   const inner = keys.map(key => {
-    return `<div class="moments-date-group">
-      <div class="moments-date-label">${key}</div>
-      ${groups[key].map(m => isOwn ? ownMomentItemHtml(m) : momentCardHtml(m)).join('')}
-    </div>`;
+    // "今天"/"昨天" 居中显示；具体日期用左日期右内容
+    let html = '';
+    if (/^今天|昨天$/.test(key)) {
+      html += `<div class="moments-date-label">${key}</div>`;
+    }
+    html += groups[key].map(m => isOwn ? ownMomentItemHtml(m) : momentCardHtml(m)).join('');
+    return `<div class="moments-date-group">${html}</div>`;
   }).join('');
 
   return isOwn ? `<div class="moments-timeline">${inner}</div>` : inner;
@@ -3817,24 +3889,50 @@ function isYesterday(d, now) { const y = new Date(now); y.setDate(y.getDate()-1)
 
 function ownMomentItemHtml(m) {
   window._momentCache[m.id] = m;
+  const d = new Date(m.createdAt);
+  const now = new Date();
+  let monthStr, dayStr;
+  if (isToday(d, now)) {
+    monthStr = ''; dayStr = '';
+  } else if (isYesterday(d, now)) {
+    monthStr = '昨天'; dayStr = '';
+  } else {
+    monthStr = `${d.getMonth() + 1}月`;
+    dayStr = String(d.getDate());
+  }
+
+  // 图片网格
   const imagesHtml = (m.images && m.images.length)
-    ? `<div class="moment-imgs imgs-${Math.min(m.images.length, 9)}">${m.images.map(src => `<img src="${src}" class="moment-img" onclick="viewImage('${src}')" alt="图片">`).join('')}</div>`
+    ? `<div class="wx-imgs imgs-${Math.min(m.images.length, 9)}">${m.images.map(src => `<img src="${src}" class="wx-img" onclick="viewImage('${src}')" alt="">`).join('')}</div>`
     : '';
-  const contentHtml = m.content ? `<div class="moment-content">${escapeHtml(m.content)}</div>` : '';
+
+  // 文字内容
+  const contentHtml = m.content ? `<div class="wx-moment-text">${escapeHtml(m.content)}</div>` : '';
+
+  // 评论
   const commentsHtml = (m.comments && m.comments.length)
-    ? `<div class="moment-comments">${m.comments.map(c => `<div class="moment-comment"><span class="mc-name">${escapeHtml(c.nickname)}：</span><span>${escapeHtml(c.content)}</span></div>`).join('')}</div>`
+    ? `<div class="wx-comments">${m.comments.map(c => `<div class="wx-comment"><span class="wx-comment-name">${escapeHtml(c.nickname)}：</span>${escapeHtml(c.content)}</div>`).join('')}</div>`
     : '';
+
+  // 点赞状态
   const liked = !!m.likedByMe;
-  return `<div class="own-moment-item" id="moment-${m.id}">
-    ${contentHtml}
-    ${imagesHtml}
-    ${commentsHtml}
-    <div class="own-moment-footer">
-      <span class="own-moment-time">${formatTime(m.createdAt)}</span>
-      <div class="own-moment-actions">
-        <button class="moment-act ${liked ? 'liked' : ''}" onclick="toggleMomentLike('${m.id}')"><svg class="like-icon" viewBox="0 0 24 24" width="16" height="16"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> <span>${m.likeCount}</span></button>
-        <button class="moment-act" onclick="toggleMomentComments('${m.id}')">💬 <span>${m.commentCount}</span></button>
-        <button class="own-moment-del" onclick="deleteMoment('${m.id}')">删除</button>
+
+  return `<div class="wx-moment-row" id="moment-${m.id}">
+    <div class="wx-moment-date">
+      ${monthStr ? `<div class="wx-moment-month">${monthStr}</div>` : ''}
+      ${dayStr ? `<div class="wx-moment-day">${dayStr}</div>` : ''}
+    </div>
+    <div class="wx-moment-body">
+      ${contentHtml}
+      ${imagesHtml}
+      ${commentsHtml}
+      <div class="wx-moment-bar">
+        <span class="wx-moment-time">${formatTime(m.createdAt)}</span>
+        <div class="wx-moment-actions">
+          <button class="wx-like-btn ${liked ? 'liked' : ''}" onclick="toggleMomentLike('${m.id}')">♥ ${m.likeCount || 0}</button>
+          <button class="wx-cmt-btn" onclick="toggleMomentComments('${m.id}')">💬 ${m.commentCount || 0}</button>
+          <button class="wx-del-btn" onclick="deleteMoment('${m.id}')">删除</button>
+        </div>
       </div>
     </div>
   </div>`;
@@ -3905,10 +4003,18 @@ async function toggleMomentLike(id) {
       window._momentCache[id].likeCount = res.likeCount;
       const card = $('moment-' + id);
       if (card) {
-        const act = card.querySelector('.moment-actions .moment-act');
-        if (act) {
-          act.classList.toggle('liked', res.liked);
-          act.innerHTML = '<svg class="like-icon" viewBox="0 0 24 24" width="16" height="16"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> <span>' + res.likeCount + '</span>';
+        // 朋友圈风格按钮
+        let btn = card.querySelector('.wx-like-btn');
+        if (btn) {
+          btn.classList.toggle('liked', res.liked);
+          btn.textContent = '♥ ' + (res.likeCount || 0);
+          return;
+        }
+        // 社区动态卡片按钮（兼容）
+        btn = card.querySelector('.moment-actions .moment-act');
+        if (btn) {
+          btn.classList.toggle('liked', res.liked);
+          btn.innerHTML = '<svg class="like-icon" viewBox="0 0 24 24" width="16" height="16"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> <span>' + res.likeCount + '</span>';
         }
       }
     }
