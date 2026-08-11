@@ -10,6 +10,7 @@ const {
   getExperienceHistory, LEVEL_TIERS, EXPERIENCE_RULES,
   getFollowCounts, isFollowing
 } = require('../db');
+const { COMMUNITY_INTERESTS, isInterestId } = require('../communityCatalog');
 
 router.get('/level/me', auth, (req, res) => {
   const rules = Object.entries(EXPERIENCE_RULES)
@@ -72,8 +73,34 @@ router.get('/:id', (req, res) => {
       followerCount: counts.followerCount,
       followingCount: counts.followingCount,
       following: viewerId ? isFollowing(viewerId, user.id) : false
+      ,interestIds: Array.isArray(user.interestIds) ? user.interestIds.slice(0, 5) : []
+      ,strangerChatPolicy: user.strangerChatPolicy || 'all'
+      ,receivedResonance: (db().moments || []).filter(m => m.userId === user.id && !m.deleted)
+        .reduce((sum, m) => sum + (m.likes || []).length, 0)
     }
   });
+});
+
+router.patch('/interests', auth, (req, res) => {
+  const interestIds = Array.isArray(req.body && req.body.interestIds)
+    ? [...new Set(req.body.interestIds)].slice(0, 5)
+    : [];
+  if (interestIds.some(id => !isInterestId(id))) {
+    return res.status(400).json({ success: false, error: '包含无效兴趣' });
+  }
+  req.user.interestIds = interestIds;
+  save();
+  res.json({ success: true, interestIds, interests: COMMUNITY_INTERESTS.filter(item => interestIds.includes(item.id)) });
+});
+
+router.patch('/chat-policy', auth, (req, res) => {
+  const policy = req.body && req.body.strangerChatPolicy;
+  if (!['all', 'followers', 'closed'].includes(policy)) {
+    return res.status(400).json({ success: false, error: '无效私聊权限' });
+  }
+  req.user.strangerChatPolicy = policy;
+  save();
+  res.json({ success: true, strangerChatPolicy: policy });
 });
 
 // Edit my profile

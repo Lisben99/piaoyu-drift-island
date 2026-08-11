@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
-const { db, save, genId, findUserById, findChatSessionById, findChatSessionByUsers, addCoinTransaction, createNotification, getUnreadNotificationCount } = require('../db');
+const { db, save, genId, findUserById, findChatSessionById, findChatSessionByUsers, addCoinTransaction, createNotification, getUnreadNotificationCount, isFollowing } = require('../db');
 
 // Notify a chat recipient of a new incoming message (skip bots / self).
 function notifyNewMessage(recipientId, sessionId, fromUserId) {
@@ -74,6 +74,13 @@ router.post('/start', auth, async (req, res) => {
   
   // Check for existing active session
   let session = findChatSessionByUsers(req.user.id, targetUserId);
+  if (!session && !isBotTarget) {
+    const policy = targetUser.strangerChatPolicy || 'all';
+    if (policy === 'closed') return res.json({ success: false, error: '对方已关闭陌生人私聊' });
+    if (policy === 'followers' && !isFollowing(req.user.id, targetUserId)) {
+      return res.json({ success: false, error: '对方仅接收关注者的私聊' });
+    }
+  }
   
   if (session) {
     // Existing session

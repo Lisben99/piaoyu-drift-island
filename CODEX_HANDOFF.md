@@ -220,4 +220,23 @@ cat server/test-*.js | head       # 其他模块测试
 
 ---
 
-*本文件为项目交接用，覆盖至 2026-08-11 的 `4dbe7ca`。Codex 接手后建议优先处理 §7 P0（充值闭环验证）。*
+## 11. 2026-08-11 共鸣广场与梦境主题升级
+
+- 用户端主色升级为紫粉“梦境灵魂”设计系统；管理后台保持原样。
+- 底部“社区”更名为“共鸣”，页面升级为“共鸣广场”：为你推荐、最新、我关注的、兴趣筛选、每日一问。
+- 社区动态支持话题、心情、每日问题、最多 9 图、共鸣、评论、聊聊开场、编辑/删除、不感兴趣、举报与拉黑。
+- 新增用户/话题/公开动态搜索与话题聚合页；私人朋友圈不会进入搜索或社区推荐。
+- 用户资料新增最多 5 个兴趣和陌生人私聊权限；后端聊天入口同步执行权限校验。
+- 等级系统新增社区发帖、收到共鸣、收到评论、每日问题参与奖励，继续使用幂等事件键和每日上限。
+- 新增 `server/src/communityCatalog.js`、`server/src/routes/community.js` 以及两份聚焦回归脚本。
+
+验证入口：
+
+```powershell
+node server/test-community-core.js
+node server/test-community-server.js
+node --test server/test-mobile-ui.js
+node server/check-frontend.js
+```
+
+*本文件为项目交接用，覆盖至 2026-08-11 的共鸣广场升级。*

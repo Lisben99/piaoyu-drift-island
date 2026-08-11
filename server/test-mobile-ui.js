@@ -6,6 +6,17 @@ const vm = require('node:vm');
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
+test('user UI exposes the approved dream theme and resonance navigation', () => {
+  const normalized = html.toLowerCase().replace(/\s+/g, '');
+  for (const token of ['--dream-primary:#7561d1', '--dream-accent:#c878b7', '--dream-bg:#f7f5fc']) {
+    assert.ok(normalized.includes(token), `missing ${token}`);
+  }
+  assert.match(html, /共鸣广场/);
+  assert.match(html, /communityInterestChips/);
+  assert.match(html, /communityDailyPrompt/);
+  assert.match(extractFunction(html, 'renderTabBar'), /label:\s*'共鸣'/);
+});
+
 function extractFunction(source, name) {
   const match = new RegExp(`function\\s+${name}\\s*\\(`).exec(source);
   assert.ok(match, `index.html must define ${name}()`);
@@ -259,9 +270,11 @@ test('moment identity stays beside the avatar and self delete moves into a botto
   assert.match(selfCard, /class="moment-menu-delete"[^>]*>删除</, 'overflow menu must contain delete');
 
   const otherCard = renderMomentCard('other');
-  assert.match(otherCard, /moment-chat-btn/, 'other users retain private chat');
+  assert.match(otherCard, /moment-chat-action[^>]*[\s\S]*聊聊/, 'other users enter chat through a contextual starter');
   assert.match(otherCard, /moment-follow-btn/, 'other users retain follow');
-  assert.doesNotMatch(otherCard, /moment-more-btn|moment-menu-delete/, 'delete overflow is only rendered for the author');
+  assert.match(otherCard, /moment-more-btn/, 'other users expose content-safety actions');
+  assert.match(otherCard, /不感兴趣[\s\S]*举报[\s\S]*拉黑/, 'other overflow contains dismiss, report and block');
+  assert.doesNotMatch(otherCard, /moment-menu-delete/, 'delete remains author-only');
 });
 
 test('moment overflow menu opens one card at a time and toggles closed', () => {

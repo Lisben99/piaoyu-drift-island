@@ -107,6 +107,7 @@ function createDefaultDB() {
     visits: [],
     interactions: [],
     experienceEvents: [],
+    contentDismissals: [],
     config: { ...DEFAULT_CONFIG },
     admins: [DEFAULT_ADMIN]
   };
@@ -310,7 +311,9 @@ function createUser(phone, email, password = null) {
     latitude: null,
     longitude: null,
     locationEnabled: false,
-    locationUpdatedAt: null
+    locationUpdatedAt: null,
+    interestIds: [],
+    strangerChatPolicy: 'all'
   };
   cache.users.push(user);
   addCoinTransaction(user.id, config.new_user_bonus, 'new_user_bonus', '新用户注册赠送');
@@ -327,6 +330,8 @@ function reactivateUser(user, { phone = null, email = null, password = null, rol
   user.nickname = '';
   user.avatar = '';
   user.bio = '';
+  user.interestIds = [];
+  user.strangerChatPolicy = 'all';
   user.gender = role || '';
   user.role = role || '';
   user.status = 'active';
@@ -410,7 +415,7 @@ function getActiveBottles(filters = {}) {
 //                                  (朋友圈), visible to the author and users who have
 //                                  had a conversation (chat session) with the author.
 // Images are stored as compressed data URLs.
-function createMoment(userId, { content = '', images = [], type = 'community' } = {}) {
+function createMoment(userId, { content = '', images = [], type = 'community', topicId = null, mood = null, dailyPromptId = null } = {}) {
   const moment = {
     id: genId('mo'),
     userId,
@@ -419,6 +424,9 @@ function createMoment(userId, { content = '', images = [], type = 'community' } 
       ? images.filter(i => typeof i === 'string' && i.startsWith('data:image/')).slice(0, 9)
       : [],
     type: type === 'moment' ? 'moment' : 'community',
+    topicId: topicId || null,
+    mood: mood || null,
+    dailyPromptId: dailyPromptId || null,
     likes: [],
     comments: [],
     deleted: false,
@@ -442,13 +450,23 @@ function getMomentById(id) {
 //                Community posts are NEVER mixed into a personal page.
 //                viewerId: when set & differs from userId, the private 朋友圈 are only
 //                returned if the viewer has chatted with the author (friend circle).
-function listMoments({ userId = null, community = false, viewerId = null, followedByUserId = null, limit = 20, offset = 0 } = {}) {
+function listMoments({ userId = null, community = false, viewerId = null, followedByUserId = null, topicId = null, sort = 'latest', limit = 20, offset = 0 } = {}) {
   let list = cache.moments.filter(m => !m.deleted);
 
   if (community) {
     // Community feed: public posts only (legacy moments with no type are public).
     // 朋友圈 (type='moment') are excluded — the two pools never intersect.
     list = list.filter(m => m.type !== 'moment');
+    if (topicId) list = list.filter(m => m.topicId === topicId);
+    if (viewerId) {
+      const dismissed = new Set((cache.contentDismissals || [])
+        .filter(item => item.userId === viewerId)
+        .map(item => item.momentId));
+      const blocked = new Set((cache.blacklist || [])
+        .filter(item => item.blockerId === viewerId)
+        .map(item => item.blockedId));
+      list = list.filter(m => !dismissed.has(m.id) && !blocked.has(m.userId));
+    }
     if (followedByUserId) {
       const followedIds = new Set(
         getFollows()
@@ -469,10 +487,45 @@ function listMoments({ userId = null, community = false, viewerId = null, follow
     }
   }
 
-  list.sort((a, b) => b.createdAt - a.createdAt);
+  if (community && sort === 'recommend' && viewerId) {
+    const viewer = findUserById(viewerId) || {};
+    const interests = new Set(viewer.interestIds || []);
+    const now = Date.now();
+    const score = m => {
+      const interestMatch = m.topicId && interests.has(m.topicId) ? 1 : 0;
+      const affinity = (cache.interactions || []).some(i => i.actorId === viewerId && i.targetUserId === m.userId) ? 1 : 0;
+      const freshness = Math.max(0, 1 - (now - m.createdAt) / (7 * 86400000));
+      const quality = Math.min(1, ((m.likes || []).length + (m.comments || []).length * 2) / 20);
+      return interestMatch * 35 + affinity * 25 + freshness * 25 + quality * 15;
+    };
+    list.sort((a, b) => score(b) - score(a) || b.createdAt - a.createdAt);
+  } else {
+    list.sort((a, b) => b.createdAt - a.createdAt);
+  }
   const total = list.length;
   const items = list.slice(offset, offset + limit);
   return { items, total };
+}
+
+function updateMoment(momentId, userId, updates = {}) {
+  const moment = getMomentById(momentId);
+  if (!moment || moment.deleted || moment.userId !== userId || moment.type === 'moment') return null;
+  if (updates.content !== undefined) moment.content = String(updates.content || '').trim().slice(0, 1000);
+  if (updates.topicId !== undefined) moment.topicId = updates.topicId || null;
+  if (updates.mood !== undefined) moment.mood = updates.mood || null;
+  moment.editedAt = Date.now();
+  save();
+  return moment;
+}
+
+function dismissMoment(momentId, userId) {
+  if (!getMomentById(momentId)) return false;
+  if (!Array.isArray(cache.contentDismissals)) cache.contentDismissals = [];
+  if (!cache.contentDismissals.some(item => item.userId === userId && item.momentId === momentId)) {
+    cache.contentDismissals.push({ id: genId('dismiss'), userId, momentId, createdAt: Date.now() });
+    save();
+  }
+  return true;
 }
 
 // Returns true if the two users have an existing chat session (i.e. they have
@@ -729,6 +782,10 @@ const LEVEL_TIERS = [
 ];
 
 const EXPERIENCE_RULES = {
+  community_daily_post: { points: 3, dailyLimit: 2, label: '发布共鸣动态' },
+  resonance_received: { points: 1, dailyLimit: 5, label: '收到共鸣' },
+  community_comment_received: { points: 1, dailyLimit: 5, label: '收到社区评论' },
+  daily_prompt_participation: { points: 2, dailyLimit: 1, label: '参与每日一问' },
   daily_checkin: { points: 2, dailyLimit: 1, label: '每日签到' },
   profile_completed: { points: 10, once: true, label: '完善资料' },
   bottle_created: { points: 2, dailyLimit: 3, label: '发布漂流瓶' },
@@ -1280,6 +1337,8 @@ module.exports = {
   createMoment,
   getMomentById,
   listMoments,
+  updateMoment,
+  dismissMoment,
   haveChatted,
   deleteMoment,
   toggleMomentLike,

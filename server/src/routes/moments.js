@@ -13,6 +13,8 @@ const {
   createMoment,
   getMomentById,
   listMoments,
+  updateMoment,
+  dismissMoment,
   haveChatted,
   deleteMoment,
   toggleMomentLike,
@@ -24,6 +26,7 @@ const {
   isFollowing,
   awardExperience
 } = require('../db');
+const { COMMUNITY_TOPICS, COMMUNITY_MOODS, isTopicId, isMoodId } = require('../communityCatalog');
 
 router.use(auth);
 
@@ -38,8 +41,15 @@ function enrich(m, currentUserId) {
     images: m.images || [],
     type: m.type || 'community',
     createdAt: m.createdAt,
+    editedAt: m.editedAt || null,
+    topicId: m.topicId || null,
+    topic: COMMUNITY_TOPICS.find(item => item.id === m.topicId) || null,
+    mood: COMMUNITY_MOODS.find(item => item.id === m.mood) || null,
+    dailyPromptId: m.dailyPromptId || null,
     likeCount: (m.likes || []).length,
     likedByMe: currentUserId ? (m.likes || []).includes(currentUserId) : false,
+    resonanceCount: (m.likes || []).length,
+    resonatedByMe: currentUserId ? (m.likes || []).includes(currentUserId) : false,
     commentCount: (m.comments || []).length,
     comments: (m.comments || []).map(c => {
       const cu = findUserById(c.userId) || {};
@@ -61,6 +71,11 @@ function enrich(m, currentUserId) {
       verifiedType: author.verifiedType || '',
       level: computeUserLevel(author).level,
       levelTitle: computeUserLevel(author).title,
+      interestIds: Array.isArray(author.interestIds) ? author.interestIds.slice(0, 5) : [],
+      strangerChatPolicy: author.strangerChatPolicy || 'all',
+      canChat: !currentUserId || currentUserId === m.userId ||
+        (author.strangerChatPolicy !== 'closed' &&
+          (author.strangerChatPolicy !== 'followers' || isFollowing(currentUserId, m.userId))),
       following: currentUserId ? isFollowing(currentUserId, m.userId) : false
     }
   };
@@ -70,27 +85,35 @@ function enrich(m, currentUserId) {
 // `type` defaults to 'community' (public). 'moment' = 朋友圈 (private, visible only
 // to the author and people who have chatted with them).
 router.post('/', (req, res) => {
-  const { content, images, type } = req.body || {};
+  const { content, images, type, topicId, mood, dailyPromptId } = req.body || {};
   const text = (content || '').trim();
   const imgs = Array.isArray(images) ? images : [];
   if (!text && imgs.length === 0) {
     return res.status(400).json({ success: false, error: '动态内容不能为空' });
   }
   const momentType = type === 'moment' ? 'moment' : 'community';
-  const moment = createMoment(req.user.id, { content: text, images: imgs, type: momentType });
-  const experienceAward = awardExperience(req.user.id, 'moment_created', {
+  if (momentType === 'community' && topicId && !isTopicId(topicId)) return res.status(400).json({ success: false, error: '无效话题' });
+  if (momentType === 'community' && mood && !isMoodId(mood)) return res.status(400).json({ success: false, error: '无效心情' });
+  const moment = createMoment(req.user.id, { content: text, images: imgs, type: momentType, topicId, mood, dailyPromptId });
+  const experienceAward = awardExperience(req.user.id, momentType === 'community' ? 'community_daily_post' : 'moment_created', {
     eventKey: `moment:${moment.id}`,
     sourceId: moment.id
   });
-  res.json({ success: true, moment: enrich(moment, req.user.id), experienceAward });
+  const promptAward = momentType === 'community' && dailyPromptId
+    ? awardExperience(req.user.id, 'daily_prompt_participation', { eventKey: `daily-prompt:${dailyPromptId}:${req.user.id}`, sourceId: moment.id })
+    : null;
+  res.json({ success: true, moment: enrich(moment, req.user.id), experienceAward, promptAward });
 });
 
 // Community feed (all users' moments).
 router.get('/community', (req, res) => {
   const limit = Math.min(parseInt(req.query.limit) || 20, 50);
   const offset = parseInt(req.query.offset) || 0;
-  const followedByUserId = req.query.sort === 'following' ? req.user.id : null;
-  const { items, total } = listMoments({ community: true, followedByUserId, limit, offset });
+  const sort = ['recommend', 'latest', 'following'].includes(req.query.sort) ? req.query.sort : 'recommend';
+  const followedByUserId = sort === 'following' ? req.user.id : null;
+  const topicId = req.query.topicId || null;
+  if (topicId && !isTopicId(topicId)) return res.status(400).json({ success: false, error: '无效话题' });
+  const { items, total } = listMoments({ community: true, viewerId: req.user.id, followedByUserId, topicId, sort, limit, offset });
   res.json({
     success: true,
     moments: items.map(m => enrich(m, req.user.id)),
@@ -132,6 +155,8 @@ router.get('/user/:userId', (req, res) => {
       followerCount: counts.followerCount,
       followingCount: counts.followingCount,
       following: isFollowing(req.user.id, u.id)
+      ,interestIds: Array.isArray(u.interestIds) ? u.interestIds.slice(0, 5) : []
+      ,strangerChatPolicy: u.strangerChatPolicy || 'all'
     },
     isSelf,
     canViewCircle,
@@ -147,13 +172,27 @@ router.post('/:id/like', (req, res) => {
   if (r.liked) {
     const moment = getMomentById(req.params.id);
     if (moment && moment.userId !== req.user.id) {
-      awardExperience(moment.userId, 'like_received', {
+      awardExperience(moment.userId, 'resonance_received', {
         eventKey: `like:${moment.id}:${req.user.id}`,
         sourceId: moment.id
       });
     }
   }
-  res.json({ success: true, ...r });
+  res.json({ success: true, ...r, resonated: r.liked, resonanceCount: r.likeCount });
+});
+
+router.put('/:id', (req, res) => {
+  const { content, topicId, mood } = req.body || {};
+  if (topicId && !isTopicId(topicId)) return res.status(400).json({ success: false, error: '无效话题' });
+  if (mood && !isMoodId(mood)) return res.status(400).json({ success: false, error: '无效心情' });
+  const moment = updateMoment(req.params.id, req.user.id, { content, topicId, mood });
+  if (!moment) return res.status(404).json({ success: false, error: '动态不存在或无权限' });
+  res.json({ success: true, moment: enrich(moment, req.user.id) });
+});
+
+router.post('/:id/dismiss', (req, res) => {
+  if (!dismissMoment(req.params.id, req.user.id)) return res.status(404).json({ success: false, error: '动态不存在' });
+  res.json({ success: true });
 });
 
 // Add a comment to a moment.
@@ -168,6 +207,13 @@ router.post('/:id/comment', (req, res) => {
     eventKey: `comment:${c.id}`,
     sourceId: c.id
   });
+  const targetMoment = getMomentById(req.params.id);
+  if (targetMoment && targetMoment.userId !== req.user.id) {
+    awardExperience(targetMoment.userId, 'community_comment_received', {
+      eventKey: `comment-received:${c.id}`,
+      sourceId: c.id
+    });
+  }
   res.json({
     success: true,
     comment: {

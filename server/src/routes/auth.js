@@ -309,6 +309,8 @@ router.get('/me', (req, res) => {
     totalRecharged: user.totalRecharged,
     totalInvited: user.totalInvited,
     locationEnabled: !!user.locationEnabled,
+    interestIds: Array.isArray(user.interestIds) ? user.interestIds : [],
+    strangerChatPolicy: user.strangerChatPolicy || 'all',
     level: level.level,
     levelTitle: level.title,
     exp: level.exp,
