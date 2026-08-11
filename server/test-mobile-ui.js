@@ -185,6 +185,20 @@ test('lobby renders the shared five-item bottom navigation', async () => {
   assert.match(elements['tabbar-lobby'].innerHTML, /tab-item active[^>]*onclick="navigate\('lobby'\)"/, 'lobby tab must be active');
 });
 
+test('logout action lives in settings immediately before account deletion', () => {
+  const home = pageMarkup('home').innerHtml;
+  assert.doesNotMatch(home, /logoutBtn|退出登录/, 'home must not show logout');
+
+  const settingsRenderer = extractFunction(html, 'renderSettings');
+  const logoutIndex = settingsRenderer.indexOf('onclick="confirmLogout()"');
+  const deleteIndex = settingsRenderer.indexOf("onclick=\"navigate('account-delete')\"");
+  assert.ok(logoutIndex >= 0, 'settings must render the logout action');
+  assert.ok(deleteIndex > logoutIndex, 'logout must appear immediately before account deletion');
+
+  const between = settingsRenderer.slice(logoutIndex, deleteIndex);
+  assert.equal((between.match(/class="settings-item"/g) || []).length, 1, 'no other settings item may separate logout and account deletion');
+});
+
 test('genderIcon renders accessible inline SVGs for both genders and supported sizes', () => {
   const genderIcon = runGenderIcon();
   const cases = [

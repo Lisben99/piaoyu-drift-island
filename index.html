@@ -1063,9 +1063,6 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
           </div>
         </div>
       </div>
-      <div style="padding:12px 0;text-align:center">
-        <button class="text-button" id="logoutBtn" style="color:#e74c3c">退出登录</button>
-      </div>
     </div>
     <div class="tab-bar" id="tabbar-home"></div>
   </div>
@@ -2104,7 +2101,7 @@ async function doCheckin() {
   } catch (e) { showToast('签到失败'); }
 }
 
-$('logoutBtn').onclick = function() {
+function confirmLogout() {
   showModal('退出登录', '确定要退出登录吗？', [
     { text: '取消', cancel: true },
     { text: '退出', danger: true, onClick: () => {
@@ -2114,7 +2111,7 @@ $('logoutBtn').onclick = function() {
       navigateTo('login', true);
     }}
   ]);
-};
+}
 
 /* ================================================================
    LOBBY
@@ -3622,6 +3619,11 @@ async function renderSettings() {
         <!-- Danger Zone -->
         <div class="profile-section">
           <div class="settings-group">
+            <div class="settings-item" onclick="confirmLogout()">
+              <div class="settings-item__icon" style="background:rgba(239,123,98,.12)">↪</div>
+              <div class="settings-item__label" style="color:#e67e22">退出登录</div>
+              <div class="settings-item__arrow">›</div>
+            </div>
             <div class="settings-item" onclick="navigate('account-delete')">
               <div class="settings-item__icon" style="background:rgba(231,76,60,.08)">🗑️</div>
               <div class="settings-item__label" style="color:#e74c3c">注销账号</div>
