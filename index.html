@@ -455,13 +455,6 @@ html.keyboard-open #app .main-tab-page.active>[data-scroll-root]{scroll-padding-
 /* Section */
 .profile-section{margin:0 0 8px}
 .profile-section-title{font-size:13px;font-weight:600;color:#718082;padding:16px 16px 8px}
-/* Function Grid */
-.profile-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 16px}
-.profile-grid-item{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 6px;border-radius:12px;background:#fff;cursor:pointer;transition:background .15s}
-.profile-grid-item:active{background:#F7F6F2}
-.profile-grid-icon{font-size:26px}
-.profile-grid-label{font-size:11px;color:#5F5E5A;font-weight:500}
-
 /* ===== Report ===== */
 .report-content{flex:1;padding:16px;overflow-y:auto}
 .report-reasons{display:flex;flex-direction:column;gap:1px}
@@ -3709,35 +3702,23 @@ async function renderSettings() {
           </div>
         </div>
 
-        <!-- Function Grid -->
-        <div class="profile-section">
-          <div class="profile-grid">
-            <div class="profile-grid-item" onclick="viewUserMoments('${meRes.id}')">
-              <div class="profile-grid-icon">📝</div>
-              <div class="profile-grid-label">我的动态</div>
-            </div>
-            <div class="profile-grid-item" onclick="navigate('mine-bottles')">
-              <div class="profile-grid-icon">🏠</div>
-              <div class="profile-grid-label">我的空间</div>
-            </div>
-            <div class="profile-grid-item" onclick="navigate('messages')">
-              <div class="profile-grid-icon">💬</div>
-              <div class="profile-grid-label">消息</div>
-            </div>
-            <div class="profile-grid-item" onclick="{ window._communityTab='nearby'; navigate('community'); setTimeout(()=>{ /* will show nearby after location gate */ },100); }">
-              <div class="profile-grid-icon">📍</div>
-              <div class="profile-grid-label">附近</div>
-            </div>
-          </div>
-        </div>
-
         <!-- Personal Functions -->
         <div class="profile-section">
           <div class="profile-section-title">个人功能</div>
           <div class="settings-group">
             <div class="settings-item" onclick="viewUserMoments('${meRes.id}')">
               <div class="settings-item__icon" style="background:rgba(31,122,116,.1)">📝</div>
-              <div class="settings-item__label">动态</div>
+              <div class="settings-item__label">个人动态</div>
+              <div class="settings-item__arrow">›</div>
+            </div>
+            <div class="settings-item" onclick="navigate('mine-bottles')">
+              <div class="settings-item__icon" style="background:rgba(31,122,116,.1)">🍾</div>
+              <div class="settings-item__label">我扔出去的瓶子</div>
+              <div class="settings-item__arrow">›</div>
+            </div>
+            <div class="settings-item" onclick="openNearbyPeople()">
+              <div class="settings-item__icon" style="background:rgba(239,123,98,.12)">📍</div>
+              <div class="settings-item__label">附近的人</div>
               <div class="settings-item__arrow">›</div>
             </div>
             <div class="settings-item" onclick="showToast('访客记录开发中')">
@@ -4333,6 +4314,18 @@ function renderCommunityFeed(sort) {
   window._communitySort = sort;
   window._communityFeedSession = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
   loadMoreCommunity(true);
+}
+
+function openNearbyPeople() {
+  navigate('community');
+  requestAnimationFrame(() => {
+    window._communityTab = 'nearby';
+    ['ctab-recommend', 'ctab-latest', 'ctab-following'].forEach(id => {
+      const tab = $(id);
+      if (tab) tab.classList.remove('active');
+    });
+    renderNearby();
+  });
 }
 
 async function loadMoreCommunity(reset) {

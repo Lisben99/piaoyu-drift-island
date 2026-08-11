@@ -252,6 +252,18 @@ test('logout action lives in settings immediately before account deletion', () =
   assert.equal((between.match(/class="settings-item"/g) || []).length, 1, 'no other settings item may separate logout and account deletion');
 });
 
+test('profile shortcuts are consolidated into the personal function list', () => {
+  const renderer = extractFunction(html, 'renderSettings');
+  assert.doesNotMatch(renderer, /profile-grid/);
+  assert.doesNotMatch(renderer, /navigate\('messages'\)/);
+  assert.doesNotMatch(renderer, /我的空间|我的动态/);
+  assert.match(renderer, /个人动态/);
+  assert.match(renderer, /我扔出去的瓶子/);
+  assert.match(renderer, /附近的人/);
+  assert.match(renderer, /navigate\('mine-bottles'\)/);
+  assert.match(renderer, /openNearbyPeople\(\)/);
+});
+
 test('community following tab loads data instead of rendering a hard-coded empty state', () => {
   const renderer = extractFunction(html, 'renderCommunityFeed');
   assert.doesNotMatch(renderer, /if\s*\(sort\s*===\s*['"]following['"]\)/,
