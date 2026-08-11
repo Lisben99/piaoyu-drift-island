@@ -21,7 +21,7 @@ function ok(cond, msg) {
 const cache = db.db();
 cache.users = []; cache.follows = []; cache.visits = [];
 cache.interactions = []; cache.moments = []; cache.bottles = [];
-cache.chatSessions = [];
+cache.chatSessions = []; cache.experienceEvents = [];
 
 console.log('\n[1] 关注系统 (Follow)');
 const a = db.createUser('13800000001', '', '');
@@ -86,7 +86,10 @@ ok(typeof lvlA.title === 'string' && lvlA.title.length > 0, '等级有称号: ' 
 ok(typeof lvlA.progress === 'number' && lvlA.progress >= 0 && lvlA.progress <= 100, '进度在 0-100: ' + lvlA.progress);
 // more activity => higher or equal exp
 const active = db.createUser('13800000003', '', '');
-for (let i = 0; i < 10; i++) db.createMoment(active.id, { content: 'post ' + i, type: 'community' });
+for (let i = 0; i < 10; i++) {
+  const post = db.createMoment(active.id, { content: 'post ' + i, type: 'community' });
+  db.awardExperience(active.id, 'moment_created', { eventKey: 'moment:' + post.id, sourceId: post.id });
+}
 const lvlActive = db.computeUserLevel(active);
 ok(lvlActive.exp > lvlA.exp, '发帖多的用户经验值更高 (' + lvlActive.exp + ' > ' + lvlA.exp + ')');
 

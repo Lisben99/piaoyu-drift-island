@@ -106,6 +106,7 @@ function createDefaultDB() {
     follows: [],
     visits: [],
     interactions: [],
+    experienceEvents: [],
     config: { ...DEFAULT_CONFIG },
     admins: [DEFAULT_ADMIN]
   };
@@ -124,6 +125,7 @@ function loadFromFile() {
         if (!cache[key]) cache[key] = defaults[key];
       }
       cache.config = { ...DEFAULT_CONFIG, ...cache.config };
+      if (migrateExperienceSystem(false)) saveToFile();
     } else {
       cache = createDefaultDB();
       saveToFile();
@@ -171,6 +173,8 @@ async function loadFromPg() {
         if (!cache[key]) cache[key] = defaults[key];
       }
       cache.config = { ...DEFAULT_CONFIG, ...cache.config };
+      const levelMigrated = migrateExperienceSystem(false);
+      if (levelMigrated) await saveToPg();
       console.log('[DB] Loaded from PostgreSQL');
     } else {
       cache = createDefaultDB();
@@ -298,7 +302,9 @@ function createUser(phone, email, password = null) {
     totalInvited: 0,
     invitedBy: null,
     inviteCode: genId('inv'),
-    checkin: { lastDate: null, consecutive: 0 },
+    checkin: { lastDate: null, consecutive: 0, experienceConsecutive: 0 },
+    experienceBase: 0,
+    experienceMigratedAt: Date.now(),
     createdAt: Date.now(),
     lastLoginAt: Date.now(),
     latitude: null,
@@ -330,7 +336,10 @@ function reactivateUser(user, { phone = null, email = null, password = null, rol
   user.totalInvited = 0;
   user.invitedBy = null;
   user.restrictions = { publish: false, chat: false };
-  user.checkin = { lastDate: null, consecutive: 0 };
+  user.checkin = { lastDate: null, consecutive: 0, experienceConsecutive: 0 };
+  user.experienceBase = 0;
+  user.experienceMigratedAt = Date.now();
+  cache.experienceEvents = (cache.experienceEvents || []).filter(event => event.userId !== user.id);
   user.lastLoginAt = Date.now();
   user.latitude = null;
   user.longitude = null;
@@ -696,48 +705,175 @@ function markInteractionsRead(userId, ids = null) {
 }
 
 // ===== User level system =====
-// Experience is derived from a user's contributions. Higher activity => higher level.
-// The function is PURE (no DB writes) so it can be called freely in route responses.
+// Existing users receive one frozen baseline from the legacy contribution formula.
+// All experience earned after migration is stored as an idempotent event.
 const LEVEL_TIERS = [
-  { min: 0,    title: '漂流萌新' },
-  { min: 50,   title: '海岛常客' },
-  { min: 150,  title: '拾贝旅人' },
-  { min: 350,  title: '听涛者'   },
-  { min: 700,  title: '掌灯人'   },
-  { min: 1200, title: '屿中贤者' },
-  { min: 2000, title: '漂屿之星' }
+  { level: 1, min: 0, title: '初到海岸' },
+  { level: 2, min: 20, title: '拾贝者' },
+  { level: 3, min: 60, title: '漂流者' },
+  { level: 4, min: 120, title: '灯塔守望者' },
+  { level: 5, min: 220, title: '群岛旅人' },
+  { level: 6, min: 360, title: '潮汐信使' },
+  { level: 7, min: 550, title: '深海回声' },
+  { level: 8, min: 800, title: '星海航行者' },
+  { level: 9, min: 1120, title: '群岛领航员' },
+  { level: 10, min: 1500, title: '漂屿传说' }
 ];
 
-function computeUserLevel(user) {
-  if (!user) return { level: 1, title: LEVEL_TIERS[0].title, exp: 0, nextExp: LEVEL_TIERS[1].min, progress: 0 };
+const EXPERIENCE_RULES = {
+  daily_checkin: { points: 2, dailyLimit: 1, label: '每日签到' },
+  profile_completed: { points: 10, once: true, label: '完善资料' },
+  bottle_created: { points: 2, dailyLimit: 3, label: '发布漂流瓶' },
+  bottle_reply: { points: 3, dailyLimit: 5, label: '有效回复' },
+  moment_created: { points: 3, dailyLimit: 2, label: '发布动态' },
+  comment_created: { points: 1, dailyLimit: 5, label: '有效评论' },
+  like_received: { points: 1, dailyLimit: 5, label: '收到点赞' },
+  report_accepted: { points: 2, dailyLimit: 3, label: '有效举报' },
+  streak_bonus: { points: 0, label: '连续签到奖励' }
+};
+
+function legacyContributionExperience(user, now = Date.now()) {
+  if (!user) return 0;
   const momentsCount = (cache.moments || []).filter(m => m.userId === user.id && !m.deleted).length;
   const bottlesCount = (cache.bottles || []).filter(b => b.authorId === user.id && !b.deleted).length;
   const chatCount = (cache.chatSessions || []).filter(s => s.userA === user.id || s.userB === user.id).length;
-  const daysSinceJoin = Math.max(0, Math.floor((Date.now() - (user.createdAt || Date.now())) / (1000 * 60 * 60 * 24)));
+  const daysSinceJoin = Math.max(0, Math.floor((now - (user.createdAt || now)) / 86400000));
   const coinsEarned = Math.max(0, Math.round((user.totalRecharged || 0) + (user.totalInvited || 0) * 2));
-  // Weighted experience score.
-  const exp = Math.round(
+  return Math.max(0, Math.round(
     momentsCount * 10 +
     bottlesCount * 8 +
     chatCount * 5 +
     daysSinceJoin * 2 +
-    coinsEarned * 1 +
+    coinsEarned +
     (user.coins || 0) * 0.2
-  );
-  let level = 1;
-  for (let i = 0; i < LEVEL_TIERS.length; i++) {
-    if (exp >= LEVEL_TIERS[i].min) level = i + 1;
+  ));
+}
+
+function migrateExperienceSystem(persist = true) {
+  if (!cache) return false;
+  let changed = false;
+  if (!Array.isArray(cache.experienceEvents)) {
+    cache.experienceEvents = [];
+    changed = true;
   }
-  const curMin = LEVEL_TIERS[level - 1].min;
-  const nextMin = level < LEVEL_TIERS.length ? LEVEL_TIERS[level].min : null;
-  const progress = nextMin ? Math.min(100, Math.round(((exp - curMin) / (nextMin - curMin)) * 100)) : 100;
+  const migratedAt = Date.now();
+  for (const user of cache.users || []) {
+    if (!user.checkin || typeof user.checkin !== 'object') {
+      user.checkin = { lastDate: null, consecutive: 0, experienceConsecutive: 0 };
+      changed = true;
+    } else if (!Number.isFinite(user.checkin.experienceConsecutive)) {
+      user.checkin.experienceConsecutive = 0;
+      changed = true;
+    }
+    if (!Number.isFinite(user.experienceMigratedAt)) {
+      user.experienceBase = legacyContributionExperience(user, migratedAt);
+      user.experienceMigratedAt = migratedAt;
+      changed = true;
+    } else if (!Number.isFinite(user.experienceBase)) {
+      user.experienceBase = 0;
+      changed = true;
+    }
+  }
+  if (changed && persist) save();
+  return changed;
+}
+
+function computeUserLevel(userOrId) {
+  const user = typeof userOrId === 'string' ? findUserById(userOrId) : userOrId;
+  const eventExp = user
+    ? (cache.experienceEvents || [])
+      .filter(event => event.userId === user.id)
+      .reduce((sum, event) => sum + Math.max(0, Number(event.points) || 0), 0)
+    : 0;
+  const exp = Math.max(0, Math.round((user && Number(user.experienceBase)) || 0) + eventExp);
+  let tier = LEVEL_TIERS[0];
+  for (const candidate of LEVEL_TIERS) {
+    if (exp >= candidate.min) tier = candidate;
+  }
+  const nextTier = LEVEL_TIERS[tier.level] || null;
+  const currentExp = exp - tier.min;
+  const progress = nextTier
+    ? Math.max(0, Math.min(100, Math.round((currentExp / (nextTier.min - tier.min)) * 100)))
+    : 100;
   return {
-    level,
-    title: LEVEL_TIERS[level - 1].title,
+    level: tier.level,
+    title: tier.title,
     exp,
-    nextExp: nextMin,
-    progress
+    currentExp,
+    nextExp: nextTier ? nextTier.min : null,
+    progress,
+    maxLevel: LEVEL_TIERS.length
   };
+}
+
+function chinaDateKey(timestamp) {
+  return new Date(timestamp + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+function noExperienceAward(user, reason, event = null) {
+  const level = computeUserLevel(user);
+  return { awarded: 0, reason, event, level, previousLevel: level.level, leveledUp: false };
+}
+
+function awardExperience(userId, type, { eventKey, sourceId = null, now = Date.now(), points = null } = {}) {
+  const user = findUserById(userId);
+  if (!user) throw new Error('Experience user not found');
+  const rule = EXPERIENCE_RULES[type];
+  if (!rule) throw new Error('Experience rule not found');
+  const normalizedKey = String(eventKey || '').trim();
+  if (!normalizedKey) throw new Error('Experience eventKey is required');
+  const timestamp = Number(now);
+  if (!Number.isFinite(timestamp)) throw new Error('Experience timestamp is invalid');
+  if (!Array.isArray(cache.experienceEvents)) cache.experienceEvents = [];
+
+  const existing = cache.experienceEvents.find(event => event.eventKey === normalizedKey);
+  if (existing) return noExperienceAward(user, 'duplicate', existing);
+  if (rule.once && cache.experienceEvents.some(event => event.userId === userId && event.type === type)) {
+    return noExperienceAward(user, 'already_awarded');
+  }
+
+  const dateKey = chinaDateKey(timestamp);
+  if (rule.dailyLimit) {
+    const used = cache.experienceEvents.filter(event =>
+      event.userId === userId && event.type === type && event.dateKey === dateKey
+    ).length;
+    if (used >= rule.dailyLimit) return noExperienceAward(user, 'daily_limit');
+  }
+
+  const awardedPoints = rule.points > 0 ? rule.points : Math.max(0, Math.round(Number(points) || 0));
+  if (awardedPoints <= 0) return noExperienceAward(user, 'zero_points');
+  const before = computeUserLevel(user);
+  const event = {
+    id: genId('xp'),
+    userId,
+    type,
+    label: rule.label,
+    points: awardedPoints,
+    eventKey: normalizedKey,
+    sourceId,
+    dateKey,
+    createdAt: timestamp
+  };
+  cache.experienceEvents.push(event);
+  save();
+  const level = computeUserLevel(user);
+  return {
+    awarded: awardedPoints,
+    reason: 'awarded',
+    event,
+    level,
+    previousLevel: before.level,
+    leveledUp: level.level > before.level
+  };
+}
+
+function getExperienceHistory(userId, limit = 20) {
+  const safeLimit = Math.max(1, Math.min(100, Number(limit) || 20));
+  return (cache.experienceEvents || [])
+    .filter(event => event.userId === userId)
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .slice(0, safeLimit)
+    .map(event => ({ ...event }));
 }
 
 function updateUserLocation(userId, latitude, longitude) {
@@ -1149,7 +1285,11 @@ module.exports = {
   getUnreadInteractionCount,
   markInteractionsRead,
   computeUserLevel,
+  awardExperience,
+  getExperienceHistory,
+  migrateExperienceSystem,
   LEVEL_TIERS,
+  EXPERIENCE_RULES,
   // Notification helpers
   createNotification,
   getUserNotifications,
