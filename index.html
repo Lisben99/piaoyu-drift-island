@@ -4215,6 +4215,7 @@ function renderCommunityFeed(sort) {
   c.innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
   window._communityOffset = 0;
   window._communitySort = sort;
+  window._communityFeedSession = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
   loadMoreCommunity(true);
 }
 
@@ -4225,13 +4226,16 @@ async function loadMoreCommunity(reset) {
   try {
     const sort = window._communitySort || 'recommend';
     const topicQuery = window._activeInterestId ? '&topicId=' + encodeURIComponent(window._activeInterestId) : '';
-    const res = await api('/moments/community?limit=20&offset=' + window._communityOffset + '&sort=' + sort + topicQuery);
+    const feedSession = '&feedSession=' + encodeURIComponent(window._communityFeedSession || '');
+    const res = await api('/moments/community?limit=20&offset=' + window._communityOffset + '&sort=' + sort + topicQuery + feedSession);
     if (res.success) {
       if (reset) c.innerHTML = '';
       if (!res.moments.length && reset) {
         c.innerHTML = sort === 'following'
           ? '<div class="empty-state"><div class="empty-state__icon">👥</div><div class="empty-state__title">关注的人还没有发布动态</div><div class="empty-state__desc">去最新动态看看，关注感兴趣的用户吧</div></div>'
-          : '<div class="empty-state"><div class="empty-state__icon">📝</div><div class="empty-state__title">还没有动态</div><div class="empty-state__desc">点击右上角 + 发布第一条动态吧</div></div>';
+          : sort === 'recommend'
+            ? '<div class="empty-state"><div class="empty-state__icon">🌿</div><div class="empty-state__title">今天的推荐已经看完</div><div class="empty-state__desc">去“最新”看看刚发布的内容，稍后再来会有新的推荐</div></div>'
+            : '<div class="empty-state"><div class="empty-state__icon">📝</div><div class="empty-state__title">最近 24 小时还没有新动态</div><div class="empty-state__desc">点击右上角“发布”，成为今天第一个分享的人</div></div>';
       } else {
         c.insertAdjacentHTML('beforeend', res.moments.map(momentCardHtml).join(''));
         window._communityOffset += res.moments.length;

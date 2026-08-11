@@ -6,7 +6,7 @@ const express = require('express');
 const db = require('./src/db');
 const cache = db.db();
 cache.users = []; cache.moments = []; cache.follows = []; cache.interactions = [];
-cache.blacklist = []; cache.contentDismissals = []; cache.experienceEvents = [];
+cache.blacklist = []; cache.contentDismissals = []; cache.feedExposures = []; cache.experienceEvents = [];
 const user = db.createUser('13900000002', '', ''); user.nickname = '共鸣测试者';
 const other = db.createUser('13900000003', '', ''); other.nickname = '音乐旅人';
 
@@ -33,9 +33,10 @@ const call = async (method, path, body) => {
     assert.deepEqual(interests.json.interestIds, ['music', 'reading', 'travel']);
     const policy = await call('PATCH', '/api/profile/chat-policy', { strangerChatPolicy: 'closed' });
     assert.equal(policy.json.strangerChatPolicy, 'closed');
-    db.createMoment(other.id, { content: '一首歌的共鸣', type: 'community', topicId: 'music', mood: 'calm' });
+    const publicPost = db.createMoment(other.id, { content: '一首歌的共鸣', type: 'community', topicId: 'music', mood: 'calm' });
+    publicPost.createdAt = Date.now() - 2 * 86400000;
     db.createMoment(other.id, { content: 'private hidden', type: 'moment' });
-    const feed = await call('GET', '/api/moments/community?sort=recommend&topicId=music');
+    const feed = await call('GET', '/api/moments/community?sort=recommend&topicId=music&feedSession=http-test');
     assert.equal(feed.json.moments.length, 1); assert.equal(feed.json.moments[0].topicId, 'music');
     assert.equal(feed.json.moments[0].resonanceCount, 0);
     const search = await call('GET', '/api/community/search?q=private');

@@ -13,6 +13,7 @@ const {
   createMoment,
   getMomentById,
   listMoments,
+  recordFeedExposures,
   updateMoment,
   dismissMoment,
   haveChatted,
@@ -112,8 +113,12 @@ router.get('/community', (req, res) => {
   const sort = ['recommend', 'latest', 'following'].includes(req.query.sort) ? req.query.sort : 'recommend';
   const followedByUserId = sort === 'following' ? req.user.id : null;
   const topicId = req.query.topicId || null;
+  const feedSessionId = String(req.query.feedSession || '').slice(0, 80);
   if (topicId && !isTopicId(topicId)) return res.status(400).json({ success: false, error: '无效话题' });
-  const { items, total } = listMoments({ community: true, viewerId: req.user.id, followedByUserId, topicId, sort, limit, offset });
+  const { items, total } = listMoments({ community: true, viewerId: req.user.id, followedByUserId, topicId, sort, limit, offset, feedSessionId });
+  if (sort === 'recommend') {
+    recordFeedExposures(req.user.id, items.map(item => item.id), { feed: 'recommend', sessionId: feedSessionId });
+  }
   res.json({
     success: true,
     moments: items.map(m => enrich(m, req.user.id)),

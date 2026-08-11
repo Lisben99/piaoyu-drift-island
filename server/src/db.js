@@ -108,6 +108,7 @@ function createDefaultDB() {
     interactions: [],
     experienceEvents: [],
     contentDismissals: [],
+    feedExposures: [],
     config: { ...DEFAULT_CONFIG },
     admins: [DEFAULT_ADMIN]
   };
@@ -450,7 +451,7 @@ function getMomentById(id) {
 //                Community posts are NEVER mixed into a personal page.
 //                viewerId: when set & differs from userId, the private 朋友圈 are only
 //                returned if the viewer has chatted with the author (friend circle).
-function listMoments({ userId = null, community = false, viewerId = null, followedByUserId = null, topicId = null, sort = 'latest', limit = 20, offset = 0 } = {}) {
+function listMoments({ userId = null, community = false, viewerId = null, followedByUserId = null, topicId = null, sort = 'latest', limit = 20, offset = 0, now = Date.now(), feedSessionId = '' } = {}) {
   let list = cache.moments.filter(m => !m.deleted);
 
   if (community) {
@@ -475,6 +476,31 @@ function listMoments({ userId = null, community = false, viewerId = null, follow
       );
       list = list.filter(m => followedIds.has(m.userId));
     }
+    if (sort === 'latest') {
+      list = list.filter(m => m.createdAt >= now - 86400000);
+    } else if (sort === 'recommend' && viewerId) {
+      const oldest = now - 14 * 86400000;
+      const latestBoundary = now - 86400000;
+      const recentlySeen = new Set((cache.feedExposures || [])
+        .filter(item => item.userId === viewerId && item.feed === 'recommend' &&
+          item.createdAt >= latestBoundary && item.sessionId !== feedSessionId)
+        .map(item => item.momentId));
+      list = list.filter(m =>
+        m.userId !== viewerId &&
+        m.createdAt < latestBoundary &&
+        m.createdAt >= oldest &&
+        !recentlySeen.has(m.id)
+      );
+      const eligible = list.filter(m => {
+        const author = findUserById(m.userId);
+        return author && author.status === 'active';
+      });
+      const human = eligible.filter(m => {
+        const author = findUserById(m.userId);
+        return author && author.account_type !== 'BOT';
+      });
+      list = human.length ? human : eligible;
+    }
   }
 
   if (userId) {
@@ -490,21 +516,52 @@ function listMoments({ userId = null, community = false, viewerId = null, follow
   if (community && sort === 'recommend' && viewerId) {
     const viewer = findUserById(viewerId) || {};
     const interests = new Set(viewer.interestIds || []);
-    const now = Date.now();
+    const followedIds = new Set(getFollows().filter(f => f.followerId === viewerId).map(f => f.followeeId));
     const score = m => {
       const interestMatch = m.topicId && interests.has(m.topicId) ? 1 : 0;
       const affinity = (cache.interactions || []).some(i => i.actorId === viewerId && i.targetUserId === m.userId) ? 1 : 0;
-      const freshness = Math.max(0, 1 - (now - m.createdAt) / (7 * 86400000));
-      const quality = Math.min(1, ((m.likes || []).length + (m.comments || []).length * 2) / 20);
-      return interestMatch * 35 + affinity * 25 + freshness * 25 + quality * 15;
+      const freshness = Math.max(0, 1 - (now - m.createdAt - 86400000) / (13 * 86400000));
+      const quality = Math.min(1, ((m.likes || []).length + (m.comments || []).length * 2) / 12);
+      const authorPostCount = cache.moments.filter(item => !item.deleted && item.userId === m.userId && item.type !== 'moment').length;
+      const lowExposureCreator = authorPostCount <= 3 ? 1 : 0;
+      const dailyPrompt = m.dailyPromptId ? 1 : 0;
+      const reportPenalty = Math.min(30, (cache.reports || []).filter(report =>
+        report.targetId === m.id && report.status !== 'dismissed'
+      ).length * 10);
+      const followedPenalty = followedIds.has(m.userId) ? 5 : 0;
+      return interestMatch * 35 + quality * 20 + affinity * 15 + freshness * 15 +
+        lowExposureCreator * 10 + dailyPrompt * 5 - reportPenalty - followedPenalty;
     };
     list.sort((a, b) => score(b) - score(a) || b.createdAt - a.createdAt);
+    const diversified = [];
+    for (const moment of list) {
+      const block = diversified.slice(Math.floor(diversified.length / 10) * 10);
+      if (block.some(item => item.userId === moment.userId)) continue;
+      if (moment.topicId && block.filter(item => item.topicId === moment.topicId).length >= 3) continue;
+      if (followedIds.has(moment.userId) && block.filter(item => followedIds.has(item.userId)).length >= 2) continue;
+      diversified.push(moment);
+    }
+    list = diversified;
   } else {
     list.sort((a, b) => b.createdAt - a.createdAt);
   }
   const total = list.length;
   const items = list.slice(offset, offset + limit);
   return { items, total };
+}
+
+function recordFeedExposures(userId, momentIds, { feed = 'recommend', sessionId = '', now = Date.now() } = {}) {
+  if (!userId || !Array.isArray(momentIds) || !momentIds.length) return 0;
+  if (!Array.isArray(cache.feedExposures)) cache.feedExposures = [];
+  cache.feedExposures = cache.feedExposures.filter(item => item.createdAt >= now - 7 * 86400000);
+  let added = 0;
+  for (const momentId of [...new Set(momentIds)]) {
+    if (cache.feedExposures.some(item => item.userId === userId && item.momentId === momentId && item.feed === feed && item.sessionId === sessionId)) continue;
+    cache.feedExposures.push({ id: genId('exposure'), userId, momentId, feed, sessionId, createdAt: now });
+    added += 1;
+  }
+  if (added) save();
+  return added;
 }
 
 function updateMoment(momentId, userId, updates = {}) {
@@ -1337,6 +1394,7 @@ module.exports = {
   createMoment,
   getMomentById,
   listMoments,
+  recordFeedExposures,
   updateMoment,
   dismissMoment,
   haveChatted,
