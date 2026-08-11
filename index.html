@@ -3765,9 +3765,18 @@ async function renderUserMoments(userId) {
       }
 
       if (!res.moments.length) {
-        html += isOwn
-          ? `<div class="moments-timeline" style="padding-top:80px;text-align:center;color:#b0ada4;font-size:14px">还没有动态，发布一条分享此刻吧~</div>`
-          : '<div class="empty-state" style="margin-top:30px"><div class="empty-state__icon">📝</div><div class="empty-state__title">还没有动态</div></div>';
+        if (isOwn) {
+          html += `<div class="moments-timeline" style="padding-top:80px;text-align:center;color:#b0ada4;font-size:14px">还没有动态，发布一条分享此刻吧~</div>`;
+        } else if (!res.canViewCircle) {
+          // Stranger: 朋友圈 is private, only unlocked after chatting.
+          html += `<div class="empty-state" style="margin-top:30px">
+            <div class="empty-state__icon">🔒</div>
+            <div class="empty-state__title">这是 TA 的朋友圈</div>
+            <div class="empty-state__desc">只对自己和聊过天的人可见，和 TA 私聊后即可查看</div>
+          </div>`;
+        } else {
+          html += '<div class="empty-state" style="margin-top:30px"><div class="empty-state__icon">📝</div><div class="empty-state__title">TA 还没有发布朋友圈</div></div>';
+        }
       } else {
         // Moments-style: group by date, no per-card avatar/name for own timeline
         html += momentsTimelineHtml(res.moments, isOwn);

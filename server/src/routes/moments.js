@@ -13,6 +13,7 @@ const {
   createMoment,
   getMomentById,
   listMoments,
+  haveChatted,
   deleteMoment,
   toggleMomentLike,
   addMomentComment,
@@ -84,7 +85,9 @@ router.get('/community', (req, res) => {
   });
 });
 
-// A single user's moments (personal feed) + public profile.
+// A single user's moments (personal 朋友圈 feed) + public profile.
+// The 朋友圈 pool is separate from the community feed — only type==='moment' posts
+// are returned, and only to the author or a user who has chatted with them.
 router.get('/user/:userId', (req, res) => {
   const u = findUserById(req.params.userId);
   if (!u || u.status === 'deleted') {
@@ -92,6 +95,8 @@ router.get('/user/:userId', (req, res) => {
   }
   const limit = Math.min(parseInt(req.query.limit) || 30, 50);
   const offset = parseInt(req.query.offset) || 0;
+  const isSelf = req.user.id === u.id;
+  const canViewCircle = isSelf || haveChatted(req.user.id, u.id);
   const { items, total } = listMoments({ userId: u.id, viewerId: req.user.id, limit, offset });
   res.json({
     success: true,
@@ -102,6 +107,8 @@ router.get('/user/:userId', (req, res) => {
       gender: u.gender || '',
       bio: u.bio || ''
     },
+    isSelf,
+    canViewCircle,
     moments: items.map(m => enrich(m, req.user.id)),
     total
   });

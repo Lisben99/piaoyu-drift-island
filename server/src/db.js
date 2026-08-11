@@ -392,9 +392,11 @@ function getActiveBottles(filters = {}) {
 
 // ===== Moment (动态) helpers =====
 // A "moment" is a user post (text + optional images).
-//   type: 'community' (default) -> public, appears in the community feed + user profile
-//   type: 'moment'   (朋友圈)   -> private, only visible to the author and users who
-//                                  have had a conversation (chat session) with the author
+// The two feeds are SEPARATE content pools:
+//   type: 'community' (default) -> public, appears ONLY in the community feed.
+//   type: 'moment'   (朋友圈)   -> private, appears ONLY on the author's personal page
+//                                  (朋友圈), visible to the author and users who have
+//                                  had a conversation (chat session) with the author.
 // Images are stored as compressed data URLs.
 function createMoment(userId, { content = '', images = [], type = 'community' } = {}) {
   const moment = {
@@ -420,24 +422,30 @@ function getMomentById(id) {
 }
 
 // List non-deleted moments, newest first, with pagination + visibility rules.
-//   userId    -> only this user's moments (personal feed)
-//   community -> only PUBLIC moments (type !== 'moment'); used by the community feed
-//   viewerId  -> when set & differs from userId, private 朋友圈 (type='moment') are
-//                only returned if the viewer has chatted with the author.
+//
+// The two feeds are COMPLETELY SEPARATE content pools — no intersection:
+//   community -> only PUBLIC moments (type === 'community' or legacy/no-type).
+//                Used by the community feed. 朋友圈 (type='moment') never appear here.
+//   userId    -> only the author's PRIVATE moments (type === 'moment') — their 朋友圈.
+//                Community posts are NEVER mixed into a personal page.
+//                viewerId: when set & differs from userId, the private 朋友圈 are only
+//                returned if the viewer has chatted with the author (friend circle).
 function listMoments({ userId = null, community = false, viewerId = null, limit = 20, offset = 0 } = {}) {
   let list = cache.moments.filter(m => !m.deleted);
 
   if (community) {
     // Community feed: public posts only (legacy moments with no type are public).
+    // 朋友圈 (type='moment') are excluded — the two pools never intersect.
     list = list.filter(m => m.type !== 'moment');
   }
 
   if (userId) {
-    list = list.filter(m => m.userId === userId);
-    // Privacy: when viewing someone else's profile, hide their 朋友圈 unless the
-    // viewer has had a conversation with them.
+    // Personal page (朋友圈): ONLY private moments. Community posts live in the
+    // community feed and are never shown here, for the author or anyone else.
+    list = list.filter(m => m.userId === userId && m.type === 'moment');
     if (viewerId && viewerId !== userId) {
-      list = list.filter(m => m.type !== 'moment' || haveChatted(viewerId, userId));
+      // Not the author: only a friend circle (viewer has chatted with them) may see it.
+      if (!haveChatted(viewerId, userId)) list = [];
     }
   }
 
