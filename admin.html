@@ -372,14 +372,14 @@ async function renderDashboard() {
         <div class="card__title">最近注册用户</div>
         <table class="table">
           <thead><tr><th>手机号</th><th>邮箱</th><th>昵称</th><th>状态</th><th>注册时间</th></tr></thead>
-          <tbody>${res.recentUsers.map(u => `<tr><td>${u.phone}</td><td>${u.email || '-'}</td><td>${u.nickname}</td><td><span class="badge ${badgeClass(u.status)}">${u.status}</span></td><td>${formatTime(u.createdAt)}</td></tr>`).join('')}</tbody>
+          <tbody>${res.recentUsers.map(u => `<tr><td>${escapeHtml(u.phone)}</td><td>${escapeHtml(u.email || '-')}</td><td>${escapeHtml(u.nickname)}</td><td><span class="badge ${badgeClass(u.status)}">${u.status}</span></td><td>${formatTime(u.createdAt)}</td></tr>`).join('')}</tbody>
         </table>
       </div>
       <div class="card">
         <div class="card__title">最近举报</div>
         <table class="table">
           <thead><tr><th>类型</th><th>原因</th><th>状态</th><th>时间</th></tr></thead>
-          <tbody>${res.recentReports.map(r => `<tr><td>${r.targetType}</td><td>${r.reason}</td><td><span class="badge ${badgeClass(r.status)}">${r.status}</span></td><td>${formatTime(r.createdAt)}</td></tr>`).join('')}</tbody>
+          <tbody>${res.recentReports.map(r => `<tr><td>${escapeHtml(r.targetType)}</td><td>${escapeHtml(r.reason)}</td><td><span class="badge ${badgeClass(r.status)}">${r.status}</span></td><td>${formatTime(r.createdAt)}</td></tr>`).join('')}</tbody>
         </table>
       </div>
     </div>`;
@@ -387,10 +387,12 @@ async function renderDashboard() {
 
 /* ===== Users ===== */
 let userSearch = '', userStatus = 'all';
+let usersCache = [];
 async function renderUsers() {
   const res = await api(`/users?search=${encodeURIComponent(userSearch)}&status=${userStatus}&page=${pagination.page}&pageSize=${pagination.pageSize}`);
   if (!res.success) return;
   pagination.total = res.total;
+  usersCache = res.users;
   const c = document.getElementById('pageContent');
   c.innerHTML = `
     <div class="search-bar">
@@ -411,16 +413,16 @@ async function renderUsers() {
         <tbody>
           ${res.users.map(u => `<tr>
             <td>${fmtId(u.id)}</td>
-            <td>${u.phone}</td>
-            <td>${u.email || '-'}</td>
-            <td>${u.nickname}</td>
+            <td>${escapeHtml(u.phone)}</td>
+            <td>${escapeHtml(u.email || '-')}</td>
+            <td>${escapeHtml(u.nickname)}</td>
             <td>${u.gender==='male'?'男':u.gender==='female'?'女':'-'}</td>
             <td>${u.coins}</td>
             <td><span class="badge ${badgeClass(u.status)}">${u.status}</span></td>
             <td>${formatTime(u.createdAt)}</td>
             <td class="table__actions">
               <button class="btn-sm btn-ghost" onclick="viewUser('${u.id}')">详情</button>
-              <button class="btn-sm btn-warning" onclick="showPenalize('${u.id}','${u.nickname}','${u.status}')">处罚</button>
+              <button class="btn-sm btn-warning" onclick="showPenalize('${u.id}')">处罚</button>
             </td>
           </tr>`).join('')}
         </tbody>
@@ -435,10 +437,10 @@ async function viewUser(id) {
   const u = res.user;
   openModal('用户详情', `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-      <div><b>手机号:</b> ${u.phone}</div>
-      <div><b>邮箱:</b> ${u.email || '未设置'}</div>
-      <div><b>昵称:</b> ${u.nickname || '未设置'}</div>
-      <div><b>性别:</b> ${u.gender || '未设置'}</div>
+      <div><b>手机号:</b> ${escapeHtml(u.phone)}</div>
+      <div><b>邮箱:</b> ${escapeHtml(u.email || '未设置')}</div>
+      <div><b>昵称:</b> ${escapeHtml(u.nickname || '未设置')}</div>
+      <div><b>性别:</b> ${escapeHtml(u.gender || '未设置')}</div>
       <div><b>用户ID:</b> ${fmtId(u.id)}</div>
       <div><b>状态:</b> <span class="badge ${badgeClass(u.status)}">${u.status}</span></div>
       <div><b>漂流币:</b> ${u.coins}</div>
@@ -451,13 +453,15 @@ async function viewUser(id) {
       <div><b>限制聊天:</b> ${u.restrictions?.chat ? '是' : '否'}</div>
     </div>
     <h4 style="margin:16px 0 8px">漂流瓶 (${u.bottles?.length || 0})</h4>
-    <div style="max-height:200px;overflow-y:auto">${(u.bottles||[]).slice(-10).map(b => `<div style="padding:8px;border-bottom:1px solid #eee;font-size:13px"><span class="badge ${badgeClass(b.status)}">${b.status}</span> ${b.content.slice(0,50)}...</div>`).join('') || '<div style="color:#999">无</div>'}</div>
+    <div style="max-height:200px;overflow-y:auto">${(u.bottles||[]).slice(-10).map(b => `<div style="padding:8px;border-bottom:1px solid #eee;font-size:13px"><span class="badge ${badgeClass(b.status)}">${b.status}</span> ${escapeHtml(b.content.slice(0,50))}...</div>`).join('') || '<div style="color:#999">无</div>'}</div>
     <h4 style="margin:16px 0 8px">漂流币明细 (最近20条)</h4>
     <div style="max-height:200px;overflow-y:auto">${(u.transactions||[]).slice(-20).reverse().map(t => `<div style="padding:6px 0;border-bottom:1px solid #f5f5f5;font-size:13px;display:flex;justify-content:space-between"><span>${t.description}</span><span style="color:${t.amount>0?'#27ae60':'#e74c3c'};font-weight:700">${t.amount>0?'+':''}${t.amount}</span></div>`).join('') || '<div style="color:#999">无</div>'}</div>
   `);
 }
 
-function showPenalize(id, name, currentStatus) {
+function showPenalize(id) {
+  const u = (usersCache || []).find(x => x.id === id);
+  const name = u ? u.nickname : '该用户';
   openModal('处罚用户 - ' + name, `
     <div class="form-group">
       <label>处罚操作</label>
@@ -506,8 +510,8 @@ async function renderBottles() {
         <thead><tr><th>内容</th><th>作者</th><th>性别</th><th>状态</th><th>发布时间</th><th>操作</th></tr></thead>
         <tbody>
           ${res.bottles.map(b => `<tr>
-            <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.content}</td>
-            <td>${b.authorNickname || '匿名'}</td>
+            <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(b.content)}</td>
+            <td>${escapeHtml(b.authorNickname || '匿名')}</td>
             <td>${b.authorGender==='male'?'男':'女'}</td>
             <td><span class="badge ${badgeClass(b.status)}">${b.status}</span></td>
             <td>${formatTime(b.createdAt)}</td>
@@ -801,10 +805,10 @@ async function renderReports() {
         <thead><tr><th>举报类型</th><th>目标ID</th><th>原因</th><th>说明</th><th>状态</th><th>时间</th><th>操作</th></tr></thead>
         <tbody>
           ${res.reports.map(r => `<tr>
-            <td>${r.targetType}</td>
+            <td>${escapeHtml(r.targetType)}</td>
             <td>${fmtId(r.targetId)}</td>
-            <td>${r.reason}</td>
-            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${r.description || '-'}</td>
+            <td>${escapeHtml(r.reason)}</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(r.description || '-')}</td>
             <td><span class="badge ${badgeClass(r.status)}">${r.status}</span></td>
             <td>${formatTime(r.createdAt)}</td>
             <td>${r.status==='pending' ? `<button class="btn-sm btn-success" onclick="handleReport('${r.id}','resolved')">处置</button><button class="btn-sm btn-ghost" onclick="handleReport('${r.id}','dismissed')">驳回</button>` : '-'}</td>

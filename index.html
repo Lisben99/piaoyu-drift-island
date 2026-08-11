@@ -1893,12 +1893,12 @@ async function renderLobby() {
           <div class="bottle-card__head">
             ${avatarMarkup(name, avatar, 'bottle-card__avatar', color)}
             <div>
-              <div class="bottle-card__name">${name}${isSelf?' (我)':''}${isAnon?'<span class="bottle-card__anon">匿名</span>':''}</div>
+              <div class="bottle-card__name">${escapeHtml(name)}${isSelf?' (我)':''}${isAnon?'<span class="bottle-card__anon">匿名</span>':''}</div>
               <div class="bottle-card__role">${isAnon ? '神秘岛民' : genderText(b.authorGender)}</div>
             </div>
             <div class="bottle-card__time">${formatTime(b.createdAt)}</div>
           </div>
-          <div class="bottle-card__content">${b.content}</div>
+          <div class="bottle-card__content">${escapeHtml(b.content)}</div>
           <div class="bottle-card__footer">
             <div class="bottle-card__status">${statusLabel(b.status)}</div>
             <div class="bottle-card__actions">
@@ -2049,7 +2049,7 @@ async function renderMineBottles() {
     if (res.success && res.bottles.length > 0) {
       $('mineBottlesList').innerHTML = '<div class="bottle-list">' + res.bottles.map(b => `
         <div class="bottle-card">
-          <div class="bottle-card__content">${b.content}</div>
+          <div class="bottle-card__content">${escapeHtml(b.content)}</div>
           <div class="bottle-card__footer">
             <div class="bottle-card__status">${statusLabel(b.status)} · ${formatTime(b.createdAt)}${b.anonymous ? ' · <span class="bottle-card__anon">匿名</span>' : ''}</div>
             <div style="display:flex;gap:8px;align-items:center">
@@ -2209,10 +2209,10 @@ async function renderMessages() {
             <div class="message-item__avatar" style="background:${color}">${avatarInitial(name)}</div>
             <div class="message-item__body">
               <div class="message-item__top">
-                <div class="message-item__name">${name}</div>
+                <div class="message-item__name">${escapeHtml(name)}</div>
                 <div class="message-item__time">${s.lastMessageAt ? formatTime(s.lastMessageAt) : formatTime(s.startedAt)}</div>
               </div>
-              <div class="message-item__preview">${preview}</div>
+              <div class="message-item__preview">${escapeHtml(preview)}</div>
             </div>
             <div class="message-item__badge">${badgeHtml}</div>
           </div>`;
@@ -2231,10 +2231,10 @@ async function renderMessages() {
             <div class="message-item__avatar" style="background:${color};cursor:pointer" onclick="event.stopPropagation();viewUserMoments('${s.otherUserId}')">${avatarInitial(name)}</div>
             <div class="message-item__body">
               <div class="message-item__top">
-                <div class="message-item__name">${name}</div>
+                <div class="message-item__name">${escapeHtml(name)}</div>
                 <div class="message-item__time">${s.lastMessageAt ? formatTime(s.lastMessageAt) : formatTime(s.startedAt)}</div>
               </div>
-              <div class="message-item__preview">${preview}</div>
+              <div class="message-item__preview">${escapeHtml(preview)}</div>
             </div>
             <div class="message-item__badge">${badgeHtml}</div>
           </div>
@@ -3304,12 +3304,12 @@ function renderEditProfile() {
     </div>
     <div class="edit-field">
       <label>昵称</label>
-      <input type="text" id="editNickname" value="${name}" maxlength="20" placeholder="设置一个昵称">
+      <input type="text" id="editNickname" value="${escapeHtml(name)}" maxlength="20" placeholder="设置一个昵称">
       <div class="hint">最多20字</div>
     </div>
     <div class="edit-field">
       <label>个性签名</label>
-      <textarea id="editBio" maxlength="100" placeholder="写点什么介绍自己...">${u.bio || ''}</textarea>
+      <textarea id="editBio" maxlength="100" placeholder="写点什么介绍自己...">${escapeHtml(u.bio || '')}</textarea>
       <div class="hint">最多100字</div>
     </div>
     <button class="primary-button" onclick="saveProfile()">保存</button>`;
