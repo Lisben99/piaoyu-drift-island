@@ -61,7 +61,7 @@ async function call(method, path, body) {
   assert.equal(detail.json.level.exp, 3, 'level detail reflects route awards');
   assert.equal(detail.json.tiers.length, 10, 'level detail exposes all ten public tiers');
   assert.ok(detail.json.rules.some(rule => rule.type === 'moment_created'), 'level detail exposes public earning rules');
-  assert.equal(detail.json.history[0].type, 'moment_created', 'level detail includes recent experience history');
+  assert.equal(detail.json.history[0].type, 'community_daily_post', 'level detail includes recent experience history');
 
   const checkin = await call('POST', '/api/coins/checkin');
   assert.equal(checkin.json.success, true);
@@ -92,10 +92,10 @@ async function call(method, path, body) {
   assert.equal(comment.json.experienceAward.awarded, 1, 'commenting awards one experience');
   const like = await call('POST', `/api/moments/${commentedMoment.id}/like`);
   assert.equal(like.json.liked, true);
-  assert.equal(levelDb.computeUserLevel(bob).exp, 1, 'the post author receives one experience for a like');
+  assert.equal(levelDb.computeUserLevel(bob).exp, 2, 'the post author keeps comment-received experience and gains one experience for a like');
   await call('POST', `/api/moments/${commentedMoment.id}/like`);
   await call('POST', `/api/moments/${commentedMoment.id}/like`);
-  assert.equal(levelDb.computeUserLevel(bob).exp, 1, 'unlike then re-like cannot award twice');
+  assert.equal(levelDb.computeUserLevel(bob).exp, 2, 'unlike then re-like cannot award twice');
 
   const profile = await call('POST', '/api/profile/edit', {
     nickname: 'Alice', bio: '已经完善资料', avatar: 'data:image/png;base64,AA=='

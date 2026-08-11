@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const { adminAuth } = require('../middleware/auth');
-const { db, save, genId, findUserById, findBottleById, getMomentById, addCoinTransaction, addAuditLog, findAdminById, createBot, getBotProfiles, findBotProfileByBotId, updateBotProfile, computeUserLevel, awardExperience } = require('../db');
+const { db, save, genId, findUserById, findBottleById, getMomentById, addCoinTransaction, addAuditLog, findAdminById, createBot, getBotProfiles, findBotProfileByBotId, updateBotProfile, computeUserLevel, awardExperience, DEFAULT_CONFIG } = require('../db');
 const { signAdminToken } = require('../utils/jwt');
 const { comparePassword, hashPassword } = require('../utils/crypto');
 const { PACKAGES, refundOrder, confirmPayment, rejectOrder } = require('../services/payment');
@@ -499,7 +499,31 @@ router.get('/config', adminAuth, (req, res) => {
 
 // Config - update
 router.post('/config', adminAuth, (req, res) => {
-  const updates = req.body;
+  const requested = req.body || {};
+  const updates = {};
+  for (const [key, raw] of Object.entries(requested)) {
+    if (!Object.prototype.hasOwnProperty.call(DEFAULT_CONFIG, key)) continue;
+    const expected = DEFAULT_CONFIG[key];
+    if (Array.isArray(expected)) {
+      const values = Array.isArray(raw) ? raw : String(raw || '').split(',');
+      const parsed = values.map(value => Number(value));
+      if (parsed.length !== expected.length || parsed.some(value => !Number.isFinite(value) || value < 0)) {
+        return res.status(400).json({ success: false, error: `${key} 必须包含 ${expected.length} 个非负数字` });
+      }
+      updates[key] = parsed.map(value => Math.round(value));
+    } else if (typeof expected === 'boolean') {
+      updates[key] = raw === true || raw === 'true';
+    } else if (typeof expected === 'number') {
+      const value = Number(raw);
+      if (!Number.isFinite(value) || value < 0 || value > 1000000) {
+        return res.status(400).json({ success: false, error: `${key} 必须是有效的非负数字` });
+      }
+      updates[key] = value;
+    } else {
+      updates[key] = String(raw == null ? '' : raw).slice(0, key === 'paymentQR' ? 4000000 : 500);
+    }
+  }
+  if (!Object.keys(updates).length) return res.status(400).json({ success: false, error: '没有可保存的配置' });
   const oldConfig = { ...db().config };
   Object.assign(db().config, updates);
   console.log('[Admin] config updated:', JSON.stringify(updates));

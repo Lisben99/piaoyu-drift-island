@@ -50,8 +50,10 @@ router.post('/block', auth, (req, res) => {
   const session = findChatSessionByUsers(req.user.id, targetUserId);
   if (session && session.status === 'pending_permanent') {
     session.status = 'blocked';
-    const config = db().config;
-    addCoinTransaction(session.permanentRequesterId, config.permanent_chat_cost, 'refund', '拉黑用户，续聊请求取消退款', session.id);
+    const refundAmount = session.permanentChargeAmount === undefined
+      ? Math.max(0, Number(db().config.permanent_chat_cost) || 0)
+      : Math.max(0, Number(session.permanentChargeAmount) || 0);
+    if (refundAmount > 0) addCoinTransaction(session.permanentRequesterId, refundAmount, 'refund', '拉黑用户，续聊请求取消退款', session.id);
   }
   if (session && session.status === 'active') {
     session.status = 'blocked';

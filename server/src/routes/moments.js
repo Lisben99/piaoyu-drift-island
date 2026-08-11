@@ -29,6 +29,7 @@ const {
   createNotification
 } = require('../db');
 const { COMMUNITY_TOPICS, COMMUNITY_MOODS, isTopicId, isMoodId } = require('../communityCatalog');
+const { awardGrowthActivity, awardInviteMilestone } = require('../services/growthEconomy');
 
 router.use(auth);
 
@@ -108,7 +109,15 @@ router.post('/', (req, res) => {
   const promptAward = momentType === 'community' && dailyPromptId
     ? awardExperience(req.user.id, 'daily_prompt_participation', { eventKey: `daily-prompt:${dailyPromptId}:${req.user.id}`, sourceId: moment.id })
     : null;
-  res.json({ success: true, moment: enrich(moment, req.user.id), experienceAward, promptAward });
+  const validGrowthContent = text.replace(/\s/g, '').length >= 8 || imgs.length > 0;
+  const coinAwards = momentType === 'community' && validGrowthContent
+    ? awardGrowthActivity(req.user.id, 'community_post', moment.id)
+    : [];
+  if (momentType === 'community' && dailyPromptId && validGrowthContent) {
+    coinAwards.push(...awardGrowthActivity(req.user.id, 'daily_prompt', moment.id));
+  }
+  awardInviteMilestone(req.user, 'publish');
+  res.json({ success: true, moment: enrich(moment, req.user.id), experienceAward, promptAward, coinAwards, coins: req.user.coins });
 });
 
 // Community feed (all users' moments).
@@ -187,6 +196,7 @@ router.post('/:id/like', (req, res) => {
         eventKey: `like:${moment.id}:${req.user.id}`,
         sourceId: moment.id
       });
+      awardGrowthActivity(moment.userId, 'received_like', `${moment.id}:${req.user.id}`);
     }
   }
   res.json({ success: true, ...r, resonated: r.liked, resonanceCount: r.likeCount });
@@ -222,11 +232,13 @@ router.post('/:id/comment', (req, res) => {
     eventKey: `comment:${c.id}`,
     sourceId: c.id
   });
+  const coinAwards = text.replace(/\s/g, '').length >= 8 ? awardGrowthActivity(req.user.id, 'comment', c.id) : [];
   if (targetMoment && targetMoment.userId !== req.user.id) {
     awardExperience(targetMoment.userId, 'community_comment_received', {
       eventKey: `comment-received:${c.id}`,
       sourceId: c.id
     });
+    awardGrowthActivity(targetMoment.userId, 'received_comment', c.id);
   }
   const replyUser = c.replyToUserId ? findUserById(c.replyToUserId) : null;
   if (replyUser) {
@@ -253,7 +265,9 @@ router.post('/:id/comment', (req, res) => {
       replyToNickname: replyUser ? (replyUser.nickname || '用户') : '',
       createdAt: c.createdAt
     },
-    experienceAward
+    experienceAward,
+    coinAwards,
+    coins: req.user.coins
   });
 });
 

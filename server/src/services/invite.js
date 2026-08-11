@@ -37,6 +37,7 @@ function applyInvite(newUser, inviteCodeRaw) {
 
   // Bind the relationship (new users always start with invitedBy = null).
   newUser.invitedBy = inviter.id;
+  newUser.inviteRewardEligible = monthInvites < config.invite_monthly_limit;
 
   // Invitee reward — always granted on a valid invite.
   const inviteeBonus = Number(config.invited_bonus) || 0;

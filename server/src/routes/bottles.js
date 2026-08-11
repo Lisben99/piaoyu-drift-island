@@ -6,6 +6,7 @@ const router = express.Router();
 const { auth } = require('../middleware/auth');
 const { db, save, genId, findBottleById, getActiveBottles, addCoinTransaction, findUserById, createNotification, getUnreadNotificationCount, awardExperience } = require('../db');
 const { moderate } = require('../services/moderation');
+const { awardGrowthActivity, awardInviteMilestone, consumeGrowthAction } = require('../services/growthEconomy');
 const botEngine = require('../services/botEngine');
 
 // Shared helper: append a reply to a bottle. Used by both the HTTP endpoint
@@ -182,7 +183,10 @@ router.post('/:id/reply', auth, async (req, res) => {
     eventKey: `reply:${reply.id}`,
     sourceId: reply.id
   });
-  res.json({ success: true, reply, replyCount: bottle.replies.length, experienceAward });
+  const coinAwards = content.trim().replace(/\s/g, '').length >= 8
+    ? awardGrowthActivity(req.user.id, 'bottle_reply', reply.id)
+    : [];
+  res.json({ success: true, reply, replyCount: bottle.replies.length, experienceAward, coinAwards, coins: req.user.coins });
 });
 
 // Create bottle
@@ -203,19 +207,14 @@ router.post('/', auth, async (req, res) => {
     return res.json({ success: false, error: '你的账号已被限制发布' });
   }
   
-  // Check coins
-  if (req.user.coins < config.bottle_publish_cost) {
-    return res.json({ success: false, error: '漂流币不足，请充值', needRecharge: true });
-  }
-  
   // Content moderation
   const modResult = await moderate(content);
   if (!modResult.pass) {
     return res.json({ success: false, error: modResult.reason });
   }
   
-  // Deduct coins
-  addCoinTransaction(req.user.id, -config.bottle_publish_cost, 'bottle_publish', '发布漂流瓶');
+  const economy = consumeGrowthAction(req.user, 'bottle', `publish:${req.user.id}`);
+  if (!economy.success) return res.json(economy);
   
   // Create bottle
   const bottle = {
@@ -235,6 +234,8 @@ router.post('/', auth, async (req, res) => {
     eventKey: `bottle:${bottle.id}`,
     sourceId: bottle.id
   });
+  const coinAwards = awardGrowthActivity(req.user.id, 'bottle_publish', bottle.id);
+  awardInviteMilestone(req.user, 'publish');
 
   // Schedule a (random 30–90s) bot reply if the author is a human and no one
   // replies first (AGENTS §7). Bot-authored bottles are skipped inside.
@@ -246,7 +247,9 @@ router.post('/', auth, async (req, res) => {
     success: true,
     bottle: { ...bottle, authorNickname: req.user.nickname },
     coins: req.user.coins,
-    experienceAward
+    experienceAward,
+    coinAwards,
+    economy
   });
 });
 

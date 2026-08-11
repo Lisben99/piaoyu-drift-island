@@ -5,6 +5,7 @@ const { WebSocketServer } = require('ws');
 const { verifyToken } = require('../utils/jwt');
 const { findUserById, db, save } = require('../db');
 const botEngine = require('./botEngine');
+const { awardGrowthActivity, awardInviteMilestone } = require('./growthEconomy');
 
 const MODERATION_PROVIDER = process.env.MODERATION_PROVIDER || 'local';
 
@@ -122,6 +123,19 @@ async function handleMessage(ws, msg) {
       moderated: MODERATION_PROVIDER !== 'local'
     };
     database.messages.push(message);
+    const participantA = findUserById(session.userA);
+    const participantB = findUserById(session.userB);
+    const humanPair = participantA && participantB &&
+      (participantA.account_type || 'HUMAN') === 'HUMAN' &&
+      (participantB.account_type || 'HUMAN') === 'HUMAN';
+    const senders = new Set((database.messages || []).filter(item => item.sessionId === session.id).map(item => item.senderId));
+    if (humanPair && senders.has(session.userA) && senders.has(session.userB)) {
+      if (!session.activatedAt) session.activatedAt = Date.now();
+      awardGrowthActivity(session.userA, 'mutual_chat', session.id);
+      awardGrowthActivity(session.userB, 'mutual_chat', session.id);
+      awardInviteMilestone(participantA, 'mutual_chat');
+      awardInviteMilestone(participantB, 'mutual_chat');
+    }
     save();
     
     // Send to sender

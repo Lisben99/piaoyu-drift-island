@@ -29,20 +29,76 @@ if (USE_PG) {
 }
 
 const DEFAULT_CONFIG = {
+  growth_mode_enabled: true,
+  growth_campaign_name: '漂屿共建期',
   new_user_bonus: 20,
-  daily_login_bonus: 1,
-  consecutive_day3_bonus: 1,
-  consecutive_day7_bonus: 2,
-  invite_bonus: 5,
-  invited_bonus: 5,
+  daily_login_bonus: 20,
+  consecutive_day3_bonus: 10,
+  consecutive_day7_bonus: 20,
+  consecutive_day14_bonus: 30,
+  consecutive_day21_bonus: 40,
+  consecutive_day30_bonus: 100,
+  weekly_full_bonus: 20,
+  monthly_checkin_20_bonus: 20,
+  monthly_checkin_25_bonus: 30,
+  monthly_full_bonus: 50,
+  invite_bonus: 10,
+  invited_bonus: 20,
   invite_monthly_limit: 10,
+  invite_profile_bonus: 10,
+  invite_first_publish_bonus: 20,
+  invite_first_chat_bonus: 30,
+  invite_active_7d_bonus: 50,
+  profile_complete_coin_bonus: 20,
+  interest_complete_coin_bonus: 10,
+  first_community_post_bonus: 20,
+  first_bottle_publish_bonus: 20,
+  first_bottle_reply_bonus: 10,
+  first_mutual_chat_bonus: 20,
+  first_follow_bonus: 5,
+  first_received_like_bonus: 5,
+  daily_community_post_bonus: 5,
+  daily_community_post_limit: 2,
+  daily_bottle_reply_bonus: 3,
+  daily_bottle_reply_limit: 3,
+  daily_comment_bonus: 2,
+  daily_comment_limit: 3,
+  daily_mutual_chat_bonus: 5,
+  daily_mutual_chat_limit: 2,
+  daily_prompt_bonus: 5,
+  daily_prompt_limit: 1,
+  daily_received_like_bonus: 1,
+  daily_received_like_limit: 5,
+  daily_received_comment_bonus: 2,
+  daily_received_comment_limit: 3,
+  daily_all_tasks_bonus: 10,
+  newcomer_six_tasks_bonus: 30,
+  newcomer_all_tasks_bonus: 80,
+  weekly_community_goal: 3,
+  weekly_community_bonus: 20,
+  weekly_mutual_chat_goal: 5,
+  weekly_mutual_chat_bonus: 20,
+  weekly_interaction_goal: 10,
+  weekly_interaction_bonus: 20,
+  weekly_bottle_reply_goal: 5,
+  weekly_bottle_reply_bonus: 15,
+  weekly_prompt_goal: 3,
+  weekly_prompt_bonus: 15,
+  weekly_all_tasks_bonus: 50,
+  level_daily_coin_rewards: [20, 22, 24, 27, 30, 34, 38, 42, 46, 50],
+  level_free_chat_quotas: [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
+  level_free_bottle_quotas: [1, 1, 1, 1, 2, 2, 2, 2, 3, 3],
+  level_free_permanent_weekly: [0, 0, 1, 1, 1, 1, 2, 2, 2, 2],
+  level_upgrade_coin_rewards: [0, 20, 30, 40, 60, 80, 100, 150, 200, 300],
   bottle_publish_cost: 2,
   bottle_display_hours: 48,
   chat_session_cost: 1,
-  chat_session_hours: 12,
+  chat_session_hours: 24,
   permanent_chat_cost: 2,
   recharge_rate: 10,
   min_recharge: 1,
+  paymentQR: '',
+  paymentQRNote: '',
   system_announcement: '',
   maintenance_mode: false,
   // ===== Feature Flags (AGENTS §21) — all toggleable in admin backend =====
@@ -937,6 +993,17 @@ function computeUserLevel(userOrId) {
   };
 }
 
+function levelConfigValue(key, level) {
+  const fallback = DEFAULT_CONFIG[key] || [];
+  const raw = cache.config[key];
+  const list = Array.isArray(raw)
+    ? raw
+    : (typeof raw === 'string' ? raw.split(',').map(item => Number(item.trim())) : fallback);
+  const index = Math.max(0, Math.min(9, (Number(level) || 1) - 1));
+  const value = Number(list[index]);
+  return Number.isFinite(value) ? Math.max(0, Math.round(value)) : Math.max(0, Number(fallback[index]) || 0);
+}
+
 function chinaDateKey(timestamp) {
   return new Date(timestamp + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
@@ -989,6 +1056,14 @@ function awardExperience(userId, type, { eventKey, sourceId = null, now = Date.n
   save();
   const level = computeUserLevel(user);
   if (level.level > before.level) {
+    for (let reached = before.level + 1; reached <= level.level; reached++) {
+      const reward = levelConfigValue('level_upgrade_coin_rewards', reached);
+      const rewardKey = `level-up:${userId}:${reached}`;
+      const alreadyRewarded = (cache.coinTransactions || []).some(tx => tx.userId === userId && tx.type === 'level_up' && tx.refId === rewardKey);
+      if (reward > 0 && !alreadyRewarded) {
+        addCoinTransaction(userId, reward, 'level_up', `升级到 Lv.${reached} 奖励`, rewardKey);
+      }
+    }
     createNotification({
       userId,
       type: 'level_up',

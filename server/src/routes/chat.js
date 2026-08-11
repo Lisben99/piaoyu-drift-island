@@ -38,6 +38,17 @@ function safeNickname(user) {
 const { moderate } = require('../services/moderation');
 const { sendToUser } = require('../services/websocket');
 const botEngine = require('../services/botEngine');
+const { consumeGrowthAction } = require('../services/growthEconomy');
+
+function refundUnansweredOpening(session) {
+  if (!session || session.openingChargeRefunded || !(Number(session.openingChargeAmount) > 0)) return false;
+  const responderId = session.initiatedBy === session.userA ? session.userB : session.userA;
+  const answered = (db().messages || []).some(message => message.sessionId === session.id && message.senderId === responderId);
+  if (answered) return false;
+  addCoinTransaction(session.initiatedBy, Number(session.openingChargeAmount), 'refund', '私聊请求未获回应，自动退款', `chat-unanswered:${session.id}`);
+  session.openingChargeRefunded = true;
+  return true;
+}
 
 // Start a chat session (first message costs 1 coin)
 router.post('/start', auth, async (req, res) => {
@@ -71,6 +82,10 @@ router.post('/start', auth, async (req, res) => {
   if (blocked) {
     return res.json({ success: false, error: '无法发起聊天，请检查黑名单设置' });
   }
+  if (firstMessage) {
+    const modResult = await moderate(firstMessage);
+    if (!modResult.pass) return res.json({ success: false, error: modResult.reason });
+  }
   
   // Check for existing active session
   let session = findChatSessionByUsers(req.user.id, targetUserId);
@@ -86,9 +101,10 @@ router.post('/start', auth, async (req, res) => {
     // Existing session
     if (session.status === 'active') {
       // Check expiry
-      const elapsed = (Date.now() - session.startedAt) / (1000 * 60 * 60);
+      const elapsed = (Date.now() - (session.activatedAt || session.startedAt)) / (1000 * 60 * 60);
       if (elapsed >= config.chat_session_hours) {
         session.status = 'expired';
+        refundUnansweredOpening(session);
         save();
       } else {
         // Session still active, just send the message
@@ -146,15 +162,18 @@ router.post('/start', auth, async (req, res) => {
     }
     if (session.status === 'expired') {
       // Need to renew - start new session
-      // Check coins
-      if (req.user.coins < config.chat_session_cost) {
-        return res.json({ success: false, error: '漂流币不足，无法开启新会话', needRecharge: true });
-      }
-      if (!isBotTarget) addCoinTransaction(req.user.id, -config.chat_session_cost, 'chat_session', '开启新的聊天会话');
+      const economy = isBotTarget
+        ? { success: true, free: true, charged: 0 }
+        : consumeGrowthAction(req.user, 'chat', `renew:${session.id}`);
+      if (!economy.success) return res.json(economy);
       
       session.status = 'active';
       session.startedAt = Date.now();
       session.expiresAt = isBotTarget ? Date.now() + 365 * 24 * 3600000 : Date.now() + config.chat_session_hours * 3600000;
+      session.initiatedBy = req.user.id;
+      session.openingChargeAmount = economy.charged || 0;
+      session.openingChargeRefunded = false;
+      session.activatedAt = null;
       save();
       
       if (firstMessage) {
@@ -174,7 +193,7 @@ router.post('/start', auth, async (req, res) => {
         });
         notifyNewMessage(targetUserId, session.id, req.user.id);
       }
-      return res.json({ success: true, session, coins: req.user.coins });
+      return res.json({ success: true, session, coins: req.user.coins, economy });
     }
     if (session.status === 'pending_permanent') {
       return res.json({ success: false, error: '续聊请求待确认中' });
@@ -184,12 +203,10 @@ router.post('/start', auth, async (req, res) => {
     }
   }
   
-  // New session - first message costs 1 coin (free when chatting with a bot)
-  if (!isBotTarget && req.user.coins < config.chat_session_cost) {
-    return res.json({ success: false, error: '漂流币不足，请充值', needRecharge: true });
-  }
-  
-  if (!isBotTarget) addCoinTransaction(req.user.id, -config.chat_session_cost, 'chat_session', '发起聊天会话');
+  const economy = isBotTarget
+    ? { success: true, free: true, charged: 0 }
+    : consumeGrowthAction(req.user, 'chat', `new:${targetUserId}`);
+  if (!economy.success) return res.json(economy);
   
   session = {
     id: genId('chat'),
@@ -207,6 +224,9 @@ router.post('/start', auth, async (req, res) => {
     hiddenFor: [],
     clearedAt: {},
     lastReadAt: {}
+    ,openingChargeAmount: economy.charged || 0
+    ,openingChargeRefunded: false
+    ,activatedAt: null
   };
   db().chatSessions.push(session);
   
@@ -235,7 +255,7 @@ router.post('/start', auth, async (req, res) => {
   }
   
   save();
-  res.json({ success: true, session, coins: req.user.coins });
+  res.json({ success: true, session, coins: req.user.coins, economy });
 });
 
 // List my chat sessions
@@ -246,15 +266,19 @@ router.get('/sessions', auth, (req, res) => {
   // Auto-expire sessions
   db().chatSessions.forEach(s => {
     if (s.status === 'active') {
-      const elapsed = (now - s.startedAt) / (1000 * 60 * 60);
+      const elapsed = (now - (s.activatedAt || s.startedAt)) / (1000 * 60 * 60);
       if (elapsed >= config.chat_session_hours) {
         s.status = 'expired';
+        refundUnansweredOpening(s);
       }
     }
     if (s.status === 'pending_permanent' && s.permanentResponseDeadline && now > s.permanentResponseDeadline) {
       // Auto-refund
       s.status = 'expired';
-      addCoinTransaction(s.initiatedBy, config.permanent_chat_cost, 'refund', '续聊请求超时自动退款', s.id);
+      const refundAmount = s.permanentChargeAmount === undefined
+        ? Math.max(0, Number(config.permanent_chat_cost) || 0)
+        : Math.max(0, Number(s.permanentChargeAmount) || 0);
+      if (refundAmount > 0) addCoinTransaction(s.permanentRequesterId || s.initiatedBy, refundAmount, 'refund', '续聊请求超时自动退款', s.id);
     }
   });
   save();
@@ -402,19 +426,15 @@ router.post('/sessions/:id/request-permanent', auth, (req, res) => {
     return res.json({ success: false, error: '续聊请求已发送，等待确认' });
   }
   
-  const config = db().config;
-  if (req.user.coins < config.permanent_chat_cost) {
-    return res.json({ success: false, error: '漂流币不足', needRecharge: true });
-  }
-  
-  // Pre-deduct coins
-  addCoinTransaction(req.user.id, -config.permanent_chat_cost, 'permanent_chat', '请求永久续聊（预扣）');
+  const economy = consumeGrowthAction(req.user, 'permanent', session.id);
+  if (!economy.success) return res.json(economy);
   
   session.permanentRequested = true;
   session.permanentRequestedAt = Date.now();
   session.permanentResponseDeadline = Date.now() + 24 * 3600000; // 24h to respond
   session.status = 'pending_permanent';
   session.permanentRequesterId = req.user.id;
+  session.permanentChargeAmount = economy.charged || 0;
   save();
   
   // Notify other user
@@ -424,7 +444,7 @@ router.post('/sessions/:id/request-permanent', auth, (req, res) => {
     data: { sessionId: session.id, fromUserId: req.user.id }
   });
   
-  res.json({ success: true, session, coins: req.user.coins });
+  res.json({ success: true, session, coins: req.user.coins, economy });
 });
 
 // Accept or reject permanent chat
@@ -442,15 +462,16 @@ router.post('/sessions/:id/respond-permanent', auth, (req, res) => {
     return res.json({ success: false, error: '请等待对方确认' });
   }
   
-  const config = db().config;
-  
   if (accept) {
     session.status = 'permanent';
     session.permanentAccepted = true;
   } else {
     // Reject - refund
     session.status = 'expired';
-    addCoinTransaction(session.permanentRequesterId, config.permanent_chat_cost, 'refund', '续聊请求被拒绝，退款', session.id);
+    const refundAmount = session.permanentChargeAmount === undefined
+      ? Math.max(0, Number(db().config.permanent_chat_cost) || 0)
+      : Math.max(0, Number(session.permanentChargeAmount) || 0);
+    if (refundAmount > 0) addCoinTransaction(session.permanentRequesterId, refundAmount, 'refund', '续聊请求被拒绝，退款', session.id);
   }
   save();
   

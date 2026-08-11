@@ -11,6 +11,7 @@ const {
   getFollowCounts, isFollowing
 } = require('../db');
 const { COMMUNITY_INTERESTS, isInterestId } = require('../communityCatalog');
+const { awardCoinOnce, awardInviteMilestone, getBenefits, levelValue, maybeAwardNewcomerProgress } = require('../services/growthEconomy');
 
 router.get('/level/me', auth, (req, res) => {
   const rules = Object.entries(EXPERIENCE_RULES)
@@ -25,9 +26,17 @@ router.get('/level/me', auth, (req, res) => {
   res.json({
     success: true,
     level: computeUserLevel(req.user),
-    tiers: LEVEL_TIERS.map(tier => ({ ...tier })),
+    tiers: LEVEL_TIERS.map(tier => ({
+      ...tier,
+      dailyCoins: levelValue(db().config, 'level_daily_coin_rewards', tier.level),
+      freeChats: levelValue(db().config, 'level_free_chat_quotas', tier.level),
+      freeBottles: levelValue(db().config, 'level_free_bottle_quotas', tier.level),
+      freePermanentWeekly: levelValue(db().config, 'level_free_permanent_weekly', tier.level),
+      upgradeCoins: levelValue(db().config, 'level_upgrade_coin_rewards', tier.level)
+    })),
     rules,
-    history: getExperienceHistory(req.user.id, 30)
+    history: getExperienceHistory(req.user.id, 30),
+    benefits: getBenefits(req.user)
   });
 });
 
@@ -91,7 +100,11 @@ router.patch('/interests', auth, (req, res) => {
   }
   req.user.interestIds = interestIds;
   save();
-  res.json({ success: true, interestIds, interests: COMMUNITY_INTERESTS.filter(item => interestIds.includes(item.id)) });
+  const coinAward = interestIds.length
+    ? awardCoinOnce(req.user.id, db().config.interest_complete_coin_bonus, 'interest_completed', '完善兴趣标签', `interest-complete:${req.user.id}`)
+    : null;
+  if (coinAward) maybeAwardNewcomerProgress(req.user.id);
+  res.json({ success: true, interestIds, interests: COMMUNITY_INTERESTS.filter(item => interestIds.includes(item.id)), coinAward, coins: req.user.coins });
 });
 
 router.patch('/chat-policy', auth, (req, res) => {
@@ -146,6 +159,11 @@ router.post('/edit', auth, (req, res) => {
       sourceId: req.user.id
     })
     : null;
+  const coinAward = profileComplete
+    ? awardCoinOnce(req.user.id, db().config.profile_complete_coin_bonus, 'profile_completed', '完善个人资料', `profile-complete:${req.user.id}`)
+    : null;
+  if (profileComplete) awardInviteMilestone(req.user, 'profile');
+  if (coinAward) maybeAwardNewcomerProgress(req.user.id);
   
   res.json({
     success: true,
@@ -157,7 +175,9 @@ router.post('/edit', auth, (req, res) => {
       gender: req.user.gender,
       role: req.user.role
     },
-    experienceAward
+    experienceAward,
+    coinAward,
+    coins: req.user.coins
   });
 });
 

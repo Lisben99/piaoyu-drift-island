@@ -611,7 +611,7 @@ async function renderCoins() {
   const res = await api('/coins/stats');
   if (!res.success) return;
   const c = document.getElementById('pageContent');
-  const typeNames = { new_user_bonus:'新用户赠送', checkin:'签到', invite:'邀请', recharge:'充值', bottle_publish:'发布漂流瓶', chat_session:'聊天会话', permanent_chat:'永久续聊', admin_adjust:'管理员调整', refund:'退款' };
+  const typeNames = { new_user_bonus:'新用户赠送', checkin:'签到', invite:'邀请注册', invite_milestone:'邀请成长奖励', recharge:'充值', bottle_publish:'发布漂流瓶', free_bottle_publish:'等级免费漂流瓶', chat_session:'聊天会话', free_chat_session:'等级免费私聊', permanent_chat:'永久续聊', free_permanent_chat:'等级免费续聊', profile_completed:'完善资料', interest_completed:'兴趣标签', level_up:'升级奖励', first_community_post:'首次共鸣', first_bottle_publish:'首次漂流瓶', first_bottle_reply:'首次公开回应', first_mutual_chat:'首次双向聊天', first_follow:'首次关注', first_received_like:'首次获赞', growth_community_post:'每日共鸣任务', growth_bottle_reply:'每日回应任务', growth_comment:'每日评论任务', growth_mutual_chat:'每日聊天任务', growth_daily_prompt:'每日一问', growth_received_like:'收到点赞', growth_received_comment:'收到评论', daily_all_tasks:'完成每日任务', admin_adjust:'管理员调整', refund:'退款' };
   c.innerHTML = `
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-card__label">累计发放</div><div class="stat-card__value">${res.credits}</div></div>
@@ -910,15 +910,30 @@ async function renderConfig() {
   window.pendingPaymentQR = c.paymentQR || '';
   document.getElementById('pageContent').innerHTML = `
     <div class="card">
-      <div class="card__title">业务参数配置</div>
+      <div class="card__title">共建期基础与签到奖励</div>
+      <div class="config-item" style="margin-bottom:14px"><label><input type="checkbox" id="cfg_growth_mode_enabled" ${c.growth_mode_enabled!==false?'checked':''}> 开启“用户增长共建期”经济规则</label></div>
       <div class="config-grid">
+        <div class="config-item"><label>活动名称</label><input type="text" id="cfg_growth_campaign_name" value="${escapeHtml(c.growth_campaign_name || '漂屿共建期')}"></div>
         <div class="config-item"><label>新用户赠币</label><input type="number" id="cfg_new_user_bonus" value="${c.new_user_bonus}"></div>
-        <div class="config-item"><label>每日登录奖励</label><input type="number" id="cfg_daily_login_bonus" value="${c.daily_login_bonus}"></div>
+        <div class="config-item"><label>关闭共建期后的每日签到</label><input type="number" id="cfg_daily_login_bonus" value="${c.daily_login_bonus}"></div>
         <div class="config-item"><label>连续3天额外奖励</label><input type="number" id="cfg_consecutive_day3_bonus" value="${c.consecutive_day3_bonus}"></div>
         <div class="config-item"><label>连续7天额外奖励</label><input type="number" id="cfg_consecutive_day7_bonus" value="${c.consecutive_day7_bonus}"></div>
+        <div class="config-item"><label>连续14天额外奖励</label><input type="number" id="cfg_consecutive_day14_bonus" value="${c.consecutive_day14_bonus}"></div>
+        <div class="config-item"><label>连续21天额外奖励</label><input type="number" id="cfg_consecutive_day21_bonus" value="${c.consecutive_day21_bonus}"></div>
+        <div class="config-item"><label>连续30天额外奖励</label><input type="number" id="cfg_consecutive_day30_bonus" value="${c.consecutive_day30_bonus}"></div>
+        <div class="config-item"><label>每7天满签额外奖励</label><input type="number" id="cfg_weekly_full_bonus" value="${c.weekly_full_bonus}"></div>
+        <div class="config-item"><label>每月签到20天奖励</label><input type="number" id="cfg_monthly_checkin_20_bonus" value="${c.monthly_checkin_20_bonus}"></div>
+        <div class="config-item"><label>每月签到25天奖励</label><input type="number" id="cfg_monthly_checkin_25_bonus" value="${c.monthly_checkin_25_bonus}"></div>
+        <div class="config-item"><label>月度全勤奖励</label><input type="number" id="cfg_monthly_full_bonus" value="${c.monthly_full_bonus}"></div>
+        <div class="config-item"><label>完善个人资料奖励</label><input type="number" id="cfg_profile_complete_coin_bonus" value="${c.profile_complete_coin_bonus}"></div>
+        <div class="config-item"><label>完善兴趣标签奖励</label><input type="number" id="cfg_interest_complete_coin_bonus" value="${c.interest_complete_coin_bonus}"></div>
         <div class="config-item"><label>邀请奖励</label><input type="number" id="cfg_invite_bonus" value="${c.invite_bonus}"></div>
         <div class="config-item"><label>受邀注册奖励</label><input type="number" id="cfg_invited_bonus" value="${c.invited_bonus}"></div>
         <div class="config-item"><label>每月邀请上限</label><input type="number" id="cfg_invite_monthly_limit" value="${c.invite_monthly_limit}"></div>
+        <div class="config-item"><label>好友完善资料·邀请人奖励</label><input type="number" id="cfg_invite_profile_bonus" value="${c.invite_profile_bonus}"></div>
+        <div class="config-item"><label>好友首次发布·邀请人奖励</label><input type="number" id="cfg_invite_first_publish_bonus" value="${c.invite_first_publish_bonus}"></div>
+        <div class="config-item"><label>好友首次双向聊天·邀请人奖励</label><input type="number" id="cfg_invite_first_chat_bonus" value="${c.invite_first_chat_bonus}"></div>
+        <div class="config-item"><label>好友连续活跃7天·邀请人奖励</label><input type="number" id="cfg_invite_active_7d_bonus" value="${c.invite_active_7d_bonus}"></div>
         <div class="config-item"><label>漂流瓶发布费用</label><input type="number" id="cfg_bottle_publish_cost" value="${c.bottle_publish_cost}"></div>
         <div class="config-item"><label>漂流瓶展示时长(小时)</label><input type="number" id="cfg_bottle_display_hours" value="${c.bottle_display_hours}"></div>
         <div class="config-item"><label>聊天会话费用</label><input type="number" id="cfg_chat_session_cost" value="${c.chat_session_cost}"></div>
@@ -933,6 +948,53 @@ async function renderConfig() {
       <div class="config-item" style="margin-top:12px"><label>收款提示文字</label><input type="text" id="cfg_paymentQR_note" value="${c.paymentQRNote || ''}" placeholder="如：微信扫码付款，转账备注填你的手机号" style="width:100%" /></div>
       <div class="config-item" style="margin-top:12px"><label>系统公告</label><input type="text" id="cfg_system_announcement" value="${c.system_announcement || ''}" style="width:100%"></div>
       <div class="config-item" style="margin-top:12px"><label><input type="checkbox" id="cfg_maintenance_mode" ${c.maintenance_mode?'checked':''}> 维护模式（开启后用户无法使用）</label></div>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <div class="card__title">等级权益（Lv.1 至 Lv.10，英文逗号分隔）</div>
+      <div style="font-size:12px;color:#777;margin-bottom:12px">保存时必须填写 10 个非负数字。等级权益会立即用于签到、私聊、漂流瓶和续聊。</div>
+      <div class="config-grid">
+        <div class="config-item" style="grid-column:1 / -1"><label>每日签到币</label><input type="text" id="cfg_level_daily_coin_rewards" value="${(c.level_daily_coin_rewards || []).join(',')}"></div>
+        <div class="config-item" style="grid-column:1 / -1"><label>每日免费发起私聊次数</label><input type="text" id="cfg_level_free_chat_quotas" value="${(c.level_free_chat_quotas || []).join(',')}"></div>
+        <div class="config-item" style="grid-column:1 / -1"><label>每日免费漂流瓶数量</label><input type="text" id="cfg_level_free_bottle_quotas" value="${(c.level_free_bottle_quotas || []).join(',')}"></div>
+        <div class="config-item" style="grid-column:1 / -1"><label>每周免费永久续聊次数</label><input type="text" id="cfg_level_free_permanent_weekly" value="${(c.level_free_permanent_weekly || []).join(',')}"></div>
+        <div class="config-item" style="grid-column:1 / -1"><label>升级一次性赠币</label><input type="text" id="cfg_level_upgrade_coin_rewards" value="${(c.level_upgrade_coin_rewards || []).join(',')}"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <div class="card__title">新人和每日活跃任务</div>
+      <div class="config-grid">
+        <div class="config-item"><label>首次发布共鸣</label><input type="number" id="cfg_first_community_post_bonus" value="${c.first_community_post_bonus}"></div>
+        <div class="config-item"><label>首次扔漂流瓶</label><input type="number" id="cfg_first_bottle_publish_bonus" value="${c.first_bottle_publish_bonus}"></div>
+        <div class="config-item"><label>首次公开回应</label><input type="number" id="cfg_first_bottle_reply_bonus" value="${c.first_bottle_reply_bonus}"></div>
+        <div class="config-item"><label>首次双向聊天</label><input type="number" id="cfg_first_mutual_chat_bonus" value="${c.first_mutual_chat_bonus}"></div>
+        <div class="config-item"><label>首次关注</label><input type="number" id="cfg_first_follow_bonus" value="${c.first_follow_bonus}"></div>
+        <div class="config-item"><label>首次收到点赞</label><input type="number" id="cfg_first_received_like_bonus" value="${c.first_received_like_bonus}"></div>
+        <div class="config-item"><label>每日共鸣发布奖励</label><input type="number" id="cfg_daily_community_post_bonus" value="${c.daily_community_post_bonus}"></div>
+        <div class="config-item"><label>每日共鸣奖励次数</label><input type="number" id="cfg_daily_community_post_limit" value="${c.daily_community_post_limit}"></div>
+        <div class="config-item"><label>每日公开回应奖励</label><input type="number" id="cfg_daily_bottle_reply_bonus" value="${c.daily_bottle_reply_bonus}"></div>
+        <div class="config-item"><label>每日回应奖励次数</label><input type="number" id="cfg_daily_bottle_reply_limit" value="${c.daily_bottle_reply_limit}"></div>
+        <div class="config-item"><label>每日评论奖励</label><input type="number" id="cfg_daily_comment_bonus" value="${c.daily_comment_bonus}"></div>
+        <div class="config-item"><label>每日评论奖励次数</label><input type="number" id="cfg_daily_comment_limit" value="${c.daily_comment_limit}"></div>
+        <div class="config-item"><label>每日双向聊天奖励</label><input type="number" id="cfg_daily_mutual_chat_bonus" value="${c.daily_mutual_chat_bonus}"></div>
+        <div class="config-item"><label>每日聊天奖励次数</label><input type="number" id="cfg_daily_mutual_chat_limit" value="${c.daily_mutual_chat_limit}"></div>
+        <div class="config-item"><label>每日一问奖励</label><input type="number" id="cfg_daily_prompt_bonus" value="${c.daily_prompt_bonus}"></div>
+        <div class="config-item"><label>每日一问奖励次数</label><input type="number" id="cfg_daily_prompt_limit" value="${c.daily_prompt_limit}"></div>
+        <div class="config-item"><label>收到点赞奖励</label><input type="number" id="cfg_daily_received_like_bonus" value="${c.daily_received_like_bonus}"></div>
+        <div class="config-item"><label>每日点赞奖励次数</label><input type="number" id="cfg_daily_received_like_limit" value="${c.daily_received_like_limit}"></div>
+        <div class="config-item"><label>收到评论奖励</label><input type="number" id="cfg_daily_received_comment_bonus" value="${c.daily_received_comment_bonus}"></div>
+        <div class="config-item"><label>每日收到评论奖励次数</label><input type="number" id="cfg_daily_received_comment_limit" value="${c.daily_received_comment_limit}"></div>
+        <div class="config-item"><label>完成全部每日任务</label><input type="number" id="cfg_daily_all_tasks_bonus" value="${c.daily_all_tasks_bonus}"></div>
+        <div class="config-item"><label>新人七日完成6项奖励</label><input type="number" id="cfg_newcomer_six_tasks_bonus" value="${c.newcomer_six_tasks_bonus}"></div>
+        <div class="config-item"><label>新人七日全部完成奖励</label><input type="number" id="cfg_newcomer_all_tasks_bonus" value="${c.newcomer_all_tasks_bonus}"></div>
+        <div class="config-item"><label>周共鸣目标 / 奖励</label><div style="display:flex;gap:6px"><input type="number" id="cfg_weekly_community_goal" value="${c.weekly_community_goal}"><input type="number" id="cfg_weekly_community_bonus" value="${c.weekly_community_bonus}"></div></div>
+        <div class="config-item"><label>周双向聊天目标 / 奖励</label><div style="display:flex;gap:6px"><input type="number" id="cfg_weekly_mutual_chat_goal" value="${c.weekly_mutual_chat_goal}"><input type="number" id="cfg_weekly_mutual_chat_bonus" value="${c.weekly_mutual_chat_bonus}"></div></div>
+        <div class="config-item"><label>周真实互动目标 / 奖励</label><div style="display:flex;gap:6px"><input type="number" id="cfg_weekly_interaction_goal" value="${c.weekly_interaction_goal}"><input type="number" id="cfg_weekly_interaction_bonus" value="${c.weekly_interaction_bonus}"></div></div>
+        <div class="config-item"><label>周公开回应目标 / 奖励</label><div style="display:flex;gap:6px"><input type="number" id="cfg_weekly_bottle_reply_goal" value="${c.weekly_bottle_reply_goal}"><input type="number" id="cfg_weekly_bottle_reply_bonus" value="${c.weekly_bottle_reply_bonus}"></div></div>
+        <div class="config-item"><label>周每日一问目标 / 奖励</label><div style="display:flex;gap:6px"><input type="number" id="cfg_weekly_prompt_goal" value="${c.weekly_prompt_goal}"><input type="number" id="cfg_weekly_prompt_bonus" value="${c.weekly_prompt_bonus}"></div></div>
+        <div class="config-item"><label>完成全部周任务奖励</label><input type="number" id="cfg_weekly_all_tasks_bonus" value="${c.weekly_all_tasks_bonus}"></div>
+      </div>
     </div>
 
     <div class="card" style="margin-top:20px">
@@ -975,14 +1037,69 @@ async function renderConfig() {
 }
 
 async function saveConfig() {
+  const levelList = id => document.getElementById(id).value.split(',').map(value => parseInt(value.trim(), 10));
   const updates = {
+    growth_mode_enabled: document.getElementById('cfg_growth_mode_enabled').checked,
+    growth_campaign_name: document.getElementById('cfg_growth_campaign_name').value,
     new_user_bonus: parseInt(document.getElementById('cfg_new_user_bonus').value),
     daily_login_bonus: parseInt(document.getElementById('cfg_daily_login_bonus').value),
     consecutive_day3_bonus: parseInt(document.getElementById('cfg_consecutive_day3_bonus').value),
     consecutive_day7_bonus: parseInt(document.getElementById('cfg_consecutive_day7_bonus').value),
+    consecutive_day14_bonus: parseInt(document.getElementById('cfg_consecutive_day14_bonus').value),
+    consecutive_day21_bonus: parseInt(document.getElementById('cfg_consecutive_day21_bonus').value),
+    consecutive_day30_bonus: parseInt(document.getElementById('cfg_consecutive_day30_bonus').value),
+    weekly_full_bonus: parseInt(document.getElementById('cfg_weekly_full_bonus').value),
+    monthly_checkin_20_bonus: parseInt(document.getElementById('cfg_monthly_checkin_20_bonus').value),
+    monthly_checkin_25_bonus: parseInt(document.getElementById('cfg_monthly_checkin_25_bonus').value),
+    monthly_full_bonus: parseInt(document.getElementById('cfg_monthly_full_bonus').value),
+    profile_complete_coin_bonus: parseInt(document.getElementById('cfg_profile_complete_coin_bonus').value),
+    interest_complete_coin_bonus: parseInt(document.getElementById('cfg_interest_complete_coin_bonus').value),
     invite_bonus: parseInt(document.getElementById('cfg_invite_bonus').value),
     invited_bonus: parseInt(document.getElementById('cfg_invited_bonus').value),
     invite_monthly_limit: parseInt(document.getElementById('cfg_invite_monthly_limit').value),
+    invite_profile_bonus: parseInt(document.getElementById('cfg_invite_profile_bonus').value),
+    invite_first_publish_bonus: parseInt(document.getElementById('cfg_invite_first_publish_bonus').value),
+    invite_first_chat_bonus: parseInt(document.getElementById('cfg_invite_first_chat_bonus').value),
+    invite_active_7d_bonus: parseInt(document.getElementById('cfg_invite_active_7d_bonus').value),
+    first_community_post_bonus: parseInt(document.getElementById('cfg_first_community_post_bonus').value),
+    first_bottle_publish_bonus: parseInt(document.getElementById('cfg_first_bottle_publish_bonus').value),
+    first_bottle_reply_bonus: parseInt(document.getElementById('cfg_first_bottle_reply_bonus').value),
+    first_mutual_chat_bonus: parseInt(document.getElementById('cfg_first_mutual_chat_bonus').value),
+    first_follow_bonus: parseInt(document.getElementById('cfg_first_follow_bonus').value),
+    first_received_like_bonus: parseInt(document.getElementById('cfg_first_received_like_bonus').value),
+    daily_community_post_bonus: parseInt(document.getElementById('cfg_daily_community_post_bonus').value),
+    daily_community_post_limit: parseInt(document.getElementById('cfg_daily_community_post_limit').value),
+    daily_bottle_reply_bonus: parseInt(document.getElementById('cfg_daily_bottle_reply_bonus').value),
+    daily_bottle_reply_limit: parseInt(document.getElementById('cfg_daily_bottle_reply_limit').value),
+    daily_comment_bonus: parseInt(document.getElementById('cfg_daily_comment_bonus').value),
+    daily_comment_limit: parseInt(document.getElementById('cfg_daily_comment_limit').value),
+    daily_mutual_chat_bonus: parseInt(document.getElementById('cfg_daily_mutual_chat_bonus').value),
+    daily_mutual_chat_limit: parseInt(document.getElementById('cfg_daily_mutual_chat_limit').value),
+    daily_prompt_bonus: parseInt(document.getElementById('cfg_daily_prompt_bonus').value),
+    daily_prompt_limit: parseInt(document.getElementById('cfg_daily_prompt_limit').value),
+    daily_received_like_bonus: parseInt(document.getElementById('cfg_daily_received_like_bonus').value),
+    daily_received_like_limit: parseInt(document.getElementById('cfg_daily_received_like_limit').value),
+    daily_received_comment_bonus: parseInt(document.getElementById('cfg_daily_received_comment_bonus').value),
+    daily_received_comment_limit: parseInt(document.getElementById('cfg_daily_received_comment_limit').value),
+    daily_all_tasks_bonus: parseInt(document.getElementById('cfg_daily_all_tasks_bonus').value),
+    newcomer_six_tasks_bonus: parseInt(document.getElementById('cfg_newcomer_six_tasks_bonus').value),
+    newcomer_all_tasks_bonus: parseInt(document.getElementById('cfg_newcomer_all_tasks_bonus').value),
+    weekly_community_goal: parseInt(document.getElementById('cfg_weekly_community_goal').value),
+    weekly_community_bonus: parseInt(document.getElementById('cfg_weekly_community_bonus').value),
+    weekly_mutual_chat_goal: parseInt(document.getElementById('cfg_weekly_mutual_chat_goal').value),
+    weekly_mutual_chat_bonus: parseInt(document.getElementById('cfg_weekly_mutual_chat_bonus').value),
+    weekly_interaction_goal: parseInt(document.getElementById('cfg_weekly_interaction_goal').value),
+    weekly_interaction_bonus: parseInt(document.getElementById('cfg_weekly_interaction_bonus').value),
+    weekly_bottle_reply_goal: parseInt(document.getElementById('cfg_weekly_bottle_reply_goal').value),
+    weekly_bottle_reply_bonus: parseInt(document.getElementById('cfg_weekly_bottle_reply_bonus').value),
+    weekly_prompt_goal: parseInt(document.getElementById('cfg_weekly_prompt_goal').value),
+    weekly_prompt_bonus: parseInt(document.getElementById('cfg_weekly_prompt_bonus').value),
+    weekly_all_tasks_bonus: parseInt(document.getElementById('cfg_weekly_all_tasks_bonus').value),
+    level_daily_coin_rewards: levelList('cfg_level_daily_coin_rewards'),
+    level_free_chat_quotas: levelList('cfg_level_free_chat_quotas'),
+    level_free_bottle_quotas: levelList('cfg_level_free_bottle_quotas'),
+    level_free_permanent_weekly: levelList('cfg_level_free_permanent_weekly'),
+    level_upgrade_coin_rewards: levelList('cfg_level_upgrade_coin_rewards'),
     bottle_publish_cost: parseInt(document.getElementById('cfg_bottle_publish_cost').value),
     bottle_display_hours: parseInt(document.getElementById('cfg_bottle_display_hours').value),
     chat_session_cost: parseInt(document.getElementById('cfg_chat_session_cost').value),

@@ -18,6 +18,7 @@ const {
   findUserById,
   computeUserLevel
 } = require('../db');
+const { awardGrowthActivity } = require('../services/growthEconomy');
 
 router.use(auth);
 
@@ -49,7 +50,8 @@ router.post('/:userId', (req, res) => {
   }
   const r = toggleFollow(req.user.id, target.id);
   if (!r) return res.status(400).json({ success: false, error: '操作无效' });
-  res.json({ success: true, ...r });
+  const coinAwards = r.following ? awardGrowthActivity(req.user.id, 'first_follow', target.id) : [];
+  res.json({ success: true, ...r, coinAwards, coins: req.user.coins });
 });
 
 // List who a user is following. Defaults to the current user when ?userId omitted.
