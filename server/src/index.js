@@ -73,6 +73,38 @@ app.use(express.static(webRoot, {
   }
 }));
 
+// Compress API JSON without an extra dependency. Compression runs in libuv's
+// worker pool so larger feeds do not block other requests on the event loop.
+app.use('/api', (req, res, next) => {
+  const originalJson = res.json.bind(res);
+  res.json = function compressedJson(body) {
+    const acceptEncoding = String(req.headers['accept-encoding'] || '');
+    if (!acceptEncoding.includes('br') && !acceptEncoding.includes('gzip')) return originalJson(body);
+    let raw;
+    try { raw = Buffer.from(JSON.stringify(body)); }
+    catch (_) { return originalJson(body); }
+    if (raw.length < 1400) return originalJson(body);
+
+    const useBrotli = acceptEncoding.includes('br');
+    const callback = (error, output) => {
+      if (error) return originalJson(body);
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Content-Encoding', useBrotli ? 'br' : 'gzip');
+      res.vary('Accept-Encoding');
+      res.send(output);
+    };
+    if (useBrotli) {
+      zlib.brotliCompress(raw, {
+        params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 4 }
+      }, callback);
+    } else {
+      zlib.gzip(raw, { level: 5 }, callback);
+    }
+    return res;
+  };
+  next();
+});
+
 // Initialize WebSocket
 const wsService = require('./services/websocket');
 wsService.init(server);
