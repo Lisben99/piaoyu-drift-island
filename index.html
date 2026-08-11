@@ -176,6 +176,7 @@ html.keyboard-open #app .main-tab-page.active>[data-scroll-root]{scroll-padding-
 .home-coin-pill{display:flex;align-items:center;gap:5px;padding:6px 12px;background:rgba(223,169,72,.12);border-radius:20px}
 .home-coin-pill .coin-icon{width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#dfa948,#e8c87a);display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:700}
 .home-coin-pill .amount{font-size:14px;font-weight:700;color:#8a6d2f}
+.drift-coin-icon{display:block;width:18px;height:18px;flex:0 0 18px}
 .hero-card{position:relative;border-radius:20px;padding:28px 22px;background:linear-gradient(135deg,#1f7a74,#2a9d98);color:#fff;overflow:hidden;margin-bottom:12px}
 .hero-card::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;border:2px solid rgba(255,255,255,.1)}
 .hero-card::after{content:'';position:absolute;bottom:-40px;right:-10px;width:80px;height:80px;border-radius:50%;border:2px solid rgba(255,255,255,.08)}
@@ -451,6 +452,8 @@ html.keyboard-open #app .main-tab-page.active>[data-scroll-root]{scroll-padding-
 .profile-asset-item{display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 12px;border-radius:12px;background:#FAF9F6;flex:1;transition:background .15s}
 .profile-asset-item:active{background:#F0EDE8}
 .profile-asset-icon{font-size:24px}
+.profile-asset-coin{width:28px;height:28px;display:flex;align-items:center;justify-content:center}
+.profile-asset-coin .drift-coin-icon{width:28px;height:28px;flex-basis:28px}
 .profile-asset-value{font-size:18px;font-weight:700;color:#2b3330}
 /* Section */
 .profile-section{margin:0 0 8px}
@@ -1139,7 +1142,7 @@ body{background:linear-gradient(145deg,#e9e4d8,#f8eee4);color:var(--island-text)
       <div class="nav-bar__title">漂流大厅</div>
       <div class="nav-bar__right">
         <div class="lobby-coin" onclick="navigate('coin-center')">
-          <span>🪙</span><span id="lobbyCoins">0</span>
+          <svg class="drift-coin-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" fill="#dfa948"/><circle cx="12" cy="12" r="7.5" fill="none" stroke="#fff" stroke-opacity=".48"/><path d="M6.5 10.5c1.8-2 3.7-2 5.5 0s3.7 2 5.5 0M6.5 14c1.8-2 3.7-2 5.5 0s3.7 2 5.5 0" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg><span id="lobbyCoins">0</span>
         </div>
         <button class="nav-bar__icon-btn" id="notifBell" onclick="navigate('notifications')" aria-label="通知" style="position:relative">
           <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>
@@ -3787,7 +3790,7 @@ async function renderSettings() {
           <div class="profile-assets-title">我的资产</div>
           <div class="profile-assets-row">
             <div class="profile-asset-item" onclick="navigate('coin-center')">
-              <div class="profile-asset-icon profile-asset-coin">🪙</div>
+              <div class="profile-asset-icon profile-asset-coin"><svg class="drift-coin-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" fill="#dfa948"/><circle cx="12" cy="12" r="7.5" fill="none" stroke="#fff" stroke-opacity=".48"/><path d="M6.5 10.5c1.8-2 3.7-2 5.5 0s3.7 2 5.5 0M6.5 14c1.8-2 3.7-2 5.5 0s3.7 2 5.5 0" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg></div>
               <div class="profile-asset-value">${meRes.coins || 0}</div>
             </div>
           </div>
