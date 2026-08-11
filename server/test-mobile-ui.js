@@ -372,6 +372,18 @@ test('lobby and community avatars explain the chat-first profile access rule', (
   assert.doesNotMatch(renderMomentCard('me'), /profile-gate-avatar/);
 });
 
+test('personal moments use a changeable cover with the signature below the identity', () => {
+  const renderer = extractFunction(html, 'renderUserMoments');
+  assert.match(renderer, /momentCoverInput/);
+  assert.match(renderer, /wx-cover__bio/);
+  assert.match(renderer, /personal-moments-page/);
+  assert.doesNotMatch(renderer, /我的朋友圈/);
+  const coverChange = extractFunction(html, 'onMomentCoverChange');
+  assert.match(coverChange, /fileToDataURL\(file,\s*1200,\s*0\.72\)/);
+  assert.match(coverChange, /JSON\.stringify\(\{\s*momentCover\s*\}\)/);
+  assert.doesNotThrow(() => new Function(`${renderer};${coverChange};`));
+});
+
 test('comment rows are the reply trigger and outside taps cancel without extra reply controls', () => {
   const card = extractFunction(html, 'momentCardHtml');
   assert.match(card, /prepareMomentReply\([^)]*,this\)/);

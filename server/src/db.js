@@ -294,6 +294,7 @@ function createUser(phone, email, password = null) {
     passwordHash,
     nickname: '',
     avatar: '',
+    momentCover: '',
     bio: '',
     gender: '',
     role: '',
@@ -330,6 +331,7 @@ function reactivateUser(user, { phone = null, email = null, password = null, rol
   user.passwordHash = password ? bcrypt.hashSync(password, 10) : (user.passwordHash || '');
   user.nickname = '';
   user.avatar = '';
+  user.momentCover = '';
   user.bio = '';
   user.interestIds = [];
   user.strangerChatPolicy = 'all';

@@ -153,6 +153,7 @@ router.get('/user/:userId', (req, res) => {
       id: u.id,
       nickname: u.nickname || '用户',
       avatar: u.avatar || '',
+      momentCover: u.momentCover || '',
       gender: u.gender || '',
       bio: u.bio || '',
       verified: !!u.verified,

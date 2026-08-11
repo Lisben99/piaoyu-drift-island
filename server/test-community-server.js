@@ -33,6 +33,11 @@ const call = async (method, path, body) => {
     assert.deepEqual(interests.json.interestIds, ['music', 'reading', 'travel']);
     const policy = await call('PATCH', '/api/profile/chat-policy', { strangerChatPolicy: 'closed' });
     assert.equal(policy.json.strangerChatPolicy, 'closed');
+    const coverData = 'data:image/jpeg;base64,Y292ZXI=';
+    const coverEdit = await call('POST', '/api/profile/edit', { momentCover: coverData });
+    assert.equal(coverEdit.status, 200); assert.equal(coverEdit.json.profile.momentCover, coverData);
+    const ownMoments = await call('GET', `/api/moments/user/${user.id}`);
+    assert.equal(ownMoments.json.user.momentCover, coverData);
     const publicPost = db.createMoment(other.id, { content: '一首歌的共鸣', type: 'community', topicId: 'music', mood: 'calm' });
     publicPost.createdAt = Date.now() - 2 * 86400000;
     const parentComment = db.addMomentComment(publicPost.id, other.id, 'parent');

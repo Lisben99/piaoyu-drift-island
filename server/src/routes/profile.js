@@ -59,6 +59,7 @@ router.get('/:id', (req, res) => {
       id: user.id,
       nickname: user.nickname || '未设置',
       avatar: user.avatar,
+      momentCover: user.momentCover || '',
       bio: user.bio || '',
       gender: user.gender || '',
       role: user.role || '',
@@ -105,7 +106,7 @@ router.patch('/chat-policy', auth, (req, res) => {
 
 // Edit my profile
 router.post('/edit', auth, (req, res) => {
-  const { nickname, bio, avatar } = req.body;
+  const { nickname, bio, avatar, momentCover } = req.body;
   
   if (nickname !== undefined) {
     if (nickname.length > 20) {
@@ -121,6 +122,13 @@ router.post('/edit', auth, (req, res) => {
   }
   if (avatar !== undefined) {
     req.user.avatar = avatar;
+  }
+  if (momentCover !== undefined) {
+    const cover = String(momentCover || '');
+    if (cover && (!/^data:image\/(?:jpeg|png|webp);base64,/i.test(cover) || cover.length > 900000)) {
+      return res.status(400).json({ success: false, error: '封面图片无效或过大' });
+    }
+    req.user.momentCover = cover;
   }
   
   save();
@@ -142,6 +150,7 @@ router.post('/edit', auth, (req, res) => {
       nickname: req.user.nickname,
       bio: req.user.bio,
       avatar: req.user.avatar,
+      momentCover: req.user.momentCover || '',
       gender: req.user.gender,
       role: req.user.role
     },
