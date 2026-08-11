@@ -6,11 +6,12 @@ const router = express.Router();
 const { sendVerificationCode, verifyCode } = require('../services/sms');
 const { sendVerificationCode: sendEmailVerificationCode, verifyCode: verifyEmailCode } = require('../services/email');
 const { signUserToken } = require('../utils/jwt');
-const { findUserByPhone, findUserByEmail, createUser, reactivateUser, setUserPassword, verifyPassword, db, save } = require('../db');
+const { findUserByPhone, findUserByEmail, createUser, reactivateUser, setUserPassword, verifyPassword, computeUserLevel, db, save } = require('../db');
 const { applyInvite } = require('../services/invite');
 
 // Shape the user object returned to clients (avoids leaking passwordHash)
 function publicUser(user) {
+  const level = computeUserLevel(user);
   return {
     id: user.id,
     phone: user.phone,
@@ -22,7 +23,12 @@ function publicUser(user) {
     coins: user.coins,
     bio: user.bio,
     status: user.status,
-    isNewUser: !user.nickname
+    isNewUser: !user.nickname,
+    level: level.level,
+    levelTitle: level.title,
+    exp: level.exp,
+    nextExp: level.nextExp,
+    progress: level.progress
   };
 }
 
@@ -286,7 +292,7 @@ router.get('/me', (req, res) => {
   const user = findUserByPhone(decoded.phone) || db().users.find(u => u.id === decoded.id);
   if (!user) return res.status(401).json({ error: '用户不存在' });
   if (user.status === 'deleted') return res.status(401).json({ error: '账号已注销，请重新注册', deleted: true });
-  
+  const level = computeUserLevel(user);
   res.json({
     id: user.id,
     phone: user.phone,
@@ -302,7 +308,12 @@ router.get('/me', (req, res) => {
     checkin: user.checkin,
     totalRecharged: user.totalRecharged,
     totalInvited: user.totalInvited,
-    locationEnabled: !!user.locationEnabled
+    locationEnabled: !!user.locationEnabled,
+    level: level.level,
+    levelTitle: level.title,
+    exp: level.exp,
+    nextExp: level.nextExp,
+    progress: level.progress
   });
 });
 

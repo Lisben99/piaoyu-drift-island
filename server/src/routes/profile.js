@@ -5,7 +5,30 @@ const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
 const { verifyToken } = require('../utils/jwt');
-const { db, save, findUserById, computeUserLevel, getFollowCounts, isFollowing } = require('../db');
+const {
+  db, save, findUserById, computeUserLevel, awardExperience,
+  getExperienceHistory, LEVEL_TIERS, EXPERIENCE_RULES,
+  getFollowCounts, isFollowing
+} = require('../db');
+
+router.get('/level/me', auth, (req, res) => {
+  const rules = Object.entries(EXPERIENCE_RULES)
+    .filter(([type]) => type !== 'streak_bonus')
+    .map(([type, rule]) => ({
+      type,
+      label: rule.label,
+      points: rule.points,
+      dailyLimit: rule.dailyLimit || null,
+      once: !!rule.once
+    }));
+  res.json({
+    success: true,
+    level: computeUserLevel(req.user),
+    tiers: LEVEL_TIERS.map(tier => ({ ...tier })),
+    rules,
+    history: getExperienceHistory(req.user.id, 30)
+  });
+});
 
 // View public profile. Auth is OPTIONAL here: anonymous viewers still get the
 // profile, but a logged-in viewer additionally learns whether they follow this user.
@@ -74,6 +97,17 @@ router.post('/edit', auth, (req, res) => {
   }
   
   save();
+  const profileComplete = !!(
+    String(req.user.nickname || '').trim() &&
+    String(req.user.bio || '').trim() &&
+    String(req.user.avatar || '').trim()
+  );
+  const experienceAward = profileComplete
+    ? awardExperience(req.user.id, 'profile_completed', {
+      eventKey: `profile-complete:${req.user.id}`,
+      sourceId: req.user.id
+    })
+    : null;
   
   res.json({
     success: true,
@@ -83,7 +117,8 @@ router.post('/edit', auth, (req, res) => {
       avatar: req.user.avatar,
       gender: req.user.gender,
       role: req.user.role
-    }
+    },
+    experienceAward
   });
 });
 

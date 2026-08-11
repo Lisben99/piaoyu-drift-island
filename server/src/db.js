@@ -762,7 +762,7 @@ function migrateExperienceSystem(persist = true) {
       user.checkin = { lastDate: null, consecutive: 0, experienceConsecutive: 0 };
       changed = true;
     } else if (!Number.isFinite(user.checkin.experienceConsecutive)) {
-      user.checkin.experienceConsecutive = 0;
+      user.checkin.experienceConsecutive = Math.max(0, Number(user.checkin.consecutive) || 0);
       changed = true;
     }
     if (!Number.isFinite(user.experienceMigratedAt)) {

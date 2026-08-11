@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const { adminAuth } = require('../middleware/auth');
-const { db, save, genId, findUserById, findBottleById, getMomentById, addCoinTransaction, addAuditLog, findAdminById, createBot, getBotProfiles, findBotProfileByBotId, updateBotProfile, computeUserLevel } = require('../db');
+const { db, save, genId, findUserById, findBottleById, getMomentById, addCoinTransaction, addAuditLog, findAdminById, createBot, getBotProfiles, findBotProfileByBotId, updateBotProfile, computeUserLevel, awardExperience } = require('../db');
 const { signAdminToken } = require('../utils/jwt');
 const { comparePassword, hashPassword } = require('../utils/crypto');
 const { PACKAGES, refundOrder, confirmPayment, rejectOrder } = require('../services/payment');
@@ -485,8 +485,11 @@ router.post('/reports/:id/handle', adminAuth, (req, res) => {
   
   addAuditLog(req.admin.id, 'handle_report', report.id, `${result}: ${note || '无'}`);
   save();
-  
-  res.json({ success: true, report });
+  const experienceAward = result === 'dismissed' ? null : awardExperience(report.reporterId, 'report_accepted', {
+    eventKey: `report:${report.id}`,
+    sourceId: report.id
+  });
+  res.json({ success: true, report, experienceAward });
 });
 
 // Config - get

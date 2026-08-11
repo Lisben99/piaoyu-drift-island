@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
-const { db, save, genId, findBottleById, getActiveBottles, addCoinTransaction, findUserById, createNotification, getUnreadNotificationCount } = require('../db');
+const { db, save, genId, findBottleById, getActiveBottles, addCoinTransaction, findUserById, createNotification, getUnreadNotificationCount, awardExperience } = require('../db');
 const { moderate } = require('../services/moderation');
 const botEngine = require('../services/botEngine');
 
@@ -178,7 +178,11 @@ router.post('/:id/reply', auth, async (req, res) => {
     anonymous: false,
     content: content.trim()
   });
-  res.json({ success: true, reply, replyCount: bottle.replies.length });
+  const experienceAward = awardExperience(req.user.id, 'bottle_reply', {
+    eventKey: `reply:${reply.id}`,
+    sourceId: reply.id
+  });
+  res.json({ success: true, reply, replyCount: bottle.replies.length, experienceAward });
 });
 
 // Create bottle
@@ -227,6 +231,10 @@ router.post('/', auth, async (req, res) => {
   };
   db().bottles.push(bottle);
   save();
+  const experienceAward = awardExperience(req.user.id, 'bottle_created', {
+    eventKey: `bottle:${bottle.id}`,
+    sourceId: bottle.id
+  });
 
   // Schedule a (random 30–90s) bot reply if the author is a human and no one
   // replies first (AGENTS §7). Bot-authored bottles are skipped inside.
@@ -237,7 +245,8 @@ router.post('/', auth, async (req, res) => {
   res.json({
     success: true,
     bottle: { ...bottle, authorNickname: req.user.nickname },
-    coins: req.user.coins
+    coins: req.user.coins,
+    experienceAward
   });
 });
 

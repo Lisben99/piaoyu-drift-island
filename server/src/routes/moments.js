@@ -21,7 +21,8 @@ const {
   getNearbyUsers,
   computeUserLevel,
   getFollowCounts,
-  isFollowing
+  isFollowing,
+  awardExperience
 } = require('../db');
 
 router.use(auth);
@@ -76,7 +77,11 @@ router.post('/', (req, res) => {
   }
   const momentType = type === 'moment' ? 'moment' : 'community';
   const moment = createMoment(req.user.id, { content: text, images: imgs, type: momentType });
-  res.json({ success: true, moment: enrich(moment, req.user.id) });
+  const experienceAward = awardExperience(req.user.id, 'moment_created', {
+    eventKey: `moment:${moment.id}`,
+    sourceId: moment.id
+  });
+  res.json({ success: true, moment: enrich(moment, req.user.id), experienceAward });
 });
 
 // Community feed (all users' moments).
@@ -137,6 +142,15 @@ router.get('/user/:userId', (req, res) => {
 router.post('/:id/like', (req, res) => {
   const r = toggleMomentLike(req.params.id, req.user.id);
   if (!r) return res.status(404).json({ success: false, error: '动态不存在' });
+  if (r.liked) {
+    const moment = getMomentById(req.params.id);
+    if (moment && moment.userId !== req.user.id) {
+      awardExperience(moment.userId, 'like_received', {
+        eventKey: `like:${moment.id}:${req.user.id}`,
+        sourceId: moment.id
+      });
+    }
+  }
   res.json({ success: true, ...r });
 });
 
@@ -148,6 +162,10 @@ router.post('/:id/comment', (req, res) => {
   const c = addMomentComment(req.params.id, req.user.id, text);
   if (!c) return res.status(404).json({ success: false, error: '动态不存在' });
   const cu = req.user;
+  const experienceAward = awardExperience(req.user.id, 'comment_created', {
+    eventKey: `comment:${c.id}`,
+    sourceId: c.id
+  });
   res.json({
     success: true,
     comment: {
@@ -157,7 +175,8 @@ router.post('/:id/comment', (req, res) => {
       avatar: cu.avatar || '',
       content: c.content,
       createdAt: c.createdAt
-    }
+    },
+    experienceAward
   });
 });
 

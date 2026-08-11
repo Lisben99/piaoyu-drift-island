@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
-const { db, save, addCoinTransaction } = require('../db');
+const { db, save, addCoinTransaction, awardExperience } = require('../db');
 
 // Get coin balance and summary
 router.get('/balance', auth, (req, res) => {
@@ -47,6 +47,11 @@ router.post('/checkin', auth, (req, res) => {
   // Calculate consecutive days
   const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
   if (user.checkin.lastDate === yesterday) {
+    user.checkin.experienceConsecutive = (user.checkin.experienceConsecutive || 0) + 1;
+  } else {
+    user.checkin.experienceConsecutive = 1;
+  }
+  if (user.checkin.lastDate === yesterday) {
     user.checkin.consecutive += 1;
   } else {
     user.checkin.consecutive = 1;
@@ -73,12 +78,27 @@ router.post('/checkin', auth, (req, res) => {
   }
   
   addCoinTransaction(user.id, bonus, 'checkin', description);
+  const experienceAwards = [awardExperience(user.id, 'daily_checkin', {
+    eventKey: `checkin:${user.id}:${today}`,
+    sourceId: today
+  })];
+  const streakPoints = { 3: 2, 7: 5, 14: 10, 30: 20 }[user.checkin.experienceConsecutive] || 0;
+  if (streakPoints > 0) {
+    experienceAwards.push(awardExperience(user.id, 'streak_bonus', {
+      eventKey: `checkin-streak:${user.id}:${user.checkin.experienceConsecutive}:${today}`,
+      sourceId: today,
+      points: streakPoints
+    }));
+  }
+  const experienceAward = experienceAwards.find(item => item.leveledUp) || experienceAwards[0];
   
   res.json({
     success: true,
     bonus,
     consecutive: user.checkin.consecutive || 7,
-    coins: user.coins
+    coins: user.coins,
+    experienceAward,
+    experienceAwards
   });
 });
 
