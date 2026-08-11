@@ -543,7 +543,9 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .moment-img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;cursor:pointer;background:#eee}
 .moment-actions{display:flex;gap:18px;margin-top:6px;padding-top:8px;border-top:1px solid #f0eee8}
 .moment-act{background:none;border:none;font-size:13px;color:#718082;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;padding:4px 0}
-.moment-act.liked{color:#e74c3c}
+.moment-act.liked{color:#ef7b62}
+.like-icon{fill:none;stroke:currentColor;stroke-width:1.8;vertical-align:-2px;transition:fill .2s,stroke .2s}
+.moment-act.liked .like-icon,.chat-btn-like.liked .like-icon{fill:currentColor;stroke:currentColor}
 .moment-comment-box{margin-top:8px;background:#f7f6f2;border-radius:10px;padding:10px}
 .moment-comments{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
 .moment-comment{font-size:13px;line-height:1.5;color:#3a423f}
@@ -948,8 +950,8 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
     <div class="lobby-content">
       <div class="lobby-tabs">
         <button class="lobby-tab active" data-tab="all" onclick="lobbyTab('all')">全部</button>
-        <button class="lobby-tab" data-tab="male" onclick="lobbyTab('male')">男生</button>
-        <button class="lobby-tab" data-tab="female" onclick="lobbyTab('female')">女生</button>
+        <button class="lobby-tab" data-tab="male" onclick="lobbyTab('male')">♂ 男生</button>
+        <button class="lobby-tab" data-tab="female" onclick="lobbyTab('female')">♀ 女生</button>
       </div>
       <div id="lobbyList"></div>
     </div>
@@ -1283,7 +1285,7 @@ function avatarColor(name) {
   return colors[Math.abs(h) % colors.length];
 }
 function avatarInitial(name) { const n = (name || '').trim(); return (n || '?')[0].toUpperCase(); }
-function genderText(g) { if (g === 'male') return '男生'; if (g === 'female') return '女生'; return '岛民'; }
+function genderText(g) { if (g === 'male') return '<span class="gender-badge gender-male">♂</span>'; if (g === 'female') return '<span class="gender-badge gender-female">♀</span>'; return '岛民'; }
 function avatarStyle(name, avatar, color) {
   const c = color || avatarColor(name || '?');
   if (avatar) {
@@ -1902,7 +1904,7 @@ async function renderLobby() {
           <div class="bottle-card__footer">
             <div class="bottle-card__status">${statusLabel(b.status)}</div>
             <div class="bottle-card__actions">
-              <button class="bottle-card__chat-btn chat-btn-like ${b.likedByMe ? 'liked' : ''}" onclick="toggleLike('${b.id}', this)">👍 ${b.likeCount || 0}</button>
+              <button class="bottle-card__chat-btn chat-btn-like ${b.likedByMe ? 'liked' : ''}" onclick="toggleLike('${b.id}', this)"><svg class="like-icon" viewBox="0 0 24 24" width="15" height="15"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> ${b.likeCount || 0}</button>
               <button class="bottle-card__chat-btn chat-btn-reply" onclick="openBottleReplies('${b.id}')">回复${b.replyCount ? '(' + b.replyCount + ')' : ''}</button>
               ${isSelf || isAnon ? '' : `<button class="bottle-card__chat-btn chat-btn-primary" onclick="startChat('${b.authorId}')">聊聊</button>`}
               <button class="bottle-card__report" onclick="navigate('report'); window._reportTarget={type:'bottle',id:'${b.id}'}">举报</button>
@@ -1945,7 +1947,7 @@ async function renderNotifications() {
 
 function notifItemIcon(type) {
   if (type === 'bottle_replied') return '💬';
-  if (type === 'bottle_liked') return '👍';
+  if (type === 'bottle_liked') return '♥';
   if (type === 'chat_message') return '✉️';
   return '🔔';
 }
@@ -1996,7 +1998,7 @@ async function toggleLike(bottleId, btn) {
     const res = await api('/bottles/' + bottleId + '/like', { method: 'POST' });
     if (res && res.success) {
       btn.classList.toggle('liked', !!res.liked);
-      btn.textContent = '👍 ' + (res.likeCount || 0);
+      btn.innerHTML = '<svg class="like-icon" viewBox="0 0 24 24" width="15" height="15"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> ' + (res.likeCount || 0);
     } else {
       showToast(res.error || '操作失败');
     }
@@ -3552,7 +3554,7 @@ function momentCardHtml(m) {
     ${contentHtml}
     ${imagesHtml}
     <div class="moment-actions">
-      <button class="moment-act ${liked ? 'liked' : ''}" onclick="toggleMomentLike('${m.id}')">${liked ? '❤️' : '🤍'} <span>${m.likeCount}</span></button>
+      <button class="moment-act ${liked ? 'liked' : ''}" onclick="toggleMomentLike('${m.id}')"><svg class="like-icon" viewBox="0 0 24 24" width="16" height="16"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> <span>${m.likeCount}</span></button>
       <button class="moment-act" onclick="toggleMomentComments('${m.id}')">💬 <span>${m.commentCount}</span></button>
     </div>
     <div class="moment-comment-box" id="mcb-${m.id}" style="display:none">
@@ -3801,7 +3803,7 @@ async function toggleMomentLike(id) {
         const act = card.querySelector('.moment-actions .moment-act');
         if (act) {
           act.classList.toggle('liked', res.liked);
-          act.innerHTML = (res.liked ? '❤️' : '🤍') + ' <span>' + res.likeCount + '</span>';
+          act.innerHTML = '<svg class="like-icon" viewBox="0 0 24 24" width="16" height="16"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> <span>' + res.likeCount + '</span>';
         }
       }
     }
