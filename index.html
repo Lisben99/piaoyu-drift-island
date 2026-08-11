@@ -21,17 +21,17 @@
 <style>
 /* ===== Reset ===== */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html{-webkit-text-size-adjust:100%}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#e8e6df;color:#172b2d;min-height:100vh;display:flex;justify-content:center}
+html{height:100%;overflow:hidden;-webkit-text-size-adjust:100%}
+body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#e8e6df;color:#172b2d;display:flex;justify-content:center}
 button{font-family:inherit;cursor:pointer;border:none;background:none}
 input,textarea{font-family:inherit;-webkit-appearance:none;appearance:none;outline:none;resize:none}
 input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height:16px;accent-color:#1f7a74;flex-shrink:0;cursor:pointer}
 
 /* ===== Phone Frame ===== */
-#app{width:100%;max-width:430px;min-height:100vh;background:#f7f5ef;position:relative;overflow:hidden;box-shadow:0 0 60px rgba(0,0,0,.08);display:flex;flex-direction:column}
+#app{width:100%;max-width:430px;height:var(--app-height,100dvh);min-height:0;background:#f7f5ef;position:relative;overflow:hidden;box-shadow:0 0 60px rgba(0,0,0,.08);display:flex;flex-direction:column}
 
 /* ===== Status Bar ===== */
-.status-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 22px 4px;font-size:13px;font-weight:600;color:#172b2d;background:inherit;user-select:none;flex-shrink:0}
+.status-bar{display:flex;align-items:center;justify-content:space-between;padding:calc(12px + env(safe-area-inset-top)) 22px 4px;font-size:13px;font-weight:600;color:#172b2d;background:inherit;user-select:none;flex-shrink:0}
 
 /* ===== Nav Bar ===== */
 .nav-bar{display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 16px;position:relative;flex-shrink:0}
@@ -44,8 +44,10 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .nav-bar__spacer{width:60px}
 
 /* ===== Pages ===== */
-.page{display:none;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.page{display:none;flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .page.active{display:flex;flex-direction:column;animation:pageIn .3s ease}
+.main-tab-page{overflow:hidden}
+[data-scroll-root]{min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
 @keyframes pageIn{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
 
 /* ===== Toast ===== */
@@ -66,7 +68,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .modal-card__btn--danger{color:#e74c3c}
 
 /* ===== Tab Bar ===== */
-.tab-bar{display:flex;height:56px;background:#fff;border-top:1px solid #e6e4dc;flex-shrink:0}
+.tab-bar{display:flex;height:calc(56px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:#fff;border-top:1px solid #e6e4dc;flex-shrink:0}
 .tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#98a2a0;font-size:10px;font-weight:600}
 .tab-item.active{color:#1f7a74}
 .tab-item svg{width:24px;height:24px}
@@ -997,8 +999,8 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
   </div>
 
   <!-- ===== PAGE: Home ===== -->
-  <div class="page" id="page-home">
-    <div class="home-content">
+  <div class="page main-tab-page" id="page-home">
+    <div class="home-content" data-scroll-root>
       <div class="home-top">
         <div class="home-avatar" id="homeAvatar"></div>
         <div class="home-greeting">
@@ -1042,7 +1044,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
   </div>
 
   <!-- ===== PAGE: Lobby ===== -->
-  <div class="page" id="page-lobby">
+  <div class="page main-tab-page" id="page-lobby">
     <div class="nav-bar">
       <div class="nav-bar__back" onclick="navigateBack()">←</div>
       <div class="nav-bar__title">漂流大厅</div>
@@ -1059,7 +1061,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
         </button>
       </div>
     </div>
-    <div class="lobby-content">
+    <div class="lobby-content" data-scroll-root>
       <div class="lobby-tabs">
         <button class="lobby-tab active" data-tab="all" onclick="lobbyTab('all')">全部</button>
         <button class="lobby-tab" data-tab="male" onclick="lobbyTab('male')">♂ 男生</button>
@@ -1148,18 +1150,18 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
   </div>
 
   <!-- ===== PAGE: Messages ===== -->
-  <div class="page" id="page-messages">
+  <div class="page main-tab-page" id="page-messages">
     <div class="nav-bar">
       <div class="nav-bar__title" style="position:static;transform:none">消息</div>
       <div class="nav-bar__spacer"></div>
       <div class="nav-bar__right" id="messagesNavActions"></div>
     </div>
-    <div class="messages-content" id="messagesList"></div>
+    <div class="messages-content" id="messagesList" data-scroll-root></div>
     <div class="tab-bar" id="tabbar-messages"></div>
   </div>
 
   <!-- ===== PAGE: Community (动态 / 附近的人) ===== -->
-  <div class="page" id="page-community">
+  <div class="page main-tab-page" id="page-community">
     <div class="nav-bar">
       <div class="nav-bar__title" style="position:static;transform:none">社区</div>
       <div class="nav-bar__spacer"></div>
@@ -1175,7 +1177,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
       <div class="community-tab" id="ctab-latest" onclick="switchCommunityTab('latest')">最新</div>
       <div class="community-tab" id="ctab-following" onclick="switchCommunityTab('following')">我关注的</div>
     </div>
-    <div class="community-content" id="communityContent"></div>
+    <div class="community-content" id="communityContent" data-scroll-root></div>
     <div class="tab-bar" id="tabbar-community"></div>
   </div>
 
@@ -1265,12 +1267,12 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
   </div>
 
   <!-- ===== PAGE: Settings ===== -->
-  <div class="page" id="page-settings">
+  <div class="page main-tab-page" id="page-settings">
     <div class="nav-bar">
       <div class="nav-bar__title" style="position:static;transform:none">我的</div>
       <div class="nav-bar__spacer"></div>
     </div>
-    <div class="settings-content" id="settingsContent"></div>
+    <div class="settings-content" id="settingsContent" data-scroll-root></div>
     <div class="tab-bar" id="tabbar-settings"></div>
   </div>
 
@@ -1365,6 +1367,22 @@ let selectedSessions = new Set();
    UTILITIES
    ================================================================ */
 function $(id) { return document.getElementById(id); }
+function syncAppViewport() {
+  const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  document.documentElement.style.setProperty('--app-height', `${Math.round(viewportHeight)}px`);
+}
+function resetPageScroll(page) {
+  page.scrollTop = 0;
+  page.querySelectorAll('[data-scroll-root]').forEach(root => { root.scrollTop = 0; });
+  window.scrollTo(0, 0);
+}
+function initializeAppViewport() {
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', syncAppViewport);
+  window.addEventListener('resize', syncAppViewport);
+  window.addEventListener('orientationchange', syncAppViewport);
+  syncAppViewport();
+}
+initializeAppViewport();
 function showToast(msg) {
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(t._timer); t._timer = setTimeout(() => t.classList.remove('show'), 2000);
@@ -1486,7 +1504,7 @@ function navigateTo(pageId, replace) {
   page.classList.add('active');
   currentPage = pageId;
   onPageEnter(pageId);
-  page.scrollTop = 0;
+  resetPageScroll(page);
 }
 function navigate(pageId) { navigateTo(pageId, false); }
 function navigateBack() {
