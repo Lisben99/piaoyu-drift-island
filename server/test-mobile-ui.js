@@ -9,12 +9,15 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 function extractFunction(source, name) {
   const match = new RegExp(`function\\s+${name}\\s*\\(`).exec(source);
   assert.ok(match, `index.html must define ${name}()`);
+  const declarationStart = source.slice(Math.max(0, match.index - 6), match.index) === 'async '
+    ? match.index - 6
+    : match.index;
   const bodyStart = source.indexOf('{', match.index);
   let depth = 0;
   for (let index = bodyStart; index < source.length; index += 1) {
     if (source[index] === '{') depth += 1;
     if (source[index] === '}') depth -= 1;
-    if (depth === 0) return source.slice(match.index, index + 1);
+    if (depth === 0) return source.slice(declarationStart, index + 1);
   }
   throw new Error(`Unable to extract ${name}() from index.html`);
 }
@@ -153,6 +156,33 @@ test('each main tab page has one dedicated scroll root', () => {
     assert.match(firstTag, /\bmain-tab-page\b/, `page-${id} must use main-tab-page`);
     assert.equal((innerHtml.match(/\bdata-scroll-root\b/g) || []).length, 1, `page-${id} must have one scroll root`);
   }
+});
+
+test('lobby renders the shared five-item bottom navigation', async () => {
+  const { innerHtml } = pageMarkup('lobby');
+  assert.match(innerHtml, /class="tab-bar"[^>]*id="tabbar-lobby"/, 'lobby must own its tab-bar container');
+
+  const elements = {
+    'lobbyList': { innerHTML: '' },
+    'lobbyCoins': { textContent: '' },
+    'tabbar-lobby': { innerHTML: '' },
+  };
+  const context = {
+    window: { unreadTotal: 2 },
+    lobbyFilter: 'all',
+    currentUser: { id: 'u-1', coins: 12 },
+    document: { getElementById: id => elements[id] || null },
+    api: async () => ({ success: true, bottles: [] }),
+  };
+  context.$ = id => context.document.getElementById(id);
+  vm.createContext(context);
+  vm.runInContext(extractFunction(html, 'renderTabBar'), context);
+  vm.runInContext(extractFunction(html, 'renderLobby'), context);
+  await context.renderLobby();
+
+  const tabItems = elements['tabbar-lobby'].innerHTML.match(/class="tab-item/g) || [];
+  assert.equal(tabItems.length, 5, 'lobby bottom navigation must contain five destinations');
+  assert.match(elements['tabbar-lobby'].innerHTML, /tab-item active[^>]*onclick="navigate\('lobby'\)"/, 'lobby tab must be active');
 });
 
 test('genderIcon renders accessible inline SVGs for both genders and supported sizes', () => {

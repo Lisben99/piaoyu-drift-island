@@ -1096,6 +1096,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
       </div>
       <div id="lobbyList"></div>
     </div>
+    <div class="tab-bar" id="tabbar-lobby"></div>
   </div>
 
   <!-- ===== PAGE: Notifications ===== -->
@@ -2119,6 +2120,7 @@ $('logoutBtn').onclick = function() {
    LOBBY
    ================================================================ */
 async function renderLobby() {
+  renderTabBar('tabbar-lobby', 'lobby');
   $('lobbyList').innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
   try {
     const res = await api('/bottles?gender=' + lobbyFilter);
