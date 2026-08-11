@@ -589,6 +589,19 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .user-moments-header__acts button{font-size:12px;padding:5px 14px;border-radius:10px;font-weight:600;cursor:pointer;border:none}
 .um-act-back{background:#f0ede6;color:#5F5E5A}
 .um-act-chat{background:#1f7a74;color:#fff}
+
+/* ===== Moments Timeline (朋友圈风格) ===== */
+.moments-date-group{margin-bottom:6px}
+.moments-date-label{font-size:15px;font-weight:700;color:#2b3330;padding:18px 14px 10px;letter-spacing:.5px}
+.own-moment-item{background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.own-moment-item .moment-content{font-size:15px;line-height:1.55;color:#2b3330;margin:0 0 6px}
+.own-moment-item .moment-imgs{margin:6px 0}
+.own-moment-item .moment-comments{margin-top:8px}
+.own-moment-footer{display:flex;align-items:center;justify-content:space-between;margin-top:6px;padding-top:8px}
+.own-moment-time{font-size:11px;color:#b0ada4}
+.own-moment-actions{display:flex;gap:16px;align-items:center}
+.own-moment-del{font-size:12px;color:#c0bdb4;font-weight:600;background:none;border:none;cursor:pointer;padding:4px 0}
+.own-moment-del:active{color:#e74c3c}
 </style>
 </head>
 <body>
@@ -3714,24 +3727,33 @@ async function renderUserMoments(userId) {
     const res = await api('/moments/user/' + userId);
     if (res.success) {
       const u = res.user;
-      const headerAvatar = u.avatar
-        ? `<div class="user-moments-header__avatar" style="background-image:url('${u.avatar}')"></div>`
-        : `<div class="user-moments-header__avatar" style="background:${avatarColor(u.nickname)}">${avatarInitial(u.nickname)}</div>`;
-      let html = `<div class="user-moments-header">
-        ${headerAvatar}
-        <div class="user-moments-header__info">
-          <div class="user-moments-header__name">${escapeHtml(u.nickname)}</div>
-          <div class="user-moments-header__bio">${escapeHtml(u.bio || '这个人很神秘~')}</div>
-        </div>
-        <div class="user-moments-header__acts">
-          <button class="um-act-back" onclick="navigateBack()">返回</button>
-          <button class="um-act-chat" onclick="startChat('${u.id}')">私聊</button>
-        </div>
-      </div>`;
+      const isOwn = currentUser && userId === currentUser.id;
+
+      let html = '';
+
+      // Only show header for OTHER users' moments; skip for own (redundant)
+      if (!isOwn) {
+        const headerAvatar = u.avatar
+          ? `<div class="user-moments-header__avatar" style="background-image:url('${u.avatar}')"></div>`
+          : `<div class="user-moments-header__avatar" style="background:${avatarColor(u.nickname)}">${avatarInitial(u.nickname)}</div>`;
+        html += `<div class="user-moments-header">
+          ${headerAvatar}
+          <div class="user-moments-header__info">
+            <div class="user-moments-header__name">${escapeHtml(u.nickname)}</div>
+            <div class="user-moments-header__bio">${escapeHtml(u.bio || '这个人很神秘~')}</div>
+          </div>
+          <div class="user-moments-header__acts">
+            <button class="um-act-back" onclick="navigateBack()">返回</button>
+            <button class="um-act-chat" onclick="startChat('${u.id}')">私聊</button>
+          </div>
+        </div>`;
+      }
+
       if (!res.moments.length) {
         html += '<div class="empty-state" style="margin-top:30px"><div class="empty-state__icon">📝</div><div class="empty-state__title">还没有动态</div></div>';
       } else {
-        html += res.moments.map(momentCardHtml).join('');
+        // Moments-style: group by date, no per-card avatar/name for own timeline
+        html += momentsTimelineHtml(res.moments, isOwn);
       }
       c.innerHTML = html;
     } else {
@@ -3740,6 +3762,55 @@ async function renderUserMoments(userId) {
   } catch (e) {
     c.innerHTML = '<div class="empty-state"><div class="empty-state__title">网络错误</div></div>';
   }
+}
+
+function momentsTimelineHtml(moments, isOwn) {
+  // Group by date key: "今天", "昨天", or "M月D日"
+  const now = new Date();
+  const groups = {};
+  moments.forEach(m => {
+    const d = new Date(m.createdAt);
+    const key = isToday(d, now) ? '今天' : isYesterday(d, now) ? '昨天' : `${d.getMonth() + 1}月${d.getDate()}日`;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(m);
+  });
+
+  const keys = Object.keys(groups);
+  return keys.map(key => {
+    const dayLabel = /^今天|昨天$/.test(key) ? key : key.replace(/月(\d+)日/, (m,d) => m.replace(d, +d));
+    return `<div class="moments-date-group">
+      <div class="moments-date-label">${dayLabel}</div>
+      ${groups[key].map(m => isOwn ? ownMomentItemHtml(m) : momentCardHtml(m)).join('')}
+    </div>`;
+  }).join('');
+}
+
+function isToday(d, now) { return d.toDateString() === now.toDateString(); }
+function isYesterday(d, now) { const y = new Date(now); y.setDate(y.getDate()-1); return d.toDateString() === y.toDateString(); }
+
+function ownMomentItemHtml(m) {
+  window._momentCache[m.id] = m;
+  const imagesHtml = (m.images && m.images.length)
+    ? `<div class="moment-imgs imgs-${Math.min(m.images.length, 9)}">${m.images.map(src => `<img src="${src}" class="moment-img" onclick="viewImage('${src}')" alt="图片">`).join('')}</div>`
+    : '';
+  const contentHtml = m.content ? `<div class="moment-content">${escapeHtml(m.content)}</div>` : '';
+  const commentsHtml = (m.comments && m.comments.length)
+    ? `<div class="moment-comments">${m.comments.map(c => `<div class="moment-comment"><span class="mc-name">${escapeHtml(c.nickname)}：</span><span>${escapeHtml(c.content)}</span></div>`).join('')}</div>`
+    : '';
+  const liked = !!m.likedByMe;
+  return `<div class="own-moment-item" id="moment-${m.id}">
+    ${contentHtml}
+    ${imagesHtml}
+    ${commentsHtml}
+    <div class="own-moment-footer">
+      <span class="own-moment-time">${formatTime(m.createdAt)}</span>
+      <div class="own-moment-actions">
+        <button class="moment-act ${liked ? 'liked' : ''}" onclick="toggleMomentLike('${m.id}')"><svg class="like-icon" viewBox="0 0 24 24" width="16" height="16"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> <span>${m.likeCount}</span></button>
+        <button class="moment-act" onclick="toggleMomentComments('${m.id}')">💬 <span>${m.commentCount}</span></button>
+        <button class="own-moment-del" onclick="deleteMoment('${m.id}')">删除</button>
+      </div>
+    </div>
+  </div>`;
 }
 
 /* ===== Compose moment ===== */
