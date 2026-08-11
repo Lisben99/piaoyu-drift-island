@@ -4681,7 +4681,9 @@ function prepareMomentReply(momentId, commentId, commentElement) {
 function cancelMomentReply(momentId) {
   delete window._commentReplyTargets[momentId];
   const input = $('mci-' + momentId);
-  if (input) input.placeholder = '说点什么...';
+  const box = $('mcb-' + momentId);
+  if (input) { input.placeholder = '说点什么...'; if (document.activeElement === input) input.blur(); }
+  if (box) box.style.display = 'none';
   const card = $('moment-' + momentId);
   if (card) card.querySelectorAll('.moment-comment.reply-selected').forEach(item => item.classList.remove('reply-selected'));
 }
@@ -4691,7 +4693,7 @@ function cancelAllMomentReplies() {
 function handleMomentReplyOutsideClick(event) {
   const target = event.target;
   if (!target || !target.closest) return;
-  if (target.closest('.moment-comment') || target.closest('.moment-comment-input input')) return;
+  if (target.closest('.moment-comment') || target.closest('.moment-comment-input')) return;
   cancelAllMomentReplies();
 }
 document.addEventListener('click', handleMomentReplyOutsideClick);

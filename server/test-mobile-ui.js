@@ -369,4 +369,7 @@ test('comment rows are the reply trigger and outside taps cancel without extra r
   assert.doesNotMatch(card, /mc-reply-action|取消回复|moment-replying/);
   assert.match(extractFunction(html, 'prepareMomentReply'), /reply-selected/);
   assert.match(extractFunction(html, 'handleMomentReplyOutsideClick'), /cancelAllMomentReplies/);
+  assert.match(extractFunction(html, 'cancelMomentReply'), /box\.style\.display\s*=\s*'none'/);
+  assert.match(extractFunction(html, 'cancelMomentReply'), /input\.blur\(\)/);
+  assert.match(extractFunction(html, 'handleMomentReplyOutsideClick'), /\.moment-comment-input/);
 });
