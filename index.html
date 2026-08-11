@@ -4241,7 +4241,7 @@ function momentCardHtml(m) {
     ${imagesHtml}
     <div class="moment-actions">
       <button class="moment-act ${liked ? 'liked' : ''}" onclick="toggleMomentLike('${m.id}')"><svg class="like-icon" viewBox="0 0 24 24" width="16" height="16"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 共鸣 <span>${m.resonanceCount ?? m.likeCount}</span></button>
-      <button class="moment-act" onclick="toggleMomentComments('${m.id}')">💬 评论 <span>${m.commentCount}</span></button>
+      <button class="moment-act" onclick="event.stopPropagation();toggleMomentComments('${m.id}')">💬 评论 <span>${m.commentCount}</span></button>
       ${!isSelf && author.canChat !== false ? `<button class="moment-act moment-chat-action" onclick="openChatStarter('${m.id}','${author.id}')">聊聊</button>` : ''}
       ${overflowMenu}
     </div>
@@ -4664,7 +4664,17 @@ async function toggleMomentLike(id) {
 }
 function toggleMomentComments(id) {
   const box = $('mcb-' + id);
-  if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  if (!box) return;
+  const shouldOpen = box.style.display === 'none';
+  cancelAllMomentReplies();
+  closeMomentCommentBoxes(id);
+  box.style.display = shouldOpen ? 'block' : 'none';
+}
+function closeMomentCommentBoxes(exceptMomentId) {
+  document.querySelectorAll('.moment-comment-box').forEach(box => {
+    if (exceptMomentId && box.id === 'mcb-' + exceptMomentId) return;
+    box.style.display = 'none';
+  });
 }
 function prepareMomentReply(momentId, commentId, commentElement) {
   const moment = window._momentCache[momentId];
@@ -4695,6 +4705,7 @@ function handleMomentReplyOutsideClick(event) {
   if (!target || !target.closest) return;
   if (target.closest('.moment-comment') || target.closest('.moment-comment-input')) return;
   cancelAllMomentReplies();
+  closeMomentCommentBoxes();
 }
 document.addEventListener('click', handleMomentReplyOutsideClick);
 async function addMomentComment(id) {

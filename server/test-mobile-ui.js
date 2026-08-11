@@ -366,10 +366,13 @@ test('community comments support explicit replies and preserve the reply target 
 test('comment rows are the reply trigger and outside taps cancel without extra reply controls', () => {
   const card = extractFunction(html, 'momentCardHtml');
   assert.match(card, /prepareMomentReply\([^)]*,this\)/);
+  assert.match(card, /event\.stopPropagation\(\);toggleMomentComments/);
   assert.doesNotMatch(card, /mc-reply-action|取消回复|moment-replying/);
   assert.match(extractFunction(html, 'prepareMomentReply'), /reply-selected/);
   assert.match(extractFunction(html, 'handleMomentReplyOutsideClick'), /cancelAllMomentReplies/);
   assert.match(extractFunction(html, 'cancelMomentReply'), /box\.style\.display\s*=\s*'none'/);
   assert.match(extractFunction(html, 'cancelMomentReply'), /input\.blur\(\)/);
   assert.match(extractFunction(html, 'handleMomentReplyOutsideClick'), /\.moment-comment-input/);
+  assert.match(extractFunction(html, 'handleMomentReplyOutsideClick'), /closeMomentCommentBoxes\(\)/);
+  assert.match(extractFunction(html, 'toggleMomentComments'), /closeMomentCommentBoxes\(id\)/);
 });
