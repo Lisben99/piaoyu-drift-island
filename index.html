@@ -578,7 +578,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .moment-compose-imgs .ci img{width:72px;height:72px;object-fit:cover;border-radius:8px}
 .moment-compose-imgs .ci .ci-del{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#e74c3c;color:#fff;border:none;font-size:12px;line-height:20px;cursor:pointer}
 .moment-compose-bar{display:flex;align-items:center;gap:10px;margin-top:6px}
-.mc-img-btn{background:#f2f0ea;border:none;border-radius:8px;padding:9px 12px;font-size:13px;font-weight:600;color:#3a423f;cursor:pointer}
+.mc-img-btn{background:#f2f0ea;border:none;border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
 .mc-count{font-size:12px;color:#98a2a0;flex:1}
 .user-moments-header{padding:18px 16px;display:flex;gap:14px;align-items:center;border-bottom:1px solid #eef0ee}
 .user-moments-header__avatar{width:52px;height:52px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;background-size:cover;background-position:center}
@@ -591,17 +591,24 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .um-act-chat{background:#1f7a74;color:#fff}
 
 /* ===== Moments Timeline (朋友圈风格) ===== */
-.moments-date-group{margin-bottom:6px}
-.moments-date-label{font-size:15px;font-weight:700;color:#2b3330;padding:18px 14px 10px;letter-spacing:.5px}
-.own-moment-item{background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:8px}
-.own-moment-item .moment-content{font-size:15px;line-height:1.55;color:#2b3330;margin:0 0 6px}
-.own-moment-item .moment-imgs{margin:6px 0}
-.own-moment-item .moment-comments{margin-top:8px}
-.own-moment-footer{display:flex;align-items:center;justify-content:space-between;margin-top:6px;padding-top:8px}
+.moments-timeline{background:#ededed;min-height:100%;padding-bottom:40px}
+.moments-date-group{margin-bottom:0}
+.moments-date-label{text-align:center;font-size:14px;color:#8a8a8a;padding:16px 0 12px;letter-spacing:.5px}
+.own-moment-item{background:#fff;margin:0;padding:14px 16px 10px;position:relative}
+.own-moment-item::after{content:'';position:absolute;left:16px;right:16px;bottom:0;height:1px;background:#e8e8e8}
+.own-moment-item:last-child::after{display:none}
+.own-moment-item .moment-content{font-size:15px;line-height:1.6;color:#2b3330;margin:0 0 6px;word-break:break-all}
+.own-moment-item .moment-imgs{margin:8px 0 4px}
+.own-moment-item .moment-comments{margin-top:10px;background:#f7f7f7;border-radius:4px;padding:8px 10px}
+.own-moment-item .moment-comment{font-size:13px;line-height:1.65;color:#444}
+.own-moment-item .mc-name{color:#576b95;font-weight:600}
+.own-moment-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:0}
 .own-moment-time{font-size:11px;color:#b0ada4}
-.own-moment-actions{display:flex;gap:16px;align-items:center}
-.own-moment-del{font-size:12px;color:#c0bdb4;font-weight:600;background:none;border:none;cursor:pointer;padding:4px 0}
+.own-moment-actions{display:flex;gap:18px;align-items:center}
+.own-moment-del{font-size:12px;color:#c0bdb4;font-weight:500;background:none;border:none;cursor:pointer;padding:4px 0}
 .own-moment-del:active{color:#e74c3c}
+/* 朋友圈模式：覆盖页面背景 */
+#userMomentsContent>.moments-timeline{margin:-12px -14px -16px;min-height:calc(100vh + 0px)}
 </style>
 </head>
 <body>
@@ -1063,7 +1070,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
         <button class="nav-bar__icon-btn" style="width:36px;height:36px" onclick="navigate('notifications')" aria-label="通知" style="position:relative">
           <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>
         </button>
-        <button class="compose-pill-btn" onclick="openMomentCompose()">发贴</button>
+        <button class="compose-pill-btn" onclick="openMomentCompose('community')">发贴</button>
       </div>
     </div>
     <div class="community-tabs" id="communityTabs">
@@ -1092,7 +1099,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
       <textarea id="momentComposeText" maxlength="500" placeholder="分享此刻的心情、想法或见闻..."></textarea>
       <div class="moment-compose-imgs" id="momentComposeImgs"></div>
       <div class="moment-compose-bar">
-        <button class="mc-img-btn" type="button" onclick="document.getElementById('momentComposeFile').click()">🖼️ 图片</button>
+        <button class="mc-img-btn" type="button" onclick="document.getElementById('momentComposeFile').click()" title="添加图片"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#5F5E5A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></button>
         <input type="file" id="momentComposeFile" accept="image/*" multiple style="display:none" onchange="onMomentComposeImages(event)">
         <span class="mc-count" id="momentComposeCount">0/9</span>
         <button class="primary-button" id="momentComposeBtn" onclick="submitMoment()">发布</button>
@@ -3731,6 +3738,14 @@ async function renderUserMoments(userId) {
 
       let html = '';
 
+      // Own moments: show a minimal Moments-style nav + compose entry
+      if (isOwn) {
+        html += `<div style="background:#ededed;padding:10px 16px;display:flex;align-items:center;gap:10px">
+          <div style="flex:1;font-size:15px;font-weight:700;color:#2b3330">我的朋友圈</div>
+          <button onclick="openMomentCompose('moment')" style="font-size:13px;color:#576b95;font-weight:600;background:none;border:none;cursor:pointer;padding:4px 0">发一条</button>
+        </div>`;
+      }
+
       // Only show header for OTHER users' moments; skip for own (redundant)
       if (!isOwn) {
         const headerAvatar = u.avatar
@@ -3750,7 +3765,9 @@ async function renderUserMoments(userId) {
       }
 
       if (!res.moments.length) {
-        html += '<div class="empty-state" style="margin-top:30px"><div class="empty-state__icon">📝</div><div class="empty-state__title">还没有动态</div></div>';
+        html += isOwn
+          ? `<div class="moments-timeline" style="padding-top:80px;text-align:center;color:#b0ada4;font-size:14px">还没有动态，发布一条分享此刻吧~</div>`
+          : '<div class="empty-state" style="margin-top:30px"><div class="empty-state__icon">📝</div><div class="empty-state__title">还没有动态</div></div>';
       } else {
         // Moments-style: group by date, no per-card avatar/name for own timeline
         html += momentsTimelineHtml(res.moments, isOwn);
@@ -3776,13 +3793,14 @@ function momentsTimelineHtml(moments, isOwn) {
   });
 
   const keys = Object.keys(groups);
-  return keys.map(key => {
-    const dayLabel = /^今天|昨天$/.test(key) ? key : key.replace(/月(\d+)日/, (m,d) => m.replace(d, +d));
+  const inner = keys.map(key => {
     return `<div class="moments-date-group">
-      <div class="moments-date-label">${dayLabel}</div>
+      <div class="moments-date-label">${key}</div>
       ${groups[key].map(m => isOwn ? ownMomentItemHtml(m) : momentCardHtml(m)).join('')}
     </div>`;
   }).join('');
+
+  return isOwn ? `<div class="moments-timeline">${inner}</div>` : inner;
 }
 
 function isToday(d, now) { return d.toDateString() === now.toDateString(); }
@@ -3814,11 +3832,15 @@ function ownMomentItemHtml(m) {
 }
 
 /* ===== Compose moment ===== */
-function openMomentCompose() {
+function openMomentCompose(type) {
+  window._composeType = type || 'community'; // 'community' | 'moment'
   window._composeImages = [];
   const t = $('momentComposeText'); if (t) t.value = '';
   $('momentComposeImgs').innerHTML = '';
   $('momentComposeCount').textContent = '0/9';
+  // Update modal title based on context
+  const titleEl = document.querySelector('#momentComposeMask .modal-title');
+  if (titleEl) titleEl.textContent = type === 'moment' ? '发布朋友圈' : '发布动态';
   $('momentComposeMask').style.display = 'flex';
 }
 function closeMomentCompose() { $('momentComposeMask').style.display = 'none'; }
@@ -3845,13 +3867,16 @@ async function submitMoment() {
   const content = $('momentComposeText').value.trim();
   if (!content && window._composeImages.length === 0) { showToast('动态内容不能为空'); return; }
   const btn = $('momentComposeBtn');
+  const type = window._composeType || 'community';
   btn.disabled = true; btn.textContent = '发布中...';
   try {
-    const res = await api('/moments', { method: 'POST', body: JSON.stringify({ content, images: window._composeImages }) });
+    const res = await api('/moments', { method: 'POST', body: JSON.stringify({ content, images: window._composeImages, type }) });
     if (res.success) {
       closeMomentCompose();
-      showToast('已发布');
-      if (currentPage === 'community') {
+      showToast(type === 'moment' ? '已发布到朋友圈' : '已发布');
+      if (type === 'moment' && currentPage === 'user-moments') {
+        renderUserMoments(currentUser.id);
+      } else if (currentPage === 'community') {
         window._communityTab = 'recommend';
         switchCommunityTab('recommend');
       }
