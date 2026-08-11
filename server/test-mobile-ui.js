@@ -147,6 +147,19 @@ test('syncAppViewport uses the rounded visual viewport height and falls back to 
   assert.equal(fallback.styleValues.get('--app-height'), '731px');
 });
 
+test('syncAppViewport preserves the stable app height while the iOS keyboard is open', () => {
+  const runtime = runFunctions({ visualViewport: 760 });
+  runtime.context.syncAppViewport();
+  runtime.context.document.activeElement = { tagName: 'INPUT' };
+  runtime.context.window.visualViewport.height = 430;
+  runtime.context.syncAppViewport();
+
+  assert.equal(runtime.styleValues.get('--app-height'), '760px');
+  assert.equal(runtime.context.window.__appKeyboardOpen, true);
+  assert.match(html, /html\.keyboard-open #app \.main-tab-page\.active>\.tab-bar\{display:none\}/);
+  assert.match(extractFunction(html, 'keepInputAboveKeyboard'), /scrollRoot\.scrollTop/);
+});
+
 test('resetPageScroll clears the page and all nested scroll roots', () => {
   const roots = [{ scrollTop: 31 }, { scrollTop: 62 }];
   const page = createPage('page-lobby', roots);

@@ -73,6 +73,8 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#98a2a0;font-size:10px;font-weight:600}
 .tab-item.active{color:#1f7a74}
 .tab-item svg{width:24px;height:24px}
+html.keyboard-open #app .main-tab-page.active>.tab-bar{display:none}
+html.keyboard-open #app .main-tab-page.active>[data-scroll-root]{scroll-padding-bottom:20px}
 
 /* ===== Shared ===== */
 .eyebrow{color:#1f7a74;font-size:10px;font-weight:700;letter-spacing:2.5px}
@@ -1497,7 +1499,23 @@ let selectedSessions = new Set();
 function $(id) { return document.getElementById(id); }
 function syncAppViewport() {
   const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-  document.documentElement.style.setProperty('--app-height', `${Math.round(viewportHeight)}px`);
+  const roundedHeight = Math.round(viewportHeight);
+  const stableHeight = Number(window.__stableAppViewportHeight || 0);
+  const active = document.activeElement;
+  const isTextEntry = !!active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+  const rootClasses = document.documentElement.classList;
+  const wasKeyboardOpen = !!window.__appKeyboardOpen;
+  const keyboardDelta = stableHeight - roundedHeight;
+  if (window.visualViewport && stableHeight && keyboardDelta > 120 && (isTextEntry || wasKeyboardOpen)) {
+    window.__appKeyboardOpen = true;
+    if (rootClasses) rootClasses.add('keyboard-open');
+    return;
+  }
+  if (wasKeyboardOpen && stableHeight && keyboardDelta > 80) return;
+  window.__appKeyboardOpen = false;
+  window.__stableAppViewportHeight = roundedHeight;
+  if (rootClasses) rootClasses.remove('keyboard-open');
+  document.documentElement.style.setProperty('--app-height', `${roundedHeight}px`);
 }
 function resetPageScroll(page) {
   page.scrollTop = 0;
@@ -1507,7 +1525,12 @@ function resetPageScroll(page) {
 function initializeAppViewport() {
   if (window.visualViewport) window.visualViewport.addEventListener('resize', syncAppViewport);
   window.addEventListener('resize', syncAppViewport);
-  window.addEventListener('orientationchange', syncAppViewport);
+  window.addEventListener('orientationchange', () => {
+    window.__stableAppViewportHeight = 0;
+    window.__appKeyboardOpen = false;
+    if (document.documentElement.classList) document.documentElement.classList.remove('keyboard-open');
+    setTimeout(syncAppViewport, 120);
+  });
   syncAppViewport();
 }
 initializeAppViewport();
@@ -4078,14 +4101,30 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-/* 移动端键盘遮挡适配：输入框聚焦后滚到可视区中部，避免被弹起的键盘挡住 */
+/* 移动端键盘遮挡适配：只滚动当前页面内容，不让 iOS 平移整个应用和底栏。 */
+function keepInputAboveKeyboard(el) {
+  if (!el || !el.closest) return;
+  const scrollRoot = el.closest('[data-scroll-root]') || el.closest('.page');
+  if (!scrollRoot) return;
+  const viewport = window.visualViewport;
+  const rect = el.getBoundingClientRect();
+  const visibleTop = viewport ? viewport.offsetTop + 12 : 12;
+  const visibleBottom = viewport ? viewport.offsetTop + viewport.height - 16 : window.innerHeight - 16;
+  if (rect.bottom > visibleBottom) scrollRoot.scrollTop += rect.bottom - visibleBottom + 12;
+  else if (rect.top < visibleTop) scrollRoot.scrollTop -= visibleTop - rect.top + 12;
+}
 document.addEventListener('focusin', (e) => {
   const el = e.target;
   if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
-    setTimeout(() => {
-      try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) {}
-    }, 300);
+    setTimeout(() => { syncAppViewport(); keepInputAboveKeyboard(el); }, 320);
+    setTimeout(() => keepInputAboveKeyboard(el), 650);
   }
+});
+document.addEventListener('focusout', () => {
+  setTimeout(() => {
+    const active = document.activeElement;
+    if (!active || (active.tagName !== 'INPUT' && active.tagName !== 'TEXTAREA')) syncAppViewport();
+  }, 350);
 });
 
 init();
