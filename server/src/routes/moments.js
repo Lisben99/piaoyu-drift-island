@@ -25,7 +25,8 @@ const {
   computeUserLevel,
   getFollowCounts,
   isFollowing,
-  awardExperience
+  awardExperience,
+  createNotification
 } = require('../db');
 const { COMMUNITY_TOPICS, COMMUNITY_MOODS, isTopicId, isMoodId } = require('../communityCatalog');
 
@@ -54,12 +55,16 @@ function enrich(m, currentUserId) {
     commentCount: (m.comments || []).length,
     comments: (m.comments || []).map(c => {
       const cu = findUserById(c.userId) || {};
+      const replyUser = c.replyToUserId ? (findUserById(c.replyToUserId) || {}) : {};
       return {
         id: c.id,
         userId: c.userId,
         nickname: cu.nickname || '用户',
         avatar: cu.avatar || '',
         content: c.content,
+        parentCommentId: c.parentCommentId || null,
+        replyToUserId: c.replyToUserId || null,
+        replyToNickname: c.replyToUserId ? (replyUser.nickname || '用户') : '',
         createdAt: c.createdAt
       };
     }),
@@ -202,21 +207,36 @@ router.post('/:id/dismiss', (req, res) => {
 
 // Add a comment to a moment.
 router.post('/:id/comment', (req, res) => {
-  const { content } = req.body || {};
+  const { content, parentCommentId } = req.body || {};
   const text = (content || '').trim();
   if (!text) return res.status(400).json({ success: false, error: '评论内容不能为空' });
-  const c = addMomentComment(req.params.id, req.user.id, text);
-  if (!c) return res.status(404).json({ success: false, error: '动态不存在' });
+  const targetMoment = getMomentById(req.params.id);
+  if (!targetMoment) return res.status(404).json({ success: false, error: '动态不存在' });
+  if (parentCommentId && !(targetMoment.comments || []).some(item => item.id === parentCommentId)) {
+    return res.status(400).json({ success: false, error: '回复的评论不存在' });
+  }
+  const c = addMomentComment(req.params.id, req.user.id, text, { parentCommentId: parentCommentId || null });
   const cu = req.user;
   const experienceAward = awardExperience(req.user.id, 'comment_created', {
     eventKey: `comment:${c.id}`,
     sourceId: c.id
   });
-  const targetMoment = getMomentById(req.params.id);
   if (targetMoment && targetMoment.userId !== req.user.id) {
     awardExperience(targetMoment.userId, 'community_comment_received', {
       eventKey: `comment-received:${c.id}`,
       sourceId: c.id
+    });
+  }
+  const replyUser = c.replyToUserId ? findUserById(c.replyToUserId) : null;
+  if (replyUser) {
+    createNotification({
+      userId: replyUser.id,
+      type: 'comment_reply',
+      title: '有人回复了你',
+      content: `${cu.nickname || '用户'}：${c.content.slice(0, 80)}`,
+      refId: targetMoment.id,
+      refType: 'moment',
+      actorId: req.user.id
     });
   }
   res.json({
@@ -227,6 +247,9 @@ router.post('/:id/comment', (req, res) => {
       nickname: cu.nickname || '用户',
       avatar: cu.avatar || '',
       content: c.content,
+      parentCommentId: c.parentCommentId || null,
+      replyToUserId: c.replyToUserId || null,
+      replyToNickname: replyUser ? (replyUser.nickname || '用户') : '',
       createdAt: c.createdAt
     },
     experienceAward

@@ -59,4 +59,10 @@ const newSession = db.listMoments({ community: true, viewerId: user.id, sort: 'r
 assert.ok(sameSession.some(item => item.id === recommended.id), 'pagination in one session remains stable');
 assert.ok(!newSession.some(item => item.id === recommended.id), 'a new session hides content seen within 24 hours');
 
+const parentComment = db.addMomentComment(moment.id, musicAuthor.id, 'parent');
+const replyComment = db.addMomentComment(moment.id, user.id, 'reply', { parentCommentId: parentComment.id });
+assert.equal(replyComment.parentCommentId, parentComment.id, 'reply retains its parent comment');
+assert.equal(replyComment.replyToUserId, musicAuthor.id, 'reply targets the parent author');
+assert.equal(db.addMomentComment(moment.id, user.id, 'invalid', { parentCommentId: 'missing' }), null, 'missing parent is rejected');
+
 console.log('community core assertions passed');

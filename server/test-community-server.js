@@ -6,7 +6,7 @@ const express = require('express');
 const db = require('./src/db');
 const cache = db.db();
 cache.users = []; cache.moments = []; cache.follows = []; cache.interactions = [];
-cache.blacklist = []; cache.contentDismissals = []; cache.feedExposures = []; cache.experienceEvents = [];
+cache.blacklist = []; cache.contentDismissals = []; cache.feedExposures = []; cache.experienceEvents = []; cache.notifications = [];
 const user = db.createUser('13900000002', '', ''); user.nickname = '共鸣测试者';
 const other = db.createUser('13900000003', '', ''); other.nickname = '音乐旅人';
 
@@ -35,6 +35,12 @@ const call = async (method, path, body) => {
     assert.equal(policy.json.strangerChatPolicy, 'closed');
     const publicPost = db.createMoment(other.id, { content: '一首歌的共鸣', type: 'community', topicId: 'music', mood: 'calm' });
     publicPost.createdAt = Date.now() - 2 * 86400000;
+    const parentComment = db.addMomentComment(publicPost.id, other.id, 'parent');
+    const reply = await call('POST', `/api/moments/${publicPost.id}/comment`, { content: 'reply', parentCommentId: parentComment.id });
+    assert.equal(reply.status, 200);
+    assert.equal(reply.json.comment.parentCommentId, parentComment.id);
+    assert.equal(reply.json.comment.replyToUserId, other.id);
+    assert.ok(cache.notifications.some(item => item.userId === other.id && item.type === 'comment_reply' && item.refId === publicPost.id));
     db.createMoment(other.id, { content: 'private hidden', type: 'moment' });
     const feed = await call('GET', '/api/moments/community?sort=recommend&topicId=music&feedSession=http-test');
     assert.equal(feed.json.moments.length, 1); assert.equal(feed.json.moments[0].topicId, 'music');

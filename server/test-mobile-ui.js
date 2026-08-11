@@ -342,3 +342,10 @@ test('genderIcon normalizes valid input and returns nothing for invalid values',
 test('the user frontend no longer uses Unicode gender symbols', () => {
   assert.doesNotMatch(html, /[\u2642\u2640]/);
 });
+
+test('community comments support explicit replies and preserve the reply target in the request', () => {
+  assert.match(extractFunction(html, 'momentCardHtml'), /prepareMomentReply/);
+  assert.match(extractFunction(html, 'prepareMomentReply'), /parentCommentId/);
+  assert.match(extractFunction(html, 'addMomentComment'), /parentCommentId/);
+  assert.match(extractFunction(html, 'cancelMomentReply'), /delete window\._commentReplyTargets/);
+});

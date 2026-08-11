@@ -619,18 +619,25 @@ function toggleMomentLike(momentId, userId) {
   return { liked, likeCount: m.likes.length };
 }
 
-function addMomentComment(momentId, userId, content) {
+function addMomentComment(momentId, userId, content, { parentCommentId = null } = {}) {
   const m = getMomentById(momentId);
   if (!m || m.deleted) return null;
+  const parent = parentCommentId
+    ? (m.comments || []).find(item => item.id === parentCommentId)
+    : null;
+  if (parentCommentId && !parent) return null;
   const comment = {
     id: genId('mc'),
     userId,
     content: String(content || '').slice(0, 300),
+    parentCommentId: parent ? parent.id : null,
+    replyToUserId: parent ? parent.userId : null,
     createdAt: Date.now()
   };
   m.comments.push(comment);
-  if (m.userId !== userId) {
-    recordInteraction({ type: 'comment', actorId: userId, targetUserId: m.userId, refId: m.id, refType: 'moment' });
+  const interactionTargetId = parent ? parent.userId : m.userId;
+  if (interactionTargetId !== userId) {
+    recordInteraction({ type: 'comment', actorId: userId, targetUserId: interactionTargetId, refId: m.id, refType: 'moment' });
   }
   save();
   return comment;

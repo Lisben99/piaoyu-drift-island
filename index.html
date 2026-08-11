@@ -585,9 +585,13 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .like-icon{fill:none;stroke:currentColor;stroke-width:1.8;vertical-align:-2px;transition:fill .2s,stroke .2s}
 .moment-act.liked .like-icon,.chat-btn-like.liked .like-icon{fill:currentColor;stroke:currentColor}
 .moment-comment-box{margin-top:8px;background:#f7f6f2;border-radius:10px;padding:10px}
-.moment-comments{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
-.moment-comment{font-size:13px;line-height:1.5;color:#3a423f}
+.moment-comments{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
+.moment-comment{width:100%;border:0;background:rgba(31,122,116,.045);border-radius:8px;padding:6px 8px;font-size:13px;line-height:1.5;color:#3a423f;text-align:left;cursor:pointer}
+.moment-comment.is-reply{margin-left:14px;width:calc(100% - 14px);border-left:2px solid rgba(31,122,116,.2)}
 .mc-name{font-weight:700;color:#1f7a74}
+.mc-reply-to{color:#718082}.mc-reply-action{float:right;color:#1f7a74;font-size:11px;font-weight:650;margin-left:8px}
+.moment-replying{display:none;align-items:center;justify-content:space-between;gap:8px;margin:0 0 8px;padding:7px 9px;border-radius:8px;background:rgba(31,122,116,.08);color:#52706d;font-size:12px}
+.moment-replying button{border:0;background:transparent;color:#1f7a74;font-size:12px;font-weight:700;padding:3px 4px}
 .moment-comment-input{display:flex;gap:8px}
 .moment-comment-input input{flex:1;border:1px solid #e0ddd4;border-radius:8px;padding:8px 10px;font-size:13px}
 .moment-comment-input button{background:#1f7a74;color:#fff;border:none;border-radius:8px;padding:0 14px;font-size:13px;font-weight:600}
@@ -2275,6 +2279,7 @@ function notifItemIcon(type) {
   if (type === 'bottle_liked') return '♥';
   if (type === 'chat_message') return '✉️';
   if (type === 'level_up') return '🌟';
+  if (type === 'comment_reply') return '↩️';
   return '🔔';
 }
 
@@ -2298,6 +2303,8 @@ async function onNotifClick(id, type, refId, refType) {
     navigate('level-detail');
   } else if ((type === 'bottle_replied' || type === 'bottle_liked') && refId) {
     openBottleReplies(refId);
+  } else if (type === 'comment_reply' && refId) {
+    navigate('community');
   } else {
     navigateBack();
   }
@@ -4090,6 +4097,7 @@ window._communityTab = 'feed';
 window._communityOffset = 0;
 window._communityLoading = false;
 window._momentCache = {};
+window._commentReplyTargets = {};
 window._viewMomentUser = null;
 window._communityCatalog = { interests: [], moods: [], topics: [], prompt: null };
 window._activeInterestId = '';
@@ -4162,7 +4170,7 @@ function momentCardHtml(m) {
     ? `<div class="moment-imgs imgs-${Math.min(m.images.length, 9)}">${m.images.map(src => `<img src="${src}" class="moment-img" onclick="viewImage(this.src)" alt="图片">`).join('')}</div>`
     : '';
   const commentsHtml = (m.comments && m.comments.length)
-    ? `<div class="moment-comments">${m.comments.map(c => `<div class="moment-comment"><span class="mc-name">${escapeHtml(c.nickname)}：</span><span>${escapeHtml(c.content)}</span></div>`).join('')}</div>`
+    ? `<div class="moment-comments">${m.comments.map(c => `<button type="button" class="moment-comment${c.parentCommentId ? ' is-reply' : ''}" onclick="prepareMomentReply('${m.id}','${c.id}')"><span class="mc-name">${escapeHtml(c.nickname)}</span>${c.replyToNickname ? `<span class="mc-reply-to"> 回复 ${escapeHtml(c.replyToNickname)}</span>` : ''}<span>：${escapeHtml(c.content)}</span><span class="mc-reply-action">回复</span></button>`).join('')}</div>`
     : '';
   const contentHtml = m.content ? `<div class="moment-content">${escapeHtml(m.content)}</div>` : '';
   const topicHtml = m.topic ? `<button class="moment-topic" onclick="viewCommunityTopic('${m.topic.id}')"># ${escapeHtml(m.topic.label)}</button>` : '';
@@ -4201,6 +4209,7 @@ function momentCardHtml(m) {
     </div>
     <div class="moment-comment-box" id="mcb-${m.id}" style="display:none">
       ${commentsHtml}
+      <div class="moment-replying" id="mrp-${m.id}"><span id="mrpl-${m.id}"></span><button type="button" onclick="cancelMomentReply('${m.id}')">取消回复</button></div>
       <div class="moment-comment-input">
         <input type="text" id="mci-${m.id}" placeholder="说点什么..." onkeydown="if(event.key==='Enter')addMomentComment('${m.id}')">
         <button onclick="addMomentComment('${m.id}')">发送</button>
@@ -4620,22 +4629,47 @@ function toggleMomentComments(id) {
   const box = $('mcb-' + id);
   if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
 }
+function prepareMomentReply(momentId, commentId) {
+  const moment = window._momentCache[momentId];
+  const comment = moment && (moment.comments || []).find(item => item.id === commentId);
+  if (!comment) return;
+  window._commentReplyTargets[momentId] = { parentCommentId: comment.id, nickname: comment.nickname || '用户' };
+  const box = $('mcb-' + momentId);
+  const banner = $('mrp-' + momentId);
+  const label = $('mrpl-' + momentId);
+  const input = $('mci-' + momentId);
+  if (box) box.style.display = 'block';
+  if (label) label.textContent = '正在回复 ' + (comment.nickname || '用户');
+  if (banner) banner.style.display = 'flex';
+  if (input) { input.placeholder = '回复 ' + (comment.nickname || '用户'); input.focus(); }
+}
+function cancelMomentReply(momentId) {
+  delete window._commentReplyTargets[momentId];
+  const banner = $('mrp-' + momentId);
+  const input = $('mci-' + momentId);
+  if (banner) banner.style.display = 'none';
+  if (input) input.placeholder = '说点什么...';
+}
 async function addMomentComment(id) {
   const input = $('mci-' + id);
   if (!input) return;
   const content = input.value.trim();
   if (!content) return;
-  input.value = '';
+  const replyTarget = window._commentReplyTargets[id] || null;
   try {
-    const res = await api('/moments/' + id + '/comment', { method: 'POST', body: JSON.stringify({ content }) });
+    const res = await api('/moments/' + id + '/comment', { method: 'POST', body: JSON.stringify({ content, parentCommentId: replyTarget ? replyTarget.parentCommentId : null }) });
     if (res.success && window._momentCache[id]) {
+      input.value = '';
+      delete window._commentReplyTargets[id];
       window._momentCache[id].comments.push(res.comment);
       window._momentCache[id].commentCount = window._momentCache[id].comments.length;
       const card = $('moment-' + id);
       if (card) card.outerHTML = momentCardHtml(window._momentCache[id]);
       const box = $('mcb-' + id); if (box) box.style.display = 'block';
+    } else {
+      showToast(res.error || '发送失败');
     }
-  } catch (e) {}
+  } catch (e) { showToast('发送失败'); }
 }
 async function deleteMoment(id) {
   showModal('删除动态', '确定删除这条动态吗？删除后无法恢复。', [
