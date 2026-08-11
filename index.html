@@ -205,6 +205,8 @@ html.keyboard-open #app .main-tab-page.active>[data-scroll-root]{scroll-padding-
 .bottle-card__head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .bottle-card__head>div:nth-child(2){flex:1;min-width:0}
 .bottle-card__avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0}
+.profile-gate-avatar{display:flex;flex:0 0 auto;padding:0;border:0;border-radius:50%;background:transparent;cursor:pointer}
+.profile-gate-avatar:focus-visible{outline:2px solid #1f7a74;outline-offset:2px}
 .bottle-card__name{font-size:14px;font-weight:700;display:flex;align-items:center;gap:4px;flex-wrap:nowrap;overflow:hidden}
 .bn-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}
 .bottle-card__role{font-size:10px;color:#718082}
@@ -1597,6 +1599,14 @@ function avatarStyle(name, avatar, color) {
 function avatarMarkup(name, avatar, cls, color) {
   return `<div class="${cls}" style="${avatarStyle(name, avatar, color)}">${avatar ? '' : escapeHtml(avatarInitial(name || '?'))}</div>`;
 }
+function profileGateAvatarMarkup(name, avatar, cls, color, gender) {
+  const safeGender = gender === 'female' ? 'female' : (gender === 'male' ? 'male' : '');
+  return `<button type="button" class="profile-gate-avatar" aria-label="查看个人动态说明" onclick="event.stopPropagation();showProfileAccessHint('${safeGender}')">${avatarMarkup(name, avatar, cls, color)}</button>`;
+}
+function showProfileAccessHint(gender) {
+  const pronoun = gender === 'female' ? '她' : (gender === 'male' ? '他' : '对方');
+  showToast(`请先发起聊天，聊天后才能查看${pronoun}的个人动态`);
+}
 function paintAvatar(el, name, avatar, color) {
   if (!el) return;
   const c = color || avatarColor(name || '?');
@@ -2242,9 +2252,12 @@ async function renderLobby() {
         const color = isAnon ? '#98a2a0' : avatarColor(name);
         const isSelf = b.authorId && b.authorId === currentUser?.id;
         const avatar = isAnon ? '' : b.authorAvatar;
+        const avatarHtml = !isAnon && !isSelf
+          ? profileGateAvatarMarkup(name, avatar, 'bottle-card__avatar', color, b.authorGender)
+          : avatarMarkup(name, avatar, 'bottle-card__avatar', color);
         return `<div class="bottle-card">
           <div class="bottle-card__head">
-            ${avatarMarkup(name, avatar, 'bottle-card__avatar', color)}
+            ${avatarHtml}
             <div>
               <div class="bottle-card__name"><span class="bn-text">${escapeHtml(name)}${isSelf?' (我)':''}</span>${isAnon?'<span class="bottle-card__anon">匿名</span>':''}${!isAnon ? genderText(b.authorGender) : ''}</div>
               ${isAnon ? '<div class="bottle-card__role">神秘岛民</div>' : ''}
@@ -4204,6 +4217,9 @@ function momentCardHtml(m) {
   const following = !!author.following;
   const authorGenderIcon = genderIcon(author.gender);
   const authorBadges = `${verifiedBadgeHtml(author.verified, author.verifiedType)}${levelBadgeHtml(author.level, author.levelTitle)}`;
+  const authorAvatarHtml = isSelf
+    ? avatarMarkup(author.nickname, author.avatar, 'moment-avatar', avatarColor(author.nickname))
+    : profileGateAvatarMarkup(author.nickname, author.avatar, 'moment-avatar', avatarColor(author.nickname), author.gender);
   const imagesHtml = (m.images && m.images.length)
     ? `<div class="moment-imgs imgs-${Math.min(m.images.length, 9)}">${m.images.map(src => `<img src="${src}" class="moment-img" onclick="viewImage(this.src)" alt="图片">`).join('')}</div>`
     : '';
@@ -4226,7 +4242,7 @@ function momentCardHtml(m) {
     </div>`;
   return `<div class="moment-card" id="moment-${m.id}" data-author-id="${author.id || ''}">
     <div class="moment-head">
-      ${avatarMarkup(author.nickname, author.avatar, 'moment-avatar', avatarColor(author.nickname))}
+      ${authorAvatarHtml}
       <div class="moment-meta">
         <div class="moment-name-row">
           <span class="moment-name">${escapeHtml(author.nickname || '用户')}</span>

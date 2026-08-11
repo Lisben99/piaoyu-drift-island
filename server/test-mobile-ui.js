@@ -102,6 +102,7 @@ function renderMomentCard(authorId) {
     levelBadgeHtml: () => '<span class="level-badge">Lv.2</span>',
     escapeHtml: value => String(value),
     avatarMarkup: () => '<div class="moment-avatar"></div>',
+    profileGateAvatarMarkup: () => '<button class="profile-gate-avatar"></button>',
     avatarColor: () => '#17857e',
     formatTime: () => '刚刚',
   };
@@ -361,6 +362,14 @@ test('community comments support explicit replies and preserve the reply target 
   assert.match(extractFunction(html, 'prepareMomentReply'), /parentCommentId/);
   assert.match(extractFunction(html, 'addMomentComment'), /parentCommentId/);
   assert.match(extractFunction(html, 'cancelMomentReply'), /delete window\._commentReplyTargets/);
+});
+
+test('lobby and community avatars explain the chat-first profile access rule', () => {
+  assert.match(extractFunction(html, 'renderLobby'), /profileGateAvatarMarkup/);
+  assert.match(extractFunction(html, 'momentCardHtml'), /profileGateAvatarMarkup/);
+  assert.match(extractFunction(html, 'showProfileAccessHint'), /先发起聊天/);
+  assert.match(renderMomentCard('other'), /profile-gate-avatar/);
+  assert.doesNotMatch(renderMomentCard('me'), /profile-gate-avatar/);
 });
 
 test('comment rows are the reply trigger and outside taps cancel without extra reply controls', () => {
