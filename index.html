@@ -174,7 +174,6 @@ html.keyboard-open #app .main-tab-page.active>[data-scroll-root]{scroll-padding-
 .home-greeting .name{font-size:16px;font-weight:700}
 .home-greeting .sub{font-size:12px;color:#718082}
 .home-coin-pill{display:flex;align-items:center;gap:5px;padding:6px 12px;background:rgba(223,169,72,.12);border-radius:20px}
-.home-coin-pill .coin-icon{width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#dfa948,#e8c87a);display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:700}
 .home-coin-pill .amount{font-size:14px;font-weight:700;color:#8a6d2f}
 .drift-coin-icon{display:block;width:18px;height:18px;flex:0 0 18px}
 .hero-card{position:relative;border-radius:20px;padding:28px 22px;background:linear-gradient(135deg,#1f7a74,#2a9d98);color:#fff;overflow:hidden;margin-bottom:12px}
@@ -1103,7 +1102,7 @@ body{background:linear-gradient(145deg,#e9e4d8,#f8eee4);color:var(--island-text)
           <div class="sub" id="homeSub"></div>
         </div>
         <div class="home-coin-pill" onclick="navigate('coin-center')">
-          <div class="coin-icon">币</div>
+          <svg class="drift-coin-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" fill="#dfa948"/><circle cx="12" cy="12" r="7.5" fill="none" stroke="#fff" stroke-opacity=".48"/><path d="M6.5 10.5c1.8-2 3.7-2 5.5 0s3.7 2 5.5 0M6.5 14c1.8-2 3.7-2 5.5 0s3.7 2 5.5 0" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>
           <span class="amount" id="homeCoins">0</span>
         </div>
       </div>
