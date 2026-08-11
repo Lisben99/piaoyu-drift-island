@@ -21,6 +21,7 @@ cache.chatSessions = [];
 
 const u1 = db.createUser('13800000001', '', ''); u1.nickname = 'Alice';
 const u2 = db.createUser('13800000002', '', ''); u2.nickname = 'Bob';
+const u3 = db.createUser('13800000003', '', ''); u3.nickname = 'Carol';
 const TOKEN = signUserToken(u1);
 
 // Stub auth BEFORE requiring the routers so their `const { auth } = require(...)` picks up the stub.
@@ -72,6 +73,17 @@ const call = async (method, path, body) => {
   f = await call('POST', '/api/follow/' + u2.id);
   ok(f.json.following === false, '再次 POST 取消关注');
 
+  // Following feed: only followed authors appear and card state is hydrated.
+  db.createMoment(u2.id, { content: 'Bob community post', images: [], type: 'community' });
+  db.createMoment(u3.id, { content: 'Carol community post', images: [], type: 'community' });
+  await call('POST', '/api/follow/' + u2.id);
+  const followingFeed = await call('GET', '/api/moments/community?sort=following');
+  ok(followingFeed.json.success && followingFeed.json.moments.length === 1,
+    '我关注的只返回已关注用户的动态');
+  ok(followingFeed.json.moments[0].author.id === u2.id && followingFeed.json.moments[0].author.following === true,
+    '关注动态携带正确的 author.following 状态');
+  await call('POST', '/api/follow/' + u2.id);
+
   // Visits: seed a visit (u2 visits u1) then read u1's own visitors
   db.recordVisit(u2.id, u1.id);
   let v = await call('GET', '/api/visits/me');
@@ -104,6 +116,10 @@ const call = async (method, path, body) => {
   ok(nf.json.success === false, '不存在用户返回 success=false');
 
   console.log(`\n结果: ${pass} 通过, ${fail} 失败\n`);
+  await new Promise(resolve => server.close(resolve));
+  process.exitCode = fail === 0 ? 0 : 1;
+})().catch(e => {
+  console.error('FATAL', e);
   server.close();
-  process.exit(fail === 0 ? 0 : 1);
-})().catch(e => { console.error('FATAL', e); server.close(); process.exit(1); });
+  process.exitCode = 1;
+});

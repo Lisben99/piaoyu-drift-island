@@ -199,6 +199,26 @@ test('logout action lives in settings immediately before account deletion', () =
   assert.equal((between.match(/class="settings-item"/g) || []).length, 1, 'no other settings item may separate logout and account deletion');
 });
 
+test('community following tab loads data instead of rendering a hard-coded empty state', () => {
+  const renderer = extractFunction(html, 'renderCommunityFeed');
+  assert.doesNotMatch(renderer, /if\s*\(sort\s*===\s*['"]following['"]\)/,
+    'following tab must use the community API like other tabs');
+  assert.match(renderer, /window\._communitySort\s*=\s*sort/);
+  assert.match(renderer, /loadMoreCommunity\(true\)/);
+});
+
+test('community follow controls keep compact component classes and synchronize duplicate cards', () => {
+  const toggle = extractFunction(html, 'toggleFollowUser');
+  assert.doesNotMatch(toggle, /primary-button|ghost-button/,
+    'card follow controls must not inherit full-size global button styles');
+  assert.match(toggle, /updateFollowButtons\(userId,\s*res\.following\)/,
+    'all visible cards for the same user must be synchronized');
+
+  const card = extractFunction(html, 'momentCardHtml');
+  assert.match(card, /moment-head-actions/, 'card actions must live in a dedicated compact group');
+  assert.match(card, /author\.following/, 'initial follow state must come from the API');
+});
+
 test('genderIcon renders accessible inline SVGs for both genders and supported sizes', () => {
   const genderIcon = runGenderIcon();
   const cases = [

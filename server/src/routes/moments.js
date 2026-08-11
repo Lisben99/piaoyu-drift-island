@@ -60,7 +60,8 @@ function enrich(m, currentUserId) {
       verified: !!author.verified,
       verifiedType: author.verifiedType || '',
       level: computeUserLevel(author).level,
-      levelTitle: computeUserLevel(author).title
+      levelTitle: computeUserLevel(author).title,
+      following: currentUserId ? isFollowing(currentUserId, m.userId) : false
     }
   };
 }
@@ -88,7 +89,8 @@ router.post('/', (req, res) => {
 router.get('/community', (req, res) => {
   const limit = Math.min(parseInt(req.query.limit) || 20, 50);
   const offset = parseInt(req.query.offset) || 0;
-  const { items, total } = listMoments({ community: true, limit, offset });
+  const followedByUserId = req.query.sort === 'following' ? req.user.id : null;
+  const { items, total } = listMoments({ community: true, followedByUserId, limit, offset });
   res.json({
     success: true,
     moments: items.map(m => enrich(m, req.user.id)),

@@ -442,13 +442,21 @@ function getMomentById(id) {
 //                Community posts are NEVER mixed into a personal page.
 //                viewerId: when set & differs from userId, the private 朋友圈 are only
 //                returned if the viewer has chatted with the author (friend circle).
-function listMoments({ userId = null, community = false, viewerId = null, limit = 20, offset = 0 } = {}) {
+function listMoments({ userId = null, community = false, viewerId = null, followedByUserId = null, limit = 20, offset = 0 } = {}) {
   let list = cache.moments.filter(m => !m.deleted);
 
   if (community) {
     // Community feed: public posts only (legacy moments with no type are public).
     // 朋友圈 (type='moment') are excluded — the two pools never intersect.
     list = list.filter(m => m.type !== 'moment');
+    if (followedByUserId) {
+      const followedIds = new Set(
+        getFollows()
+          .filter(f => f.followerId === followedByUserId)
+          .map(f => f.followeeId)
+      );
+      list = list.filter(m => followedIds.has(m.userId));
+    }
   }
 
   if (userId) {
