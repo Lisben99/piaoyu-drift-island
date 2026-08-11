@@ -12,6 +12,8 @@ const {
 } = require('../db');
 const { COMMUNITY_INTERESTS, isInterestId } = require('../communityCatalog');
 const { awardCoinOnce, awardInviteMilestone, getBenefits, levelValue, maybeAwardNewcomerProgress } = require('../services/growthEconomy');
+const { hasUnresolvedRecharge, purgeUserAccount } = require('../services/accountDeletion');
+const { disconnectUser } = require('../services/websocket');
 
 router.get('/level/me', auth, (req, res) => {
   const rules = Object.entries(EXPERIENCE_RULES)
@@ -100,7 +102,7 @@ router.patch('/interests', auth, (req, res) => {
   }
   req.user.interestIds = interestIds;
   save();
-  const coinAward = interestIds.length
+  const coinAward = interestIds.length && req.user.onboardingRewardEligible !== false
     ? awardCoinOnce(req.user.id, db().config.interest_complete_coin_bonus, 'interest_completed', '完善兴趣标签', `interest-complete:${req.user.id}`)
     : null;
   if (coinAward) maybeAwardNewcomerProgress(req.user.id);
@@ -159,7 +161,7 @@ router.post('/edit', auth, (req, res) => {
       sourceId: req.user.id
     })
     : null;
-  const coinAward = profileComplete
+  const coinAward = profileComplete && req.user.onboardingRewardEligible !== false
     ? awardCoinOnce(req.user.id, db().config.profile_complete_coin_bonus, 'profile_completed', '完善个人资料', `profile-complete:${req.user.id}`)
     : null;
   if (profileComplete) awardInviteMilestone(req.user, 'profile');
@@ -183,24 +185,23 @@ router.post('/edit', auth, (req, res) => {
 
 // Delete account
 router.post('/delete', auth, (req, res) => {
-  // Remove user's data
   const userId = req.user.id;
-  
-  // Mark user as deleted (soft delete for data integrity)
-  req.user.status = 'deleted';
-  req.user.deletedAt = Date.now();
-  
-  // Delete bottles
-  db().bottles.forEach(b => {
-    if (b.authorId === userId) { b.deleted = true; b.status = 'deleted'; }
-  });
-  
-  // Remove from blacklist
-  db().blacklist = db().blacklist.filter(b => b.blockerId !== userId && b.blockedId !== userId);
-  
-  save();
-  
-  res.json({ success: true });
+  if (hasUnresolvedRecharge(userId)) {
+    return res.status(409).json({
+      success: false,
+      error: '存在待管理员确认的充值订单，请处理完成后再注销'
+    });
+  }
+
+  const result = purgeUserAccount(userId, { reason: 'user_request' });
+  if (!result.success) {
+    return res.status(404).json(result);
+  }
+
+  // Any token already issued is rejected because the user row is gone. Close
+  // active sockets as well so an open chat cannot continue after deletion.
+  disconnectUser(userId);
+  return res.json({ success: true, deleted: true });
 });
 
 module.exports = router;

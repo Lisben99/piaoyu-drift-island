@@ -6,8 +6,9 @@ const router = express.Router();
 const { sendVerificationCode, verifyCode } = require('../services/sms');
 const { sendVerificationCode: sendEmailVerificationCode, verifyCode: verifyEmailCode } = require('../services/email');
 const { signUserToken } = require('../utils/jwt');
-const { findUserByPhone, findUserByEmail, createUser, reactivateUser, setUserPassword, verifyPassword, computeUserLevel, db, save } = require('../db');
+const { findUserByPhone, findUserByEmail, createUser, setUserPassword, verifyPassword, computeUserLevel, db, save } = require('../db');
 const { applyInvite } = require('../services/invite');
+const { purgeUserAccount } = require('../services/accountDeletion');
 
 // Shape the user object returned to clients (avoids leaking passwordHash)
 function publicUser(user) {
@@ -135,15 +136,16 @@ router.post('/register', async (req, res) => {
   const existing = type === 'email' ? findUserByEmail(email) : findUserByPhone(phone);
   if (existing) {
     if (existing.status === 'deleted') {
-      // 注销账号可重新注册：复用该记录并重置为全新账号（不重复发放注册奖励）
-      const user = reactivateUser(existing, {
-        phone: type === 'phone' ? phone : null,
-        email: type === 'email' ? email : null,
-        password,
-        role
-      });
+      // Migrate legacy soft-deleted rows to the new hard-delete model, then
+      // issue a genuinely new user id without repeating onboarding rewards.
+      purgeUserAccount(existing, { reason: 'legacy_deleted_account_reregistered' });
+      const user = createUser(type === 'phone' ? phone : null, type === 'email' ? email : null, password);
+      user.role = role;
+      user.gender = role;
+      user.lastLoginAt = Date.now();
+      save();
       const token = signUserToken(user);
-      return res.json({ success: true, token, user: publicUser(user), reactivated: true });
+      return res.json({ success: true, token, user: publicUser(user), reRegistered: true });
     }
     return res.json({ success: false, error: '该账号已注册，请直接登录' });
   }
@@ -155,7 +157,9 @@ router.post('/register', async (req, res) => {
   save();
 
   // Apply invite reward if a valid invite code was provided (binds relationship + grants both parties coins)
-  const inviteInfo = applyInvite(user, inviteCode);
+  const inviteInfo = user.onboardingRewardEligible === false
+    ? { applied: false, reason: 'returning_after_deletion' }
+    : applyInvite(user, inviteCode);
 
   const token = signUserToken(user);
   res.json({ success: true, token, user: publicUser(user), invite: inviteInfo });
@@ -202,7 +206,10 @@ router.post('/login', async (req, res) => {
     if (!verifyResult.success) return res.json(verifyResult);
     user = findUserByEmail(email);
     if (!user) user = createUser(null, email);
-    else if (user.status === 'deleted') reactivateUser(user, { email });
+    else if (user.status === 'deleted') {
+      purgeUserAccount(user, { reason: 'legacy_deleted_account_code_login' });
+      user = createUser(null, email);
+    }
   } else {
     if (!phone || !code) {
       return res.json({ success: false, error: '请输入手机号和验证码' });
@@ -211,7 +218,10 @@ router.post('/login', async (req, res) => {
     if (!verifyResult.success) return res.json(verifyResult);
     user = findUserByPhone(phone);
     if (!user) user = createUser(phone, null);
-    else if (user.status === 'deleted') reactivateUser(user, { phone });
+    else if (user.status === 'deleted') {
+      purgeUserAccount(user, { reason: 'legacy_deleted_account_code_login' });
+      user = createUser(phone, null);
+    }
   }
 
   user.lastLoginAt = Date.now();

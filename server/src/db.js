@@ -11,6 +11,7 @@
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const { hasDeletedIdentity } = require('./utils/accountIdentity');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'data', 'db.json');
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -165,6 +166,7 @@ function createDefaultDB() {
     experienceEvents: [],
     contentDismissals: [],
     feedExposures: [],
+    deletedIdentities: [],
     config: { ...DEFAULT_CONFIG },
     admins: [DEFAULT_ADMIN]
   };
@@ -361,6 +363,7 @@ function findUserByInviteCode(code) {
 
 function createUser(phone, email, password = null) {
   const config = cache.config;
+  const returningAfterDeletion = hasDeletedIdentity(cache, { phone, email });
   const passwordHash = password ? bcrypt.hashSync(password, 10) : '';
   const user = {
     id: genId('u'),
@@ -390,44 +393,14 @@ function createUser(phone, email, password = null) {
     locationEnabled: false,
     locationUpdatedAt: null,
     interestIds: [],
-    strangerChatPolicy: 'all'
+    strangerChatPolicy: 'all',
+    onboardingRewardEligible: !returningAfterDeletion,
+    reRegisteredAfterDeletion: returningAfterDeletion
   };
   cache.users.push(user);
-  addCoinTransaction(user.id, config.new_user_bonus, 'new_user_bonus', '新用户注册赠送');
-  save();
-  return user;
-}
-
-// Reactivate a soft-deleted account for re-registration / account recovery.
-// Resets the personal profile to defaults while preserving id, createdAt, inviteCode, phone, email.
-function reactivateUser(user, { phone = null, email = null, password = null, role = '' } = {}) {
-  if (phone !== null) user.phone = phone;
-  if (email !== null) user.email = email;
-  user.passwordHash = password ? bcrypt.hashSync(password, 10) : (user.passwordHash || '');
-  user.nickname = '';
-  user.avatar = '';
-  user.momentCover = '';
-  user.bio = '';
-  user.interestIds = [];
-  user.strangerChatPolicy = 'all';
-  user.gender = role || '';
-  user.role = role || '';
-  user.status = 'active';
-  user.deletedAt = null;
-  user.coins = 0;
-  user.totalRecharged = 0;
-  user.totalInvited = 0;
-  user.invitedBy = null;
-  user.restrictions = { publish: false, chat: false };
-  user.checkin = { lastDate: null, consecutive: 0, experienceConsecutive: 0 };
-  user.experienceBase = 0;
-  user.experienceMigratedAt = Date.now();
-  cache.experienceEvents = (cache.experienceEvents || []).filter(event => event.userId !== user.id);
-  user.lastLoginAt = Date.now();
-  user.latitude = null;
-  user.longitude = null;
-  user.locationEnabled = false;
-  user.locationUpdatedAt = null;
+  if (!returningAfterDeletion) {
+    addCoinTransaction(user.id, config.new_user_bonus, 'new_user_bonus', '新用户注册赠送');
+  }
   save();
   return user;
 }
@@ -1079,7 +1052,7 @@ function awardExperience(userId, type, { eventKey, sourceId = null, now = Date.n
       const reward = levelConfigValue('level_upgrade_coin_rewards', reached);
       const rewardKey = `level-up:${userId}:${reached}`;
       const alreadyRewarded = (cache.coinTransactions || []).some(tx => tx.userId === userId && tx.type === 'level_up' && tx.refId === rewardKey);
-      if (reward > 0 && !alreadyRewarded) {
+      if (user.onboardingRewardEligible !== false && reward > 0 && !alreadyRewarded) {
         addCoinTransaction(userId, reward, 'level_up', `升级到 Lv.${reached} 奖励`, rewardKey);
       }
     }
@@ -1487,7 +1460,6 @@ module.exports = {
   findUserByEmail,
   findUserByInviteCode,
   createUser,
-  reactivateUser,
   setUserPassword,
   verifyPassword,
   addCoinTransaction,

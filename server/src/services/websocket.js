@@ -198,4 +198,18 @@ function isUserOnline(userId) {
   return connections.has(userId);
 }
 
-module.exports = { init, sendToUser, isUserOnline };
+function disconnectUser(userId, reason = 'account_deleted') {
+  const conns = connections.get(userId);
+  if (!conns) return 0;
+  let closed = 0;
+  conns.forEach(ws => {
+    try {
+      if (ws.readyState === 1 || ws.readyState === 0) ws.close(4001, reason);
+      closed += 1;
+    } catch (_) {}
+  });
+  connections.delete(userId);
+  return closed;
+}
+
+module.exports = { init, sendToUser, isUserOnline, disconnectUser };

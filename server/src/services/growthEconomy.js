@@ -131,7 +131,7 @@ function maybeAwardWeeklyProgress(userId, now = Date.now()) {
 
 function maybeAwardNewcomerProgress(userId, now = Date.now()) {
   const user = findUserById(userId);
-  if (!isHuman(user) || now - Number(user.createdAt || now) > 7 * 86400000) return [];
+  if (!isHuman(user) || user.onboardingRewardEligible === false || now - Number(user.createdAt || now) > 7 * 86400000) return [];
   const requiredTypes = [
     'profile_completed', 'interest_completed', 'first_community_post', 'first_bottle_publish',
     'first_bottle_reply', 'first_mutual_chat', 'first_follow', 'first_received_like'
@@ -154,7 +154,7 @@ function awardGrowthActivity(userId, activity, sourceId, now = Date.now()) {
   const rule = ACTIVITY_RULES[activity];
   if (!rule || !isHuman(user) || db().config.growth_mode_enabled === false) return [];
   const awards = [];
-  if (rule.first) {
+  if (rule.first && user.onboardingRewardEligible !== false) {
     const first = awardCoinOnce(
       userId,
       numberConfig(rule.first, 0),
