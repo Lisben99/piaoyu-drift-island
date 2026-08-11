@@ -154,9 +154,9 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .role-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 .role-card{position:relative;min-height:175px;border-radius:18px;border:2px solid #e6e4dc;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;transition:all .2s}
 .role-card.selected{border-color:#1f7a74;background:rgba(31,122,116,.04)}
-.role-portrait{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:700}
-.role-portrait--male{background:rgba(31,122,116,.12);color:#1f7a74}
-.role-portrait--female{background:rgba(239,123,98,.12);color:#ef7b62}
+.role-portrait{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.role-portrait--male{background:#E6F1FB;color:#185FA5}
+.role-portrait--female{background:#FBEAF0;color:#993556}
 .role-title{font-size:16px;font-weight:700}
 .role-sub{font-size:11px;color:#98a2a0}
 .role-check{position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:50%;background:#1f7a74;color:#fff;display:none;align-items:center;justify-content:center;font-size:13px}
@@ -200,9 +200,10 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .bottle-list{display:flex;flex-direction:column;gap:10px}
 .bottle-card{background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.03)}
 .bottle-card__head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.bottle-card__head>div:nth-child(2){flex:1;min-width:0}
 .bottle-card__avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0}
 .bottle-card__name{font-size:14px;font-weight:700;display:flex;align-items:center;gap:4px;flex-wrap:nowrap;overflow:hidden}
-.bn-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.bn-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}
 .bottle-card__role{font-size:10px;color:#718082}
 .bottle-card__time{margin-left:auto;font-size:11px;color:#98a2a0}
 .bottle-card__content{font-size:14px;line-height:1.6;color:#172b2d;margin-bottom:10px}
@@ -404,11 +405,8 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .profile-avatar-lg{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;border:2px solid #e6e4dc}
 .profile-avatar-img{width:100%;height:100%;border-radius:50%;object-fit:cover;background-size:cover;background-position:center;background-repeat:no-repeat;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#fff}
 .profile-header-info{flex:1;min-width:0}
-.profile-name-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
-.profile-name{font-size:18px;font-weight:700;color:#2b3330;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.profile-gender{font-size:11px;font-weight:700;padding:1px 6px;border-radius:4px;line-height:1.4}
-.profile-gender-male{background:#E6F1FB;color:#185FA5}
-.profile-gender-female{background:#FBEAF0;color:#993556}
+.profile-name-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;min-width:0;flex-wrap:nowrap}
+.profile-name{font-size:18px;font-weight:700;color:#2b3330;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1 1 auto}
 .profile-id-row{display:flex;align-items:center;gap:8px}
 .profile-id-badge{font-size:11px;background:#f0ede6;padding:2px 8px;border-radius:4px;color:#718082}
 .profile-level{font-size:10px;background:#fef6e8;padding:2px 6px;border-radius:4px;color:#dfa948;font-weight:700}
@@ -528,11 +526,13 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .moment-head{display:flex;align-items:center;gap:10px}
 .moment-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:#fff;flex-shrink:0;background:#e9eef0;background-size:cover;background-position:center}
 .moment-meta{flex:1;min-width:0}
-.moment-name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.moment-name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}
 .moment-name-row{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;overflow:hidden}
-.gender-badge{font-size:11px;font-weight:700;padding:1px 5px;border-radius:4px;line-height:1.4;display:inline-flex;align-items:center;vertical-align:middle;flex-shrink:0}
-.gender-male{background:#E6F1FB;color:#185FA5}
-.gender-female{background:#FBEAF0;color:#993556}
+.gender-icon{display:inline-block;vertical-align:middle;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:2.25;stroke-linecap:round;stroke-linejoin:round}
+.gender-icon--sm{width:14px;height:14px}
+.gender-icon--lg{width:32px;height:32px}
+.gender-icon--male{color:#185FA5}
+.gender-icon--female{color:#993556}
 .moment-chat-btn{font-size:12px;padding:5px 14px;border-radius:14px;font-weight:600;cursor:pointer;border:none;flex-shrink:0;background:rgba(31,122,116,.1);color:#1f7a74}
 .moment-time{font-size:11px;color:#98a2a0;margin-top:1px}
 .moment-del,.moment-chat{font-size:12px;padding:5px 12px;border-radius:8px;font-weight:600;cursor:pointer;border:none;flex-shrink:0}
@@ -980,13 +980,13 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
       <div class="role-grid">
         <button class="role-card" data-role="male" id="roleMale">
           <div class="role-check">✓</div>
-          <div class="role-portrait role-portrait--male">♂</div>
+          <div class="role-portrait role-portrait--male" data-gender-icon="male" data-gender-icon-variant="lg"></div>
           <span class="role-title">男生</span>
           <span class="role-sub">成为一座沉静的岛</span>
         </button>
         <button class="role-card" data-role="female" id="roleFemale">
           <div class="role-check">✓</div>
-          <div class="role-portrait role-portrait--female">♀</div>
+          <div class="role-portrait role-portrait--female" data-gender-icon="female" data-gender-icon-variant="lg"></div>
           <span class="role-title">女生</span>
           <span class="role-sub">成为一片温柔的海</span>
         </button>
@@ -1064,8 +1064,8 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
     <div class="lobby-content" data-scroll-root>
       <div class="lobby-tabs">
         <button class="lobby-tab active" data-tab="all" onclick="lobbyTab('all')">全部</button>
-        <button class="lobby-tab" data-tab="male" onclick="lobbyTab('male')">♂ 男生</button>
-        <button class="lobby-tab" data-tab="female" onclick="lobbyTab('female')">♀ 女生</button>
+        <button class="lobby-tab" data-tab="male" onclick="lobbyTab('male')"><span data-gender-icon="male"></span> 男生</button>
+        <button class="lobby-tab" data-tab="female" onclick="lobbyTab('female')"><span data-gender-icon="female"></span> 女生</button>
       </div>
       <div id="lobbyList"></div>
     </div>
@@ -1420,7 +1420,23 @@ function avatarColor(name) {
   return colors[Math.abs(h) % colors.length];
 }
 function avatarInitial(name) { const n = (name || '').trim(); return (n || '?')[0].toUpperCase(); }
-function genderText(g) { if (g === 'male') return '<span class="gender-badge gender-male">♂</span>'; if (g === 'female') return '<span class="gender-badge gender-female">♀</span>'; return '岛民'; }
+function genderIcon(gender, variant = 'sm') {
+  const normalizedGender = typeof gender === 'string' ? gender.trim().toLowerCase() : '';
+  const normalizedVariant = typeof variant === 'string' ? variant.trim().toLowerCase() : '';
+  if ((normalizedGender !== 'male' && normalizedGender !== 'female') || (normalizedVariant !== 'sm' && normalizedVariant !== 'lg')) return '';
+  const label = normalizedGender === 'male' ? '男生' : '女生';
+  const shape = normalizedGender === 'male'
+    ? '<circle cx="9" cy="15" r="5"></circle><path d="M12.5 11.5 19 5"></path><path d="M14 5h5v5"></path>'
+    : '<circle cx="12" cy="9" r="5"></circle><path d="M12 14v7"></path><path d="M9 18h6"></path>';
+  return `<svg class="gender-icon gender-icon--${normalizedGender} gender-icon--${normalizedVariant}" viewBox="0 0 24 24" role="img" aria-label="${label}">${shape}</svg>`;
+}
+function renderStaticGenderIcons() {
+  document.querySelectorAll('[data-gender-icon]').forEach((element) => {
+    element.innerHTML = genderIcon(element.dataset.genderIcon, element.dataset.genderIconVariant || 'sm');
+  });
+}
+function genderText(gender) { return genderIcon(gender); }
+renderStaticGenderIcons();
 function avatarStyle(name, avatar, color) {
   const c = color || avatarColor(name || '?');
   if (avatar) {
@@ -3365,7 +3381,7 @@ async function renderSettings() {
       currentUser = { ...currentUser, ...meRes };
       const name = (meRes.nickname && meRes.nickname.trim()) || (meRes.phone ? meRes.phone.slice(-4) + '号岛民' : '岛民');
       const color = avatarColor(name);
-      const genderIcon = meRes.gender === 'male' ? '<span class="profile-gender profile-gender-male">♂</span>' : meRes.gender === 'female' ? '<span class="profile-gender profile-gender-female">♀</span>' : '';
+      const profileGenderIcon = genderIcon(meRes.gender);
       const userId = meRes.id ? meRes.id.slice(-6).toUpperCase() : '';
       // Calculate level based on moments count (simple heuristic)
       const level = Math.floor((meRes.momentCount || 0) / 5);
@@ -3377,7 +3393,7 @@ async function renderSettings() {
             <div class="profile-header-info">
               <div class="profile-name-row">
                 <span class="profile-name">${escapeHtml(name)}</span>
-                ${genderIcon}
+                ${profileGenderIcon}
               </div>
               <div class="profile-id-row">
                 <span class="profile-id-badge">ID ${userId}</span>
@@ -3838,12 +3854,7 @@ function momentCardHtml(m) {
   const liked = !!m.likedByMe;
   const isSelf = !!(me && m.author && m.author.id === me.id);
   const author = m.author || {};
-  // Gender icon
-  const genderIcon = author.gender === 'male'
-    ? '<span class="gender-badge gender-male">♂</span>'
-    : author.gender === 'female'
-    ? '<span class="gender-badge gender-female">♀</span>'
-    : '';
+  const authorGenderIcon = genderIcon(author.gender);
   const authorBadges = `${verifiedBadgeHtml(author.verified, author.verifiedType)}${levelBadgeHtml(author.level, author.levelTitle)}`;
   const imagesHtml = (m.images && m.images.length)
     ? `<div class="moment-imgs imgs-${Math.min(m.images.length, 9)}">${m.images.map(src => `<img src="${src}" class="moment-img" onclick="viewImage(this.src)" alt="图片">`).join('')}</div>`
@@ -3861,7 +3872,7 @@ function momentCardHtml(m) {
       <div class="moment-meta">
         <div class="moment-name-row">
           <span class="moment-name">${escapeHtml(author.nickname || '用户')}</span>
-          ${genderIcon}${authorBadges}
+          ${authorGenderIcon}${authorBadges}
         </div>
         <div class="moment-time">${formatTime(m.createdAt)}</div>
       </div>

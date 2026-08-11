@@ -71,6 +71,13 @@ function runFunctions({ visualViewport, innerHeight = 800, pages = [] } = {}) {
   return { context, scrollCalls, styleValues, viewportListeners, windowListeners };
 }
 
+function runGenderIcon() {
+  const context = {};
+  vm.createContext(context);
+  vm.runInContext(extractFunction(html, 'genderIcon'), context);
+  return context.genderIcon;
+}
+
 function pageMarkup(id) {
   const openTag = new RegExp(`<div\\b[^>]*\\bid="page-${id}"[^>]*>`).exec(html);
   assert.ok(openTag, `page-${id} must be a page div`);
@@ -146,4 +153,36 @@ test('each main tab page has one dedicated scroll root', () => {
     assert.match(firstTag, /\bmain-tab-page\b/, `page-${id} must use main-tab-page`);
     assert.equal((innerHtml.match(/\bdata-scroll-root\b/g) || []).length, 1, `page-${id} must have one scroll root`);
   }
+});
+
+test('genderIcon renders accessible inline SVGs for both genders and supported sizes', () => {
+  const genderIcon = runGenderIcon();
+  const cases = [
+    ['male', 'sm', '男生'],
+    ['male', 'lg', '男生'],
+    ['female', 'sm', '女生'],
+    ['female', 'lg', '女生'],
+  ];
+
+  for (const [gender, variant, label] of cases) {
+    const markup = genderIcon(gender, variant);
+    assert.match(markup, /<svg\b/, `${gender} must render inline SVG`);
+    assert.match(markup, new RegExp(`aria-label="${label}"`), `${gender} must have a Chinese accessible label`);
+    assert.match(markup, new RegExp(`gender-icon--${gender}`), `${gender} must retain its color class`);
+    assert.match(markup, new RegExp(`gender-icon--${variant}`), `${variant} must select its size class`);
+  }
+});
+
+test('genderIcon normalizes valid input and returns nothing for invalid values', () => {
+  const genderIcon = runGenderIcon();
+
+  assert.match(genderIcon(' FEMALE '), /gender-icon--female/);
+  assert.equal(genderIcon(), '');
+  assert.equal(genderIcon('unknown'), '');
+  assert.equal(genderIcon('<img src=x onerror=alert(1)>'), '');
+  assert.equal(genderIcon('male', 'xl'), '');
+});
+
+test('the user frontend no longer uses Unicode gender symbols', () => {
+  assert.doesNotMatch(html, /[\u2642\u2640]/);
 });
