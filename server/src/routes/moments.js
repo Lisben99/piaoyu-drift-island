@@ -31,6 +31,7 @@ function enrich(m, currentUserId) {
     id: m.id,
     content: m.content,
     images: m.images || [],
+    type: m.type || 'community',
     createdAt: m.createdAt,
     likeCount: (m.likes || []).length,
     likedByMe: currentUserId ? (m.likes || []).includes(currentUserId) : false,
@@ -56,14 +57,17 @@ function enrich(m, currentUserId) {
 }
 
 // Create a moment (text and/or up to 9 images).
+// `type` defaults to 'community' (public). 'moment' = 朋友圈 (private, visible only
+// to the author and people who have chatted with them).
 router.post('/', (req, res) => {
-  const { content, images } = req.body || {};
+  const { content, images, type } = req.body || {};
   const text = (content || '').trim();
   const imgs = Array.isArray(images) ? images : [];
   if (!text && imgs.length === 0) {
     return res.status(400).json({ success: false, error: '动态内容不能为空' });
   }
-  const moment = createMoment(req.user.id, { content: text, images: imgs });
+  const momentType = type === 'moment' ? 'moment' : 'community';
+  const moment = createMoment(req.user.id, { content: text, images: imgs, type: momentType });
   res.json({ success: true, moment: enrich(moment, req.user.id) });
 });
 
@@ -88,7 +92,7 @@ router.get('/user/:userId', (req, res) => {
   }
   const limit = Math.min(parseInt(req.query.limit) || 30, 50);
   const offset = parseInt(req.query.offset) || 0;
-  const { items, total } = listMoments({ userId: u.id, limit, offset });
+  const { items, total } = listMoments({ userId: u.id, viewerId: req.user.id, limit, offset });
   res.json({
     success: true,
     user: {

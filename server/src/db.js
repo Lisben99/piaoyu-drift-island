@@ -391,9 +391,12 @@ function getActiveBottles(filters = {}) {
 }
 
 // ===== Moment (动态) helpers =====
-// A "moment" is a user post (text + optional images) shown in the community feed
-// and on a user's personal profile. Images are stored as compressed data URLs.
-function createMoment(userId, { content = '', images = [] } = {}) {
+// A "moment" is a user post (text + optional images).
+//   type: 'community' (default) -> public, appears in the community feed + user profile
+//   type: 'moment'   (朋友圈)   -> private, only visible to the author and users who
+//                                  have had a conversation (chat session) with the author
+// Images are stored as compressed data URLs.
+function createMoment(userId, { content = '', images = [], type = 'community' } = {}) {
   const moment = {
     id: genId('mo'),
     userId,
@@ -401,6 +404,7 @@ function createMoment(userId, { content = '', images = [] } = {}) {
     images: Array.isArray(images)
       ? images.filter(i => typeof i === 'string' && i.startsWith('data:image/')).slice(0, 9)
       : [],
+    type: type === 'moment' ? 'moment' : 'community',
     likes: [],
     comments: [],
     deleted: false,
@@ -415,16 +419,40 @@ function getMomentById(id) {
   return cache.moments.find(m => m.id === id);
 }
 
-// List non-deleted moments, newest first, with pagination.
-//   userId  -> only this user's moments (personal feed)
-//   community -> all users' moments (community feed)
-function listMoments({ userId = null, community = false, limit = 20, offset = 0 } = {}) {
+// List non-deleted moments, newest first, with pagination + visibility rules.
+//   userId    -> only this user's moments (personal feed)
+//   community -> only PUBLIC moments (type !== 'moment'); used by the community feed
+//   viewerId  -> when set & differs from userId, private 朋友圈 (type='moment') are
+//                only returned if the viewer has chatted with the author.
+function listMoments({ userId = null, community = false, viewerId = null, limit = 20, offset = 0 } = {}) {
   let list = cache.moments.filter(m => !m.deleted);
-  if (userId) list = list.filter(m => m.userId === userId);
+
+  if (community) {
+    // Community feed: public posts only (legacy moments with no type are public).
+    list = list.filter(m => m.type !== 'moment');
+  }
+
+  if (userId) {
+    list = list.filter(m => m.userId === userId);
+    // Privacy: when viewing someone else's profile, hide their 朋友圈 unless the
+    // viewer has had a conversation with them.
+    if (viewerId && viewerId !== userId) {
+      list = list.filter(m => m.type !== 'moment' || haveChatted(viewerId, userId));
+    }
+  }
+
   list.sort((a, b) => b.createdAt - a.createdAt);
   const total = list.length;
   const items = list.slice(offset, offset + limit);
   return { items, total };
+}
+
+// Returns true if the two users have an existing chat session (i.e. they have
+// "产生对话" — initiated a conversation). Blocked sessions don't count.
+function haveChatted(userA, userB) {
+  if (!userA || !userB || userA === userB) return false;
+  const s = findChatSessionByUsers(userA, userB);
+  return !!(s && s.status !== 'blocked');
 }
 
 function deleteMoment(momentId, userId) {
@@ -848,6 +876,7 @@ module.exports = {
   createMoment,
   getMomentById,
   listMoments,
+  haveChatted,
   deleteMoment,
   toggleMomentLike,
   addMomentComment,
