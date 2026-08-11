@@ -451,6 +451,13 @@ async function viewUser(id) {
       <div><b>注销时间:</b> ${u.deletedAt ? formatTime(u.deletedAt) : '-'}</div>
       <div><b>限制发布:</b> ${u.restrictions?.publish ? '是' : '否'}</div>
       <div><b>限制聊天:</b> ${u.restrictions?.chat ? '是' : '否'}</div>
+      <div><b>认证:</b> ${u.verified ? (u.verifiedType === 'official' ? '官方认证 ✓' : '个人认证 ✓') : '未认证'}</div>
+      <div><b>等级:</b> ${u.level != null ? 'Lv.' + u.level + (u.levelTitle ? '（' + u.levelTitle + '）' : '') : '-'}</div>
+    </div>
+    <div style="display:flex;gap:8px;margin:12px 0 4px;flex-wrap:wrap">
+      <button class="btn-sm btn-primary" onclick="doVerifyUser('${u.id}','personal')">设为个人认证</button>
+      <button class="btn-sm btn-primary" onclick="doVerifyUser('${u.id}','official')">设为官方认证</button>
+      <button class="btn-sm btn-ghost" onclick="doVerifyUser('${u.id}','')">取消认证</button>
     </div>
     <h4 style="margin:16px 0 8px">漂流瓶 (${u.bottles?.length || 0})</h4>
     <div style="max-height:200px;overflow-y:auto">${(u.bottles||[]).slice(-10).map(b => `<div style="padding:8px;border-bottom:1px solid #eee;font-size:13px"><span class="badge ${badgeClass(b.status)}">${b.status}</span> ${escapeHtml(b.content.slice(0,50))}...</div>`).join('') || '<div style="color:#999">无</div>'}</div>
@@ -485,6 +492,14 @@ async function doPenalize(id) {
   const reason = document.getElementById('penalizeReason').value.trim();
   const res = await api(`/users/${id}/penalize`, { method: 'POST', body: JSON.stringify({ action, reason }) });
   if (res.success) { showToast('操作成功'); closeModal(); renderUsers(); }
+  else showToast(res.error || '操作失败');
+}
+
+// Set / clear a user's verification badge.
+async function doVerifyUser(id, type) {
+  const verified = !!type;
+  const res = await api(`/users/${id}/verify`, { method: 'POST', body: JSON.stringify({ verified, verifiedType: type || 'personal' }) });
+  if (res.success) { showToast(verified ? '已设为认证用户' : '已取消认证'); closeModal(); renderUsers(); }
   else showToast(res.error || '操作失败');
 }
 

@@ -18,7 +18,10 @@ const {
   toggleMomentLike,
   addMomentComment,
   updateUserLocation,
-  getNearbyUsers
+  getNearbyUsers,
+  computeUserLevel,
+  getFollowCounts,
+  isFollowing
 } = require('../db');
 
 router.use(auth);
@@ -52,7 +55,11 @@ function enrich(m, currentUserId) {
       id: m.userId,
       nickname: author.nickname || '用户',
       avatar: author.avatar || '',
-      gender: author.gender || ''
+      gender: author.gender || '',
+      verified: !!author.verified,
+      verifiedType: author.verifiedType || '',
+      level: computeUserLevel(author).level,
+      levelTitle: computeUserLevel(author).title
     }
   };
 }
@@ -97,6 +104,8 @@ router.get('/user/:userId', (req, res) => {
   const offset = parseInt(req.query.offset) || 0;
   const isSelf = req.user.id === u.id;
   const canViewCircle = isSelf || haveChatted(req.user.id, u.id);
+  const lvl = computeUserLevel(u);
+  const counts = getFollowCounts(u.id);
   const { items, total } = listMoments({ userId: u.id, viewerId: req.user.id, limit, offset });
   res.json({
     success: true,
@@ -105,7 +114,17 @@ router.get('/user/:userId', (req, res) => {
       nickname: u.nickname || '用户',
       avatar: u.avatar || '',
       gender: u.gender || '',
-      bio: u.bio || ''
+      bio: u.bio || '',
+      verified: !!u.verified,
+      verifiedType: u.verifiedType || '',
+      level: lvl.level,
+      levelTitle: lvl.title,
+      exp: lvl.exp,
+      nextExp: lvl.nextExp,
+      progress: lvl.progress,
+      followerCount: counts.followerCount,
+      followingCount: counts.followingCount,
+      following: isFollowing(req.user.id, u.id)
     },
     isSelf,
     canViewCircle,
@@ -183,6 +202,10 @@ router.get('/nearby', (req, res) => {
       avatar: user.avatar || '',
       gender: user.gender || '',
       bio: user.bio || '',
+      verified: !!user.verified,
+      verifiedType: user.verifiedType || '',
+      level: computeUserLevel(user).level,
+      following: isFollowing(me.id, user.id),
       distance: Math.round(distance * 10) / 10,
       lastActiveAt: user.lastLoginAt || user.createdAt,
       latestMoment: latest

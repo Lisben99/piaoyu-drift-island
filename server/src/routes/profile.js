@@ -4,9 +4,11 @@
 const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
-const { db, save, findUserById } = require('../db');
+const { verifyToken } = require('../utils/jwt');
+const { db, save, findUserById, computeUserLevel, getFollowCounts, isFollowing } = require('../db');
 
-// View public profile
+// View public profile. Auth is OPTIONAL here: anonymous viewers still get the
+// profile, but a logged-in viewer additionally learns whether they follow this user.
 router.get('/:id', (req, res) => {
   const user = findUserById(req.params.id);
   if (!user) {
@@ -15,7 +17,18 @@ router.get('/:id', (req, res) => {
   if (user.status === 'banned') {
     return res.json({ success: false, error: '该用户已被封禁' });
   }
-  
+  const lvl = computeUserLevel(user);
+  const counts = getFollowCounts(user.id);
+  // Resolve an optional logged-in viewer from the bearer token (no reject if absent).
+  let viewerId = null;
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const decoded = verifyToken(authHeader.substring(7));
+    if (decoded && decoded.type === 'user') {
+      const vu = findUserById(decoded.id);
+      if (vu && vu.status !== 'deleted' && vu.status !== 'banned') viewerId = vu.id;
+    }
+  }
   res.json({
     success: true,
     profile: {
@@ -25,7 +38,17 @@ router.get('/:id', (req, res) => {
       bio: user.bio || '',
       gender: user.gender || '',
       role: user.role || '',
-      createdAt: user.createdAt
+      createdAt: user.createdAt,
+      verified: !!user.verified,
+      verifiedType: user.verifiedType || '',
+      level: lvl.level,
+      levelTitle: lvl.title,
+      exp: lvl.exp,
+      nextExp: lvl.nextExp,
+      progress: lvl.progress,
+      followerCount: counts.followerCount,
+      followingCount: counts.followingCount,
+      following: viewerId ? isFollowing(viewerId, user.id) : false
     }
   });
 });

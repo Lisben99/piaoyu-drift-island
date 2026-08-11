@@ -659,6 +659,47 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 
 /* 朋友圈模式：覆盖页面背景 */
 #userMomentsContent>.moments-timeline{margin:-12px -0px -16px;min-height:calc(100vh + 0px)}
+
+/* ===== 认证徽章 / 等级徽章 ===== */
+.verified-badge{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;font-size:10px;color:#fff;margin-left:4px;vertical-align:middle;flex:none}
+.verified-personal{background:#f4b400}
+.verified-official{background:#1f7a74}
+.level-badge{display:inline-flex;align-items:center;font-size:11px;line-height:1;color:#fff;background:#ef7b62;border-radius:8px;padding:2px 6px;margin-left:4px;vertical-align:middle;flex:none}
+
+/* ===== 个人主页：统计 / 访客 ===== */
+.profile-stats{display:flex;gap:18px;justify-content:center;margin:12px 0 4px;font-size:13px;color:#555}
+.profile-stat{cursor:pointer}
+.profile-stat b{color:#1f7a74;font-size:15px}
+.profile-stat.level-stat{color:#ef7b62;font-weight:500}
+.profile-visitors{margin:14px 16px 4px;background:#f7f9fa;border-radius:12px;padding:12px}
+.pv-title{font-size:13px;color:#666;margin-bottom:8px}
+.pv-list{display:flex;gap:12px;overflow-x:auto;padding-bottom:2px}
+.pv-item{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:48px;cursor:pointer}
+.pv-avatar{width:44px;height:44px;border-radius:50%;background-size:cover;background-position:center;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px}
+.pv-name{font-size:11px;color:#555;max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-loading,.pv-empty{font-size:12px;color:#999}
+
+/* ===== 动态卡片：关注按钮 ===== */
+.moment-follow-btn{margin-left:8px;background:#1f7a74;color:#fff;border:none;border-radius:14px;padding:4px 12px;font-size:12px;align-self:flex-start}
+.moment-follow-btn.ghost-button{background:#eee;color:#666}
+
+/* ===== 附近的人：关注按钮 ===== */
+.nearby-act-follow{background:#1f7a74;color:#fff;border:none;border-radius:14px;padding:5px 10px;font-size:12px}
+.nearby-act-follow.following{background:#eee;color:#666}
+
+/* ===== 关注/粉丝列表弹窗 ===== */
+.follow-row{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid #f0f0f0;cursor:pointer}
+.follow-avatar{width:42px;height:42px;border-radius:50%;background-size:cover;background-position:center;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;flex:none}
+.follow-info{flex:1;min-width:0}
+.follow-name{font-size:14px;display:flex;align-items:center;flex-wrap:wrap}
+.follow-bio{font-size:12px;color:#999;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+
+/* ===== 通知中心：互动 Tab ===== */
+.notif-tabs{display:flex;gap:8px;padding:10px 14px 0}
+.notif-tab{flex:1;background:none;border:none;font-size:14px;color:#888;padding:8px 0;border-bottom:2px solid transparent}
+.notif-tab.active{color:#1f7a74;font-weight:600;border-bottom-color:#1f7a74}
+.notif-tab-badge{display:inline-block;min-width:16px;height:16px;line-height:16px;background:#ef7b62;color:#fff;border-radius:8px;font-size:10px;padding:0 4px;margin-left:4px;vertical-align:middle}
+.notif-item__icon-avatar{width:38px;height:38px;border-radius:50%;background-size:cover;background-position:center;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;flex:none}
 </style>
 </head>
 <body>
@@ -1035,7 +1076,12 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
       <div class="nav-bar__right"></div>
     </div>
     <div class="notif-content">
+      <div class="notif-tabs">
+        <button class="notif-tab active" data-ntab="notif" onclick="switchNotifTab('notif')">通知</button>
+        <button class="notif-tab" data-ntab="interact" onclick="switchNotifTab('interact')">互动 <span class="notif-tab-badge" id="interactBadge" style="display:none">0</span></button>
+      </div>
       <div id="notificationsList"></div>
+      <div id="interactionsList" style="display:none"></div>
     </div>
   </div>
 
@@ -1406,6 +1452,21 @@ function escapeHtml(str) {
 function statusLabel(status) {
   const m = { displaying:'展示中', expired:'已过期', deleted:'已删除', active:'限时中', permanent:'永久', pending_permanent:'等待续聊确认', blocked:'已拉黑' };
   return m[status] || status;
+}
+
+/* ================================================================
+   SOCIAL HELPERS (认证徽章 / 等级徽章)
+   ================================================================ */
+function verifiedBadgeHtml(verified, type) {
+  if (!verified) return '';
+  const isOfficial = type === 'official';
+  const cls = isOfficial ? 'verified-badge verified-official' : 'verified-badge verified-personal';
+  const title = isOfficial ? '官方认证' : '个人认证';
+  return `<span class="${cls}" title="${title}">✓</span>`;
+}
+function levelBadgeHtml(level, title) {
+  if (!level || level < 1) return '';
+  return `<span class="level-badge" title="${escapeHtml(title || '')}">Lv.${level}</span>`;
 }
 function statusTagClass(status) {
   const m = { active:'tag-active', expired:'tag-expired', permanent:'tag-permanent', pending_permanent:'tag-pending', blocked:'tag-expired' };
@@ -2060,6 +2121,73 @@ async function refreshNotifUnread() {
   try {
     const res = await api('/notifications/unread-count');
     if (res && res.success) updateNotifBell(res.unreadCount);
+  } catch (e) {}
+}
+
+// ===== Interaction feed (互动) =====
+function switchNotifTab(tab) {
+  document.querySelectorAll('.notif-tab').forEach(b => b.classList.toggle('active', b.dataset.ntab === tab));
+  $('notificationsList').style.display = tab === 'notif' ? '' : 'none';
+  $('interactionsList').style.display = tab === 'interact' ? '' : 'none';
+  if (tab === 'interact') renderInteractions();
+}
+
+function interactionIcon(type) {
+  if (type === 'like') return '♥';
+  if (type === 'comment') return '💬';
+  if (type === 'follow') return '➕';
+  if (type === 'visit') return '👁';
+  return '🔔';
+}
+
+async function renderInteractions() {
+  const el = $('interactionsList');
+  if (!el) return;
+  el.innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
+  try {
+    const res = await api('/interactions');
+    if (res && res.success && res.interactions.length) {
+      el.innerHTML = res.interactions.map(i => {
+        const a = i.avatar
+          ? `<div class="notif-item__icon-avatar" style="background-image:url('${i.avatar}')"></div>`
+          : `<div class="notif-item__icon-avatar" style="background:${avatarColor(i.nickname)}">${avatarInitial(i.nickname)}</div>`;
+        const dot = i.read ? '' : '<span class="notif-item__dot"></span>';
+        return `<div class="notif-item ${i.read ? '' : 'unread'}" onclick="viewUserMoments('${i.actorId}')">
+          ${a}
+          <div class="notif-item__body">
+            <div class="notif-item__title"><b>${escapeHtml(i.nickname)}</b> ${escapeHtml(i.actionText)}${dot}</div>
+            <div class="notif-item__time">${formatTime(i.createdAt)}</div>
+          </div>
+        </div>`;
+      }).join('');
+    } else {
+      el.innerHTML = '<div class="notif-empty">还没有互动</div>';
+    }
+    // Mark all as read and clear the badge.
+    if (res && res.unreadCount > 0) {
+      api('/interactions/read', { method: 'POST' }).catch(() => {});
+    }
+    updateInteractBadge(0);
+  } catch (e) {
+    el.innerHTML = '<div class="notif-empty">加载失败，请重试</div>';
+  }
+}
+
+function updateInteractBadge(count) {
+  const badge = $('interactBadge');
+  if (!badge) return;
+  if (count && count > 0) {
+    badge.style.display = 'inline-block';
+    badge.textContent = count > 99 ? '99+' : count;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+async function refreshInteractUnread() {
+  try {
+    const res = await api('/interactions');
+    if (res && res.success) updateInteractBadge(res.unreadCount);
   } catch (e) {}
 }
 
@@ -3472,21 +3600,118 @@ async function renderProfile(userId) {
     const res = await api('/profile/' + userId);
     if (res.success) {
       const p = res.profile;
+      const isSelf = currentUser && currentUser.id === p.id;
       const color = avatarColor(p.nickname || '?');
+      const nameRow = `<span class="profile-name-text">${escapeHtml(p.nickname)}</span>${verifiedBadgeHtml(p.verified, p.verifiedType)}${levelBadgeHtml(p.level, p.levelTitle)}`;
+      const visitHtml = isSelf
+        ? `<div class="profile-visitors" id="profileVisitors">
+             <div class="pv-title">谁看过我</div>
+             <div class="pv-list" id="pvList"><span class="pv-loading">加载中…</span></div>
+           </div>`
+        : '';
+      const actionHtml = isSelf
+        ? `<div class="profile-actions">
+             <button class="primary-button profile-action-btn" onclick="navigate('profileEdit')">编辑资料</button>
+           </div>`
+        : `<div class="profile-actions">
+             <button id="followBtn" class="profile-action-btn ${p.following ? 'ghost-button' : 'primary-button'}" onclick="toggleFollowUser('${p.id}')">${p.following ? '已关注' : '关注'}</button>
+             <button class="ghost-button profile-action-btn" onclick="startChat('${p.id}',null);navigateBack()">聊聊</button>
+             <button class="ghost-button profile-action-btn" onclick="navigate('report');window._reportTarget={type:'user',id:'${p.id}'}">举报</button>
+           </div>`;
       $('profileContent').innerHTML = `
         <div class="profile-header">
           ${avatarMarkup(p.nickname, p.avatar, 'profile-avatar', color)}
-          <div class="profile-name">${escapeHtml(p.nickname)}</div>
+          <div class="profile-name">${nameRow}</div>
           <div class="profile-role">${genderText(p.gender)}</div>
           ${p.bio ? `<div class="profile-bio">${escapeHtml(p.bio)}</div>` : ''}
+          <div class="profile-stats">
+            <span class="profile-stat" onclick="openFollowList('following','${p.id}')"><b>${p.followingCount}</b> 关注</span>
+            <span class="profile-stat follower-count" onclick="openFollowList('followers','${p.id}')"><b>${p.followerCount}</b> 粉丝</span>
+            <span class="profile-stat level-stat">Lv.${p.level} ${escapeHtml(p.levelTitle)}</span>
+          </div>
           <div class="profile-meta">加入于 ${formatTime(p.createdAt)}</div>
         </div>
-        <div class="profile-actions">
-          <button class="primary-button profile-action-btn" onclick="startChat('${p.id}',null);navigateBack()">聊聊</button>
-          <button class="ghost-button profile-action-btn" onclick="navigate('report');window._reportTarget={type:'user',id:'${p.id}'}">举报</button>
-        </div>`;
+        ${actionHtml}
+        ${visitHtml}`;
+      if (!isSelf) recordVisitUser(p.id);
+      else loadVisitors();
     }
   } catch (e) {}
+}
+
+// Record that I visited someone else's profile (no-op on failure).
+function recordVisitUser(userId) {
+  api('/visits/' + userId, { method: 'POST' }).catch(() => {});
+}
+
+// Load + render the list of visitors to MY profile.
+async function loadVisitors() {
+  const list = $('pvList');
+  if (!list) return;
+  try {
+    const res = await api('/visits/me');
+    if (res && res.success) {
+      if (!res.visitors.length) {
+        list.innerHTML = '<span class="pv-empty">还没有人看过你</span>';
+        return;
+      }
+      list.innerHTML = res.visitors.map(v => {
+        const a = v.avatar
+          ? `<div class="pv-avatar" style="background-image:url('${v.avatar}')"></div>`
+          : `<div class="pv-avatar" style="background:${avatarColor(v.nickname)}">${avatarInitial(v.nickname)}</div>`;
+        return `<div class="pv-item" onclick="viewUserMoments('${v.visitorId}')">${a}<span class="pv-name">${escapeHtml(v.nickname)}</span></div>`;
+      }).join('');
+    }
+  } catch (e) {
+    list.innerHTML = '<span class="pv-empty">加载失败</span>';
+  }
+}
+
+// Toggle follow of a user. `btnId` optionally points at a specific button to update
+// (profile follow button). Community/nearby cards update their own button by element.
+async function toggleFollowUser(userId, btn) {
+  const el = btn || $('followBtn');
+  try {
+    const res = await api('/follow/' + userId, { method: 'POST' });
+    if (res && res.success) {
+      if (el) {
+        const following = res.following;
+        el.classList.toggle('primary-button', !following);
+        el.classList.toggle('ghost-button', following);
+        el.textContent = following ? '已关注' : '关注';
+      }
+      // Update the follower count stat if present on this profile view.
+      const fc = document.querySelector('.profile-stat.follower-count');
+      if (fc) fc.innerHTML = `<b>${res.followerCount}</b> 粉丝`;
+    } else if (res && res.error) {
+      showToast(res.error);
+    }
+  } catch (e) {}
+}
+
+// Show a modal list of a user's followers or following.
+async function openFollowList(type, userId) {
+  const following = type === 'following';
+  let users = [];
+  try {
+    const res = await api('/follow/' + type + '?userId=' + userId + '&limit=100');
+    if (res && res.success) users = res.users || [];
+  } catch (e) {}
+  const rows = users.length
+    ? users.map(u => {
+        const a = u.avatar
+          ? `<div class="follow-avatar" style="background-image:url('${u.avatar}')"></div>`
+          : `<div class="follow-avatar" style="background:${avatarColor(u.nickname)}">${avatarInitial(u.nickname)}</div>`;
+        return `<div class="follow-row" onclick="viewUserMoments('${u.id}')">
+          ${a}
+          <div class="follow-info">
+            <div class="follow-name">${escapeHtml(u.nickname)}${verifiedBadgeHtml(u.verified, u.verifiedType)}${levelBadgeHtml(u.level, u.levelTitle)}</div>
+            ${u.bio ? `<div class="follow-bio">${escapeHtml(u.bio)}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('')
+    : '<div class="notif-empty">还没有人</div>';
+  showModal(following ? '关注的人' : '粉丝', rows, [{ text: '关闭', cancel: true }]);
 }
 
 /* ================================================================
@@ -3541,8 +3766,9 @@ async function init() {
           connectWS();
           refreshUnread();
           refreshNotifUnread();
+          refreshInteractUnread();
           if (!window.__notifPoll) {
-            window.__notifPoll = setInterval(refreshNotifUnread, 30000);
+            window.__notifPoll = setInterval(() => { refreshNotifUnread(); refreshInteractUnread(); }, 30000);
           }
         }
         return;
@@ -3597,10 +3823,11 @@ function momentCardHtml(m) {
   const genderIcon = author.gender === 'male'
     ? '<span class="gender-badge gender-male">♂</span>'
     : author.gender === 'female'
-      ? '<span class="gender-badge gender-female">♀</span>'
-      : '';
+    ? '<span class="gender-badge gender-female">♀</span>'
+    : '';
+  const authorBadges = `${verifiedBadgeHtml(author.verified, author.verifiedType)}${levelBadgeHtml(author.level, author.levelTitle)}`;
   const imagesHtml = (m.images && m.images.length)
-    ? `<div class="moment-imgs imgs-${Math.min(m.images.length, 9)}">${m.images.map(src => `<img src="${src}" class="moment-img" onclick="viewImage('${src}')" alt="图片">`).join('')}</div>`
+    ? `<div class="moment-imgs imgs-${Math.min(m.images.length, 9)}">${m.images.map(src => `<img src="${src}" class="moment-img" onclick="viewImage(this.src)" alt="图片">`).join('')}</div>`
     : '';
   const commentsHtml = (m.comments && m.comments.length)
     ? `<div class="moment-comments">${m.comments.map(c => `<div class="moment-comment"><span class="mc-name">${escapeHtml(c.nickname)}：</span><span>${escapeHtml(c.content)}</span></div>`).join('')}</div>`
@@ -3615,11 +3842,12 @@ function momentCardHtml(m) {
       <div class="moment-meta">
         <div class="moment-name-row">
           <span class="moment-name">${escapeHtml(author.nickname || '用户')}</span>
-          ${genderIcon}
+          ${genderIcon}${authorBadges}
         </div>
         <div class="moment-time">${formatTime(m.createdAt)}</div>
       </div>
       ${actionBtn}
+      ${isSelf ? '' : `<button class="moment-follow-btn" data-uid="${author.id}" onclick="toggleFollowUser('${author.id}', this)">+关注</button>`}
     </div>
     ${contentHtml}
     ${imagesHtml}
@@ -3719,16 +3947,18 @@ async function renderNearby() {
           ? `<div class="nearby-card__avatar" style="background-image:url('${u.avatar}')"></div>`
           : `<div class="nearby-card__avatar" style="background:${avatarColor(u.nickname)}">${avatarInitial(u.nickname)}</div>`;
         const bio = (u.latestMoment && u.latestMoment.content) ? u.latestMoment.content : (u.bio || '这个人很神秘~');
+        const badges = `${verifiedBadgeHtml(u.verified, u.verifiedType)}${levelBadgeHtml(u.level, '')}`;
         return `<div class="nearby-card">
           ${avatar}
           <div class="nearby-card__body">
             <div class="nearby-card__top">
-              <div class="nearby-card__name">${escapeHtml(u.nickname)}</div>
+              <div class="nearby-card__name">${escapeHtml(u.nickname)}${badges}</div>
               <div class="nearby-card__dist">${u.distance} km</div>
             </div>
             <div class="nearby-card__bio">${escapeHtml(bio)}</div>
           </div>
           <div class="nearby-card__acts">
+            <button class="nearby-act-follow ${u.following ? 'following' : ''}" onclick="toggleFollowUser('${u.id}', this)">${u.following ? '已关注' : '+关注'}</button>
             <button class="nearby-act-view" onclick="viewUserMoments('${u.id}')">动态</button>
             <button class="nearby-act-chat" onclick="startChat('${u.id}')">私聊</button>
           </div>
@@ -3903,7 +4133,7 @@ function ownMomentItemHtml(m) {
 
   // 图片网格
   const imagesHtml = (m.images && m.images.length)
-    ? `<div class="wx-imgs imgs-${Math.min(m.images.length, 9)}">${m.images.map(src => `<img src="${src}" class="wx-img" onclick="viewImage('${src}')" alt="">`).join('')}</div>`
+    ? `<div class="wx-imgs imgs-${Math.min(m.images.length, 9)}">${m.images.map(src => `<img src="${src}" class="wx-img" onclick="viewImage(this.src)" alt="">`).join('')}</div>`
     : '';
 
   // 文字内容

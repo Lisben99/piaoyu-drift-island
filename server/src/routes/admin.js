@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const { adminAuth } = require('../middleware/auth');
-const { db, save, genId, findUserById, findBottleById, getMomentById, addCoinTransaction, addAuditLog, findAdminById, createBot, getBotProfiles, findBotProfileByBotId, updateBotProfile } = require('../db');
+const { db, save, genId, findUserById, findBottleById, getMomentById, addCoinTransaction, addAuditLog, findAdminById, createBot, getBotProfiles, findBotProfileByBotId, updateBotProfile, computeUserLevel } = require('../db');
 const { signAdminToken } = require('../utils/jwt');
 const { comparePassword, hashPassword } = require('../utils/crypto');
 const { PACKAGES, refundOrder, confirmPayment, rejectOrder } = require('../services/payment');
@@ -168,11 +168,14 @@ router.get('/users/:id', adminAuth, (req, res) => {
   const bottles = db().bottles.filter(b => b.authorId === user.id).slice(-20);
   const transactions = db().coinTransactions.filter(t => t.userId === user.id).slice(-20);
   const orders = db().rechargeOrders.filter(o => o.userId === user.id);
-  
+  const lvl = computeUserLevel(user);
+
   res.json({
     success: true,
     user: {
       ...user,
+      level: lvl.level,
+      levelTitle: lvl.title,
       bottles,
       transactions,
       orders
@@ -218,6 +221,27 @@ router.post('/users/:id/penalize', adminAuth, (req, res) => {
   save();
   
   res.json({ success: true, user: { id: user.id, status: user.status, restrictions: user.restrictions } });
+});
+
+// Set/clear a user's verification badge (认证徽章).
+// verifiedType: 'personal' (黄V) | 'official' (蓝V). Clearing verified unsets both.
+router.post('/users/:id/verify', adminAuth, (req, res) => {
+  const user = findUserById(req.params.id);
+  if (!user) {
+    return res.json({ success: false, error: '用户不存在' });
+  }
+  const { verified, verifiedType } = req.body || {};
+  user.verified = !!verified;
+  if (user.verified) {
+    user.verifiedType = verifiedType === 'official' ? 'official' : 'personal';
+    user.verifiedAt = Date.now();
+  } else {
+    user.verifiedType = '';
+    user.verifiedAt = null;
+  }
+  addAuditLog(req.admin.id, 'verify_user', user.id, `认证设置: ${user.verified ? user.verifiedType : '取消认证'}`);
+  save();
+  res.json({ success: true, verified: user.verified, verifiedType: user.verifiedType });
 });
 
 // Bottle management - list

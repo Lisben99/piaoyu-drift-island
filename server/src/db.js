@@ -103,6 +103,9 @@ function createDefaultDB() {
     blacklist: [],
     notifications: [],
     moments: [],
+    follows: [],
+    visits: [],
+    interactions: [],
     config: { ...DEFAULT_CONFIG },
     admins: [DEFAULT_ADMIN]
   };
@@ -479,7 +482,12 @@ function toggleMomentLike(momentId, userId) {
   const idx = (m.likes || []).indexOf(userId);
   let liked;
   if (idx >= 0) { m.likes.splice(idx, 1); liked = false; }
-  else { m.likes.push(userId); liked = true; }
+  else {
+    m.likes.push(userId); liked = true;
+    if (m.userId !== userId) {
+      recordInteraction({ type: 'like', actorId: userId, targetUserId: m.userId, refId: m.id, refType: 'moment' });
+    }
+  }
   save();
   return { liked, likeCount: m.likes.length };
 }
@@ -494,8 +502,242 @@ function addMomentComment(momentId, userId, content) {
     createdAt: Date.now()
   };
   m.comments.push(comment);
+  if (m.userId !== userId) {
+    recordInteraction({ type: 'comment', actorId: userId, targetUserId: m.userId, refId: m.id, refType: 'moment' });
+  }
   save();
   return comment;
+}
+
+// ===== Social graph helpers (follow / visit / interaction) =====
+// All three collections are second-phase "social" features:
+//   follows      — who follows whom (one-way, like Weibo/IG).
+//   visits       — profile-view records (only the visited user can read their own).
+//   interactions — a unified "someone interacted with me" feed (like/comment/follow/visit),
+//                  each marked read/unread so the client can show a badge.
+// Bots (account_type === 'BOT') are excluded from being followed/followed-by in
+// meaningful social graphs to keep the feed clean; follows involving bots are allowed
+// but not surfaced in counts that matter for ranking.
+
+function getFollows() {
+  if (!cache.follows) cache.follows = [];
+  return cache.follows;
+}
+
+// Toggle the current user's follow of `followeeId`.
+// Returns { following, followerCount, followingCount } or null if target invalid.
+function toggleFollow(followerId, followeeId) {
+  if (!followerId || !followeeId || followerId === followeeId) return null;
+  const follower = findUserById(followerId);
+  const followee = findUserById(followeeId);
+  if (!follower || !followee) return null;
+  const follows = getFollows();
+  const idx = follows.findIndex(f => f.followerId === followerId && f.followeeId === followeeId);
+  let following;
+  if (idx >= 0) {
+    follows.splice(idx, 1);
+    following = false;
+  } else {
+    follows.push({ id: genId('fl'), followerId, followeeId, createdAt: Date.now() });
+    following = true;
+    recordInteraction({ type: 'follow', actorId: followerId, targetUserId: followeeId, refId: null, refType: 'user' });
+  }
+  save();
+  return { following, ...getFollowCounts(followeeId) };
+}
+
+function isFollowing(followerId, followeeId) {
+  return getFollows().some(f => f.followerId === followerId && f.followeeId === followeeId);
+}
+
+function getFollowing(userId, { limit = 50, offset = 0 } = {}) {
+  const list = getFollows().filter(f => f.followerId === userId)
+    .sort((a, b) => b.createdAt - a.createdAt);
+  const total = list.length;
+  const items = list.slice(offset, offset + limit)
+    .map(f => findUserById(f.followeeId))
+    .filter(Boolean);
+  return { items, total };
+}
+
+function getFollowers(userId, { limit = 50, offset = 0 } = {}) {
+  const list = getFollows().filter(f => f.followeeId === userId)
+    .sort((a, b) => b.createdAt - a.createdAt);
+  const total = list.length;
+  const items = list.slice(offset, offset + limit)
+    .map(f => findUserById(f.followerId))
+    .filter(Boolean);
+  return { items, total };
+}
+
+function getFollowCounts(userId) {
+  const follows = getFollows();
+  return {
+    followerCount: follows.filter(f => f.followeeId === userId).length,
+    followingCount: follows.filter(f => f.followerId === userId).length
+  };
+}
+
+// Record a profile visit. Dedupes: the same visitor hitting the same target within
+// VISIT_DEDUP_MS updates the existing record's timestamp instead of stacking entries.
+const VISIT_DEDUP_MS = 1000 * 60 * 60; // 60 minutes
+function recordVisit(visitorId, targetId) {
+  if (!visitorId || !targetId || visitorId === targetId) return null;
+  const visitor = findUserById(visitorId);
+  const target = findUserById(targetId);
+  if (!visitor || !target) return null;
+  if (!cache.visits) cache.visits = [];
+  const now = Date.now();
+  const existing = cache.visits.find(v => v.visitorId === visitorId && v.targetId === targetId);
+  let visit, isNew = false;
+  if (existing && (now - existing.createdAt) < VISIT_DEDUP_MS) {
+    existing.createdAt = now;
+    visit = existing;
+  } else {
+    visit = { id: genId('vt'), visitorId, targetId, createdAt: now };
+    cache.visits.push(visit);
+    isNew = true;
+  }
+  // Only emit an interaction for a NEW visit (deduped re-views don't flood the feed).
+  if (isNew) {
+    recordInteraction({ type: 'visit', actorId: visitorId, targetUserId: targetId, refId: null, refType: 'user' });
+  }
+  save();
+  return visit;
+}
+
+function getVisitors(targetId, { limit = 50, offset = 0 } = {}) {
+  if (!cache.visits) cache.visits = [];
+  const list = cache.visits
+    .filter(v => v.targetId === targetId)
+    .sort((a, b) => b.createdAt - a.createdAt);
+  const total = list.length;
+  const items = list.slice(offset, offset + limit)
+    .map(v => {
+      const u = findUserById(v.visitorId) || {};
+      return {
+        id: v.id,
+        visitorId: v.visitorId,
+        nickname: u.nickname || '用户',
+        avatar: u.avatar || '',
+        gender: u.gender || '',
+        createdAt: v.createdAt
+      };
+    });
+  return { items, total };
+}
+
+function getVisitCount(targetId) {
+  if (!cache.visits) cache.visits = [];
+  return cache.visits.filter(v => v.targetId === targetId).length;
+}
+
+// ===== Interaction feed helpers =====
+// type: 'like' | 'comment' | 'follow' | 'visit'
+// `targetUserId` is the user who RECEIVES the interaction (so they see it in "我的互动").
+function recordInteraction({ type, actorId, targetUserId, refId = null, refType = null }) {
+  if (!actorId || !targetUserId) return null;
+  if (actorId === targetUserId) return null; // never notify yourself about your own action
+  if (!cache.interactions) cache.interactions = [];
+  const entry = {
+    id: genId('ix'),
+    type,
+    actorId,
+    targetUserId,
+    refId,
+    refType,
+    read: false,
+    createdAt: Date.now()
+  };
+  cache.interactions.push(entry);
+  save();
+  return entry;
+}
+
+function getUserInteractions(userId, { limit = 30, offset = 0, unreadOnly = false } = {}) {
+  if (!cache.interactions) cache.interactions = [];
+  let list = cache.interactions.filter(i => i.targetUserId === userId);
+  if (unreadOnly) list = list.filter(i => !i.read);
+  list.sort((a, b) => b.createdAt - a.createdAt);
+  const total = list.length;
+  const items = list.slice(offset, offset + limit).map(i => {
+    const actor = findUserById(i.actorId) || {};
+    return {
+      id: i.id,
+      type: i.type,
+      actorId: i.actorId,
+      nickname: actor.nickname || '用户',
+      avatar: actor.avatar || '',
+      gender: actor.gender || '',
+      refId: i.refId,
+      refType: i.refType,
+      read: i.read,
+      createdAt: i.createdAt
+    };
+  });
+  return { items, total };
+}
+
+function getUnreadInteractionCount(userId) {
+  if (!cache.interactions) cache.interactions = [];
+  return cache.interactions.filter(i => i.targetUserId === userId && !i.read).length;
+}
+
+function markInteractionsRead(userId, ids = null) {
+  if (!cache.interactions) cache.interactions = [];
+  let changed = 0;
+  for (const i of cache.interactions) {
+    if (i.targetUserId !== userId) continue;
+    if (ids && !ids.includes(i.id)) continue;
+    if (!i.read) { i.read = true; changed++; }
+  }
+  if (changed > 0) save();
+  return changed;
+}
+
+// ===== User level system =====
+// Experience is derived from a user's contributions. Higher activity => higher level.
+// The function is PURE (no DB writes) so it can be called freely in route responses.
+const LEVEL_TIERS = [
+  { min: 0,    title: '漂流萌新' },
+  { min: 50,   title: '海岛常客' },
+  { min: 150,  title: '拾贝旅人' },
+  { min: 350,  title: '听涛者'   },
+  { min: 700,  title: '掌灯人'   },
+  { min: 1200, title: '屿中贤者' },
+  { min: 2000, title: '漂屿之星' }
+];
+
+function computeUserLevel(user) {
+  if (!user) return { level: 1, title: LEVEL_TIERS[0].title, exp: 0, nextExp: LEVEL_TIERS[1].min, progress: 0 };
+  const momentsCount = (cache.moments || []).filter(m => m.userId === user.id && !m.deleted).length;
+  const bottlesCount = (cache.bottles || []).filter(b => b.authorId === user.id && !b.deleted).length;
+  const chatCount = (cache.chatSessions || []).filter(s => s.userA === user.id || s.userB === user.id).length;
+  const daysSinceJoin = Math.max(0, Math.floor((Date.now() - (user.createdAt || Date.now())) / (1000 * 60 * 60 * 24)));
+  const coinsEarned = Math.max(0, Math.round((user.totalRecharged || 0) + (user.totalInvited || 0) * 2));
+  // Weighted experience score.
+  const exp = Math.round(
+    momentsCount * 10 +
+    bottlesCount * 8 +
+    chatCount * 5 +
+    daysSinceJoin * 2 +
+    coinsEarned * 1 +
+    (user.coins || 0) * 0.2
+  );
+  let level = 1;
+  for (let i = 0; i < LEVEL_TIERS.length; i++) {
+    if (exp >= LEVEL_TIERS[i].min) level = i + 1;
+  }
+  const curMin = LEVEL_TIERS[level - 1].min;
+  const nextMin = level < LEVEL_TIERS.length ? LEVEL_TIERS[level].min : null;
+  const progress = nextMin ? Math.min(100, Math.round(((exp - curMin) / (nextMin - curMin)) * 100)) : 100;
+  return {
+    level,
+    title: LEVEL_TIERS[level - 1].title,
+    exp,
+    nextExp: nextMin,
+    progress
+  };
 }
 
 function updateUserLocation(userId, latitude, longitude) {
@@ -893,6 +1135,21 @@ module.exports = {
   findChatSessionById,
   findChatSessionByUsers,
   getPendingReportsCount,
+  // Social graph helpers
+  toggleFollow,
+  isFollowing,
+  getFollowing,
+  getFollowers,
+  getFollowCounts,
+  recordVisit,
+  getVisitors,
+  getVisitCount,
+  recordInteraction,
+  getUserInteractions,
+  getUnreadInteractionCount,
+  markInteractionsRead,
+  computeUserLevel,
+  LEVEL_TIERS,
   // Notification helpers
   createNotification,
   getUserNotifications,
