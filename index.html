@@ -553,7 +553,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .moment-head{display:flex;align-items:flex-start;gap:10px}
 .moment-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:#fff;flex-shrink:0;background:#e9eef0;background-size:cover;background-position:center}
 .moment-meta{flex:1;min-width:0;padding-top:1px}
-.moment-name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}
+.moment-name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}
 .moment-name-row{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;overflow:hidden}
 .gender-icon{display:inline-block;vertical-align:middle;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:2.25;stroke-linecap:round;stroke-linejoin:round}
 .gender-icon--sm{width:14px;height:14px}
@@ -572,9 +572,15 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .moment-imgs.imgs-2,.moment-imgs.imgs-4{grid-template-columns:1fr 1fr}
 .moment-imgs.imgs-3,.moment-imgs.imgs-5,.moment-imgs.imgs-6,.moment-imgs.imgs-7,.moment-imgs.imgs-8,.moment-imgs.imgs-9{grid-template-columns:repeat(3,1fr)}
 .moment-img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;cursor:pointer;background:#eee}
-.moment-actions{display:flex;gap:18px;margin-top:6px;padding-top:8px;border-top:1px solid #f0eee8}
+.moment-actions{display:flex;align-items:center;gap:18px;position:relative;margin-top:6px;padding-top:8px;border-top:1px solid #f0eee8}
 .moment-act{background:none;border:none;font-size:13px;color:#718082;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;padding:4px 0}
 .moment-act.liked{color:#ef7b62}
+.moment-more-wrap{position:relative;margin-left:auto;display:flex;align-items:center}
+.moment-more-btn{width:32px;height:24px;border:none;border-radius:5px;background:#f0f3f4;color:#6f8190;font-size:15px;font-weight:800;line-height:1;letter-spacing:1px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0 0 5px}
+.moment-overflow-menu{display:none;position:absolute;right:38px;bottom:-5px;z-index:8;min-width:66px;padding:3px;background:#3b3b3b;border-radius:5px;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.moment-overflow-menu.open{display:block}
+.moment-menu-delete{width:100%;height:30px;border:none;background:transparent;color:#fff;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;padding:0 12px}
+.moment-menu-delete:active{background:rgba(255,255,255,.1)}
 .like-icon{fill:none;stroke:currentColor;stroke-width:1.8;vertical-align:-2px;transition:fill .2s,stroke .2s}
 .moment-act.liked .like-icon,.chat-btn-like.liked .like-icon{fill:currentColor;stroke:currentColor}
 .moment-comment-box{margin-top:8px;background:#f7f6f2;border-radius:10px;padding:10px}
@@ -3995,10 +4001,16 @@ function momentCardHtml(m) {
     ? `<div class="moment-comments">${m.comments.map(c => `<div class="moment-comment"><span class="mc-name">${escapeHtml(c.nickname)}：</span><span>${escapeHtml(c.content)}</span></div>`).join('')}</div>`
     : '';
   const contentHtml = m.content ? `<div class="moment-content">${escapeHtml(m.content)}</div>` : '';
-  const actionButtons = isSelf
-    ? `<button class="moment-del" onclick="deleteMoment('${m.id}')">删除</button>`
-    : `<button class="moment-chat-btn" onclick="startChat('${author.id}')">私聊</button>
-       <button class="moment-follow-btn${following ? ' following' : ''}" data-uid="${author.id}" onclick="toggleFollowUser('${author.id}', this)">${following ? '已关注' : '+关注'}</button>`;
+  const headerActions = isSelf ? '' : `<div class="moment-head-actions">
+      <button class="moment-chat-btn" onclick="startChat('${author.id}')">私聊</button>
+      <button class="moment-follow-btn${following ? ' following' : ''}" data-uid="${author.id}" onclick="toggleFollowUser('${author.id}', this)">${following ? '已关注' : '+关注'}</button>
+    </div>`;
+  const overflowMenu = isSelf ? `<div class="moment-more-wrap">
+      <button class="moment-more-btn" aria-label="更多操作" onclick="toggleMomentMenu('${m.id}', event)">•••</button>
+      <div class="moment-overflow-menu" id="moment-menu-${m.id}">
+        <button class="moment-menu-delete" onclick="event.stopPropagation();closeMomentMenus();deleteMoment('${m.id}')">删除</button>
+      </div>
+    </div>` : '';
   return `<div class="moment-card" id="moment-${m.id}">
     <div class="moment-head">
       ${avatarMarkup(author.nickname, author.avatar, 'moment-avatar', avatarColor(author.nickname))}
@@ -4009,13 +4021,14 @@ function momentCardHtml(m) {
         </div>
         <div class="moment-time">${formatTime(m.createdAt)}</div>
       </div>
-      <div class="moment-head-actions">${actionButtons}</div>
+      ${headerActions}
     </div>
     ${contentHtml}
     ${imagesHtml}
     <div class="moment-actions">
       <button class="moment-act ${liked ? 'liked' : ''}" onclick="toggleMomentLike('${m.id}')"><svg class="like-icon" viewBox="0 0 24 24" width="16" height="16"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> <span>${m.likeCount}</span></button>
       <button class="moment-act" onclick="toggleMomentComments('${m.id}')">💬 <span>${m.commentCount}</span></button>
+      ${overflowMenu}
     </div>
     <div class="moment-comment-box" id="mcb-${m.id}" style="display:none">
       ${commentsHtml}
@@ -4446,6 +4459,21 @@ async function deleteMoment(id) {
     }}
   ]);
 }
+
+function closeMomentMenus() {
+  document.querySelectorAll('.moment-overflow-menu.open').forEach(menu => menu.classList.remove('open'));
+}
+
+function toggleMomentMenu(id, clickEvent) {
+  if (clickEvent) clickEvent.stopPropagation();
+  const menu = $('moment-menu-' + id);
+  if (!menu) return;
+  const wasOpen = menu.classList.contains('open');
+  closeMomentMenus();
+  if (!wasOpen) menu.classList.add('open');
+}
+
+document.addEventListener('click', closeMomentMenus);
 
 </script>
 </body>

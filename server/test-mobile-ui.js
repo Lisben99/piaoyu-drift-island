@@ -81,6 +81,33 @@ function runGenderIcon() {
   return context.genderIcon;
 }
 
+function renderMomentCard(authorId) {
+  const context = {
+    window: { _momentCache: {} },
+    currentUser: { id: 'me' },
+    genderIcon: () => '<svg class="gender-icon"></svg>',
+    verifiedBadgeHtml: () => '',
+    levelBadgeHtml: () => '<span class="level-badge">Lv.2</span>',
+    escapeHtml: value => String(value),
+    avatarMarkup: () => '<div class="moment-avatar"></div>',
+    avatarColor: () => '#17857e',
+    formatTime: () => '刚刚',
+  };
+  vm.createContext(context);
+  vm.runInContext(extractFunction(html, 'momentCardHtml'), context);
+  return context.momentCardHtml({
+    id: 'moment-1',
+    content: '动态内容',
+    images: [],
+    comments: [],
+    likedByMe: false,
+    likeCount: 0,
+    commentCount: 0,
+    createdAt: Date.now(),
+    author: { id: authorId, nickname: '用户', gender: 'male', level: 2, following: false },
+  });
+}
+
 function pageMarkup(id) {
   const openTag = new RegExp(`<div\\b[^>]*\\bid="page-${id}"[^>]*>`).exec(html);
   assert.ok(openTag, `page-${id} must be a page div`);
@@ -217,6 +244,57 @@ test('community follow controls keep compact component classes and synchronize d
   const card = extractFunction(html, 'momentCardHtml');
   assert.match(card, /moment-head-actions/, 'card actions must live in a dedicated compact group');
   assert.match(card, /author\.following/, 'initial follow state must come from the API');
+});
+
+test('moment identity stays beside the avatar and self delete moves into a bottom overflow menu', () => {
+  const nameRule = /\.moment-name\{([^}]*)\}/.exec(html);
+  assert.ok(nameRule, 'moment name style must exist');
+  assert.match(nameRule[1], /flex:\s*0\s+1\s+auto/, 'nickname must not push identity badges toward action buttons');
+
+  const selfCard = renderMomentCard('me');
+  const header = selfCard.slice(selfCard.indexOf('<div class="moment-head">'), selfCard.indexOf('<div class="moment-actions">'));
+  assert.doesNotMatch(header, />删除</, 'self card header must not contain delete');
+  assert.match(selfCard, /class="moment-more-btn"/, 'self card must expose a three-dot button at the bottom right');
+  assert.match(selfCard, /class="moment-overflow-menu"/, 'three-dot button must own a compact overflow menu');
+  assert.match(selfCard, /class="moment-menu-delete"[^>]*>删除</, 'overflow menu must contain delete');
+
+  const otherCard = renderMomentCard('other');
+  assert.match(otherCard, /moment-chat-btn/, 'other users retain private chat');
+  assert.match(otherCard, /moment-follow-btn/, 'other users retain follow');
+  assert.doesNotMatch(otherCard, /moment-more-btn|moment-menu-delete/, 'delete overflow is only rendered for the author');
+});
+
+test('moment overflow menu opens one card at a time and toggles closed', () => {
+  const makeMenu = id => {
+    const active = new Set();
+    return {
+      id,
+      classList: {
+        add: name => active.add(name),
+        remove: name => active.delete(name),
+        contains: name => active.has(name),
+      },
+    };
+  };
+  const first = makeMenu('moment-menu-first');
+  const second = makeMenu('moment-menu-second');
+  second.classList.add('open');
+  const context = {
+    document: { querySelectorAll: () => [first, second] },
+    $: id => ({ 'moment-menu-first': first, 'moment-menu-second': second })[id] || null,
+  };
+  vm.createContext(context);
+  vm.runInContext(extractFunction(html, 'closeMomentMenus'), context);
+  vm.runInContext(extractFunction(html, 'toggleMomentMenu'), context);
+
+  let stopped = false;
+  context.toggleMomentMenu('first', { stopPropagation: () => { stopped = true; } });
+  assert.equal(stopped, true, 'three-dot click must not bubble to the document closer');
+  assert.equal(first.classList.contains('open'), true);
+  assert.equal(second.classList.contains('open'), false, 'opening one menu closes the previous one');
+
+  context.toggleMomentMenu('first', { stopPropagation() {} });
+  assert.equal(first.classList.contains('open'), false, 'clicking the same three dots toggles it closed');
 });
 
 test('genderIcon renders accessible inline SVGs for both genders and supported sizes', () => {
