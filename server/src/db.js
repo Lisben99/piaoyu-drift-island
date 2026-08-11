@@ -1298,6 +1298,7 @@ module.exports = {
   awardExperience,
   getExperienceHistory,
   migrateExperienceSystem,
+  chinaDateKey,
   LEVEL_TIERS,
   EXPERIENCE_RULES,
   // Notification helpers

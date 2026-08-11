@@ -47,7 +47,7 @@ Also assert the fourth same-day bottle gives zero, next-day bottle gives two, Lv
 
 - [ ] **Step 2: Run RED**
 
-Run: `node server/test-level-system.js` using Node v24.14.0.  
+Run: `node server/test-level-system.js` using Node v24.14.0.
 Expected: failure because `awardExperience` and `experienceEvents` do not exist.
 
 - [ ] **Step 3: Implement storage defaults and migration**

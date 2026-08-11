@@ -4,12 +4,18 @@
 const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
-const { db, save, addCoinTransaction, awardExperience } = require('../db');
+const { db, save, addCoinTransaction, awardExperience, chinaDateKey } = require('../db');
+
+function requestNow(req) {
+  return req.app && req.app.locals && typeof req.app.locals.now === 'function'
+    ? Number(req.app.locals.now())
+    : Date.now();
+}
 
 // Get coin balance and summary
 router.get('/balance', auth, (req, res) => {
   const config = db().config;
-  const today = new Date().toISOString().split('T')[0];
+  const today = chinaDateKey(requestNow(req));
   const user = req.user;
   
   // Check if can checkin today
@@ -36,7 +42,8 @@ router.get('/balance', auth, (req, res) => {
 
 // Daily checkin
 router.post('/checkin', auth, (req, res) => {
-  const today = new Date().toISOString().split('T')[0];
+  const now = requestNow(req);
+  const today = chinaDateKey(now);
   const user = req.user;
   const config = db().config;
   
@@ -45,7 +52,7 @@ router.post('/checkin', auth, (req, res) => {
   }
   
   // Calculate consecutive days
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const yesterday = chinaDateKey(now - 86400000);
   if (user.checkin.lastDate === yesterday) {
     user.checkin.experienceConsecutive = (user.checkin.experienceConsecutive || 0) + 1;
   } else {
@@ -80,14 +87,16 @@ router.post('/checkin', auth, (req, res) => {
   addCoinTransaction(user.id, bonus, 'checkin', description);
   const experienceAwards = [awardExperience(user.id, 'daily_checkin', {
     eventKey: `checkin:${user.id}:${today}`,
-    sourceId: today
+    sourceId: today,
+    now
   })];
   const streakPoints = { 3: 2, 7: 5, 14: 10, 30: 20 }[user.checkin.experienceConsecutive] || 0;
   if (streakPoints > 0) {
     experienceAwards.push(awardExperience(user.id, 'streak_bonus', {
       eventKey: `checkin-streak:${user.id}:${user.checkin.experienceConsecutive}:${today}`,
       sourceId: today,
-      points: streakPoints
+      points: streakPoints,
+      now
     }));
   }
   const experienceAward = experienceAwards.find(item => item.leveledUp) || experienceAwards[0];

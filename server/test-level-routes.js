@@ -18,9 +18,10 @@ cache.experienceEvents = [];
 const alice = levelDb.createUser('13800009101', '', 'secret1');
 alice.nickname = 'Alice';
 const token = signUserToken(alice);
+let activeUser = alice;
 
 const authModule = require('./src/middleware/auth');
-authModule.auth = (req, res, next) => { req.user = alice; next(); };
+authModule.auth = (req, res, next) => { req.user = activeUser; next(); };
 authModule.adminAuth = (req, res, next) => { req.admin = { id: 'admin-001' }; next(); };
 
 const app = express();
@@ -116,6 +117,27 @@ async function call(method, path, body) {
   const detailAfter = await call('GET', '/api/profile/level/me');
   assert.equal(publicProfile.json.profile.exp, levelDb.computeUserLevel(alice).exp, 'public profile uses the same experience summary');
   assert.equal(publicProfile.json.profile.level, detailAfter.json.level.level, 'public and detail levels agree');
+
+  const carol = levelDb.createUser('13800009103', '', 'secret3');
+  carol.nickname = 'Carol';
+  let boundaryFirst;
+  let boundarySecond;
+  let boundaryFirstDate;
+  try {
+    activeUser = carol;
+    app.locals.now = () => Date.parse('2030-01-01T23:30:00.000Z'); // China 2030-01-02 07:30
+    boundaryFirst = await call('POST', '/api/coins/checkin');
+    boundaryFirstDate = carol.checkin.lastDate;
+    app.locals.now = () => Date.parse('2030-01-02T00:30:00.000Z'); // China 2030-01-02 08:30
+    boundarySecond = await call('POST', '/api/coins/checkin');
+  } finally {
+    delete app.locals.now;
+    activeUser = alice;
+  }
+  assert.equal(boundaryFirst.json.success, true, 'first China-day check-in succeeds');
+  assert.equal(boundaryFirstDate, '2030-01-02', 'check-in stores the China calendar date');
+  assert.equal(boundarySecond.json.success, false, 'UTC midnight cannot create a second check-in on the same China date');
+  assert.equal(carol.checkin.experienceConsecutive, 1, 'same China date advances the experience streak only once');
 
   console.log('level routes: all assertions passed');
 })().catch(error => {
