@@ -51,6 +51,22 @@ function getClient() {
   return _client;
 }
 
+// 将阿里云常见错误码翻译成可读中文，便于在前端/日志中直接定位问题根因
+// （OUT_OF_SERVICE = 套餐包余量不足；签名/模板/参数类错误分别给出对应提示）
+function describeAliyunError(code, message) {
+  const map = {
+    'isv.OUT_OF_SERVICE': '短信套餐包余量不足（请在阿里云号码认证控制台购买短信认证套餐包）',
+    'isv.SIGNATURE_ILLEGAL': '短信签名不合法（当前应使用系统赠送的「恒创联众」）',
+    'isv.TEMPLATE_ILLEGAL': '短信模板不合法（当前应使用系统赠送的「100001」）',
+    'isv.PRODUCT_UN_SUBSCRIPT': '短信认证服务未开通（请在 dypns.console.aliyun.com 开通短信认证）',
+    'isv.AMOUNT_NOT_ENOUGH': '账户余额不足',
+    'isv.MOBILE_NUMBER_ILLEGAL': '手机号格式不合法',
+    'isv.BUSINESS_LIMIT_CONTROL': '触发阿里云流控，请稍后再试'
+  };
+  if (code && map[code]) return map[code];
+  return `阿里云错误 code=${code || '未知'} message=${message || ''}`;
+}
+
 async function sendSMSAliyun(phone) {
   const signName = process.env.ALIYUN_SMS_SIGN || ALIYUN_SMS_SIGN_DEFAULT;
   const templateCode = process.env.ALIYUN_SMS_TEMPLATE || ALIYUN_SMS_TEMPLATE_DEFAULT;
@@ -83,7 +99,7 @@ async function sendSMSAliyun(phone) {
   // 注意：阿里云该接口返回的是小写字段 code/message/success（非大写的 Code）
   const ok = body.success === true || body.code === 'OK';
   if (!ok) {
-    throw new Error(`阿里云错误 code=${body.code} message=${body.message || ''} requestId=${body.requestId || ''}`);
+    throw new Error(describeAliyunError(body.code, body.message || '') + (body.requestId ? ` requestId=${body.requestId}` : ''));
   }
   return { success: true, detail: body, delivered: true };
 }
@@ -113,11 +129,22 @@ async function sendVerificationCode(phone, purpose = 'login') {
   }
   lastSendAt.set(key, Date.now());
 
+  // 生产配置（SMS_PROVIDER=aliyun）但密钥缺失：这是部署错误，不能静默回退 dev 模式
+  // 生成验证码（会把 code 返回到 API 响应里，生产环境等同于泄漏）。直接报错提示配置问题。
+  if (SMS_PROVIDER === 'aliyun' && !(process.env.ALIYUN_SMS_KEY && process.env.ALIYUN_SMS_SECRET)) {
+    console.error('[SMS] SMS_PROVIDER=aliyun 但密钥缺失，拒绝静默回退 dev 模式');
+    lastSendAt.delete(key);
+    return { success: false, error: '短信服务未正确配置（缺少阿里云密钥）' };
+  }
+
   // 开发模式：本地生成并存储验证码
   if (!aliyunEnabled()) {
     const code = generateCode();
     const database = db.db();
     if (!database.smsCodes) database.smsCodes = [];
+    // 清理过期/已用的旧码，避免 smsCodes 无限堆积
+    const now = Date.now();
+    database.smsCodes = database.smsCodes.filter(c => !c.used && c.expiresAt > now);
     database.smsCodes.push({
       id: db.genId('sms'),
       phone,
@@ -138,7 +165,7 @@ async function sendVerificationCode(phone, purpose = 'login') {
     // 透传阿里云原始响应，便于前端/排查确认是否真正下发
     return { success: true, aliyun: r.detail, delivered: r.delivered };
   } catch (e) {
-    lastSendAt.delete(phone); // 发送失败不占用发送间隔
+    lastSendAt.delete(key); // 发送失败不占用发送间隔（key 须与限频一致：phone + ':' + purpose）
     console.error('[SMS][ALIYUN] 发送失败:', e.message);
     return { success: false, error: '短信发送失败：' + e.message };
   }
