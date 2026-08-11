@@ -66,7 +66,10 @@ app.get('/api/health', (req, res) => {
     payment_provider: process.env.PAYMENT_PROVIDER || 'dev',
     redeem_provider: 'cardcode',
     moderation_provider: process.env.MODERATION_PROVIDER || 'local',
-    database: process.env.DATABASE_URL ? 'postgresql' : 'json_file'
+    database: process.env.DATABASE_URL ? 'postgresql' : 'json_file',
+    // Render 每次部署自动注入的提交信息，用于确认线上跑的是哪次代码
+    deployCommit: process.env.RENDER_GIT_COMMIT || null,
+    deployBranch: process.env.RENDER_GIT_BRANCH || null
   });
 });
 
