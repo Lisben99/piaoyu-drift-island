@@ -6,11 +6,12 @@ const vm = require('node:vm');
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
-test('user UI exposes the approved dream theme and resonance navigation', () => {
+test('user UI exposes the approved warm island theme and resonance navigation', () => {
   const normalized = html.toLowerCase().replace(/\s+/g, '');
-  for (const token of ['--dream-primary:#7561d1', '--dream-accent:#c878b7', '--dream-bg:#f7f5fc']) {
+  for (const token of ['--island-primary:#1f7a74', '--island-accent:#ef7b62', '--island-bg:#f7f3ea']) {
     assert.ok(normalized.includes(token), `missing ${token}`);
   }
+  assert.ok(!normalized.includes('--dream-primary'), 'purple dream theme must be fully retired');
   assert.match(html, /共鸣广场/);
   assert.match(html, /communityInterestChips/);
   assert.match(html, /communityDailyPrompt/);
