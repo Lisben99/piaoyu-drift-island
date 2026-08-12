@@ -41,6 +41,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .nav-bar__right{display:flex;align-items:center;gap:8px}
 .nav-bar__icon-btn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:10px;background:#1f7a74;color:#fff;font-size:18px;font-weight:600}
 .nav-bar__icon-btn svg{width:18px;height:18px;stroke:currentColor;stroke-width:2.5;fill:none}
+.feed-refresh-icon{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;flex:none;border-radius:50%;background:rgba(31,122,116,.08);color:var(--island-primary)}.feed-refresh-icon svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}.feed-refresh-icon.is-refreshing svg{animation:feedRefreshSpin .7s linear infinite}@keyframes feedRefreshSpin{to{transform:rotate(360deg)}}
 .compose-pill-btn{padding:6px 16px;border-radius:14px;background:#1f7a74;color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer;white-space:nowrap}
 .zone-profile-edit-btn{padding:6px 10px;border-radius:13px;background:rgba(31,122,116,.09);color:#1f7a74;font-size:12px;font-weight:750;white-space:nowrap}
 .nav-bar__spacer{width:60px}
@@ -198,7 +199,7 @@ html.keyboard-open #app .main-tab-page.active>[data-scroll-root]{scroll-padding-
 .lobby-top{display:flex;align-items:center;justify-content:space-between;padding:12px 0}
 .lobby-top h2{font-size:18px;font-weight:700}
 .lobby-coin{display:flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(223,169,72,.12);border-radius:16px;font-size:12px;font-weight:700;color:#8a6d2f}
-.lobby-tabs{display:flex;gap:0;margin-bottom:12px;background:rgba(0,0,0,.04);border-radius:10px;padding:3px}
+.lobby-tabs{display:flex;align-items:center;gap:0;margin-bottom:12px;background:rgba(0,0,0,.04);border-radius:10px;padding:3px}.lobby-tabs .feed-refresh-icon{width:30px;height:30px;margin-left:3px;background:#fffdf8}
 .lobby-tab{flex:1;padding:8px;text-align:center;font-size:13px;font-weight:600;color:#718082;border-radius:8px;transition:all .2s}
 .lobby-tab.active{background:#fff;color:#1f7a74;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 .bottle-list{display:flex;flex-direction:column;gap:10px}
@@ -794,8 +795,8 @@ body{background:linear-gradient(145deg,#e9e4d8,#f8eee4);color:var(--island-text)
 .zone-gate-card,.zone-form-card,.mood-panel{margin-top:14px;padding:18px;border-radius:20px;background:var(--island-surface);border:1px solid rgba(31,122,116,.09);box-shadow:var(--island-shadow)}
 .zone-gate-card h3,.zone-form-card h3,.mood-panel h3{font-size:17px;margin-bottom:9px}.zone-gate-card p,.zone-form-note{font-size:12px;line-height:1.6;color:var(--island-muted)}
 .zone-price-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}.zone-price{padding:18px 10px;border-radius:18px;background:#fff;border:1.5px solid rgba(31,122,116,.15);text-align:center}.zone-price b{display:block;font-size:24px;color:var(--island-primary)}.zone-price span{font-size:12px;color:var(--island-muted)}.zone-price.selected{border-color:var(--island-primary);background:rgba(31,122,116,.07)}
-.zone-field{margin-top:14px}.zone-field label{display:block;margin-bottom:7px;font-size:12px;font-weight:700;color:var(--island-muted)}.zone-field input,.zone-field select,.zone-field textarea{width:100%;padding:12px;border:1px solid rgba(31,122,116,.16);border-radius:13px;background:#fffdf8;color:var(--island-text)}.zone-field textarea{min-height:78px;resize:none}.zone-choice-list{display:flex;flex-wrap:wrap;gap:8px}.zone-choice{padding:8px 12px;border-radius:15px;background:rgba(31,122,116,.07);color:var(--island-muted);font-size:12px}.zone-choice.active{background:var(--island-primary);color:#fff}
-.zone-check{display:flex;align-items:flex-start;gap:9px;margin-top:14px;font-size:12px;line-height:1.5;color:var(--island-muted)}.zone-check input{margin-top:2px}.zone-submit{margin-top:18px}.zone-feed-head{display:flex;align-items:center;justify-content:space-between;margin:18px 2px 10px}.zone-feed-head h3{font-size:18px}.zone-pass-tip{font-size:11px;color:var(--island-muted)}
+.zone-field{margin-top:14px}.zone-field>label{display:block;margin-bottom:7px;font-size:12px;font-weight:700;color:var(--island-muted)}.zone-field>input,.zone-field>select,.zone-field>textarea{width:100%;padding:12px;border:1px solid rgba(31,122,116,.16);border-radius:13px;background:#fffdf8;color:var(--island-text)}.zone-field textarea{min-height:78px;resize:none}.zone-choice-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.zone-choice{position:relative;display:flex!important;align-items:center;gap:8px;min-width:0;min-height:50px;margin:0!important;padding:9px 10px!important;border:1px solid transparent;border-radius:15px;background:rgba(31,122,116,.06);color:var(--island-muted);font-size:12px;font-weight:700;line-height:1.25}.zone-choice input{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;opacity:0;pointer-events:none}.zone-choice::before{content:'';display:flex;align-items:center;justify-content:center;width:22px;height:22px;flex:none;border:1.5px solid rgba(31,122,116,.25);border-radius:50%;background:#fff;color:#fff;font-size:14px;font-weight:900}.zone-choice.selected,.zone-choice:has(input:checked){border-color:rgba(31,122,116,.25);background:rgba(31,122,116,.11);color:var(--island-primary)}.zone-choice.selected::before,.zone-choice:has(input:checked)::before{content:'✓';border-color:var(--island-primary);background:var(--island-primary)}
+.zone-check{display:flex;align-items:flex-start;gap:9px;margin-top:14px;font-size:12px;line-height:1.5;color:var(--island-muted)}.zone-check input{margin-top:2px}.zone-submit{margin-top:18px}.zone-feed-head{display:flex;align-items:center;justify-content:space-between;margin:18px 2px 10px;gap:10px}.zone-feed-head h3{font-size:18px}.zone-feed-tools{display:flex;align-items:center;justify-content:flex-end;gap:7px;min-width:0}.zone-pass-tip{font-size:11px;color:var(--island-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.zone-feed-tools .feed-refresh-icon{width:30px;height:30px}
 .mature-directory-head{display:flex;align-items:center;justify-content:space-between;padding:7px 2px 14px;border-bottom:1px solid rgba(31,122,116,.08)}.mature-directory-head__title{display:flex;flex-direction:column;gap:3px;color:var(--island-text);font-weight:800}.mature-directory-head__title small{font-size:10px;color:var(--island-muted);font-weight:500}.mature-filter-btn{display:flex;align-items:center;gap:5px;padding:8px 12px;border-radius:14px;background:rgba(31,122,116,.08);color:var(--island-primary);font-size:12px;font-weight:750}.mature-member-list{padding:4px 0 24px}.mature-member{display:flex;align-items:center;gap:12px;padding:16px 2px;border-bottom:1px solid rgba(31,122,116,.08)}.mature-member-avatar{width:58px;height:58px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;background-position:center;background-size:cover;color:#fff;font-size:20px;font-weight:800}.mature-member-body{flex:1;min-width:0}.mature-member-name{display:flex;align-items:center;gap:6px;min-width:0}.mature-member-name b{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px;color:var(--island-text)}.mature-member-age{padding:3px 8px;border-radius:11px;background:rgba(91,141,239,.12);color:#4f83db;font-size:10px;font-weight:750;white-space:nowrap}.mature-member-age.female{background:rgba(239,123,152,.14);color:#df6789}.mature-member-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.mature-member-tags span{max-width:100px;padding:4px 9px;border-radius:11px;background:#f1f1f3;color:#8b9197;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mature-member-purpose{margin-top:6px;color:var(--island-muted);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mature-chat-btn{flex:none;min-width:58px;padding:9px 12px;border-radius:15px;background:var(--island-primary);color:#fff;font-size:12px;font-weight:800}.mature-chat-btn:disabled{background:#e7e8e9;color:#a1a5a8}.mature-filter-form label{display:block;margin:12px 0 6px;color:var(--island-muted);font-size:12px}.mature-filter-form select{width:100%;height:42px;padding:0 11px;border:1px solid rgba(31,122,116,.16);border-radius:12px;background:#fffdf8;color:var(--island-text)}
 .mood-options{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:13px}.mood-option{padding:13px 5px;border-radius:16px;background:rgba(31,122,116,.06);text-align:center;color:var(--island-text)}.mood-option span{display:block;font-size:24px}.mood-option small{display:block;margin-top:4px}.mood-option.active{background:rgba(239,123,98,.13);outline:1.5px solid var(--island-accent)}.mood-stats{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.mood-stat{padding:7px 10px;border-radius:13px;background:rgba(31,122,116,.07);font-size:11px;color:var(--island-muted)}.mood-trend{display:flex;gap:8px;margin-top:13px}.mood-day{flex:1;text-align:center;padding:9px 3px;border-radius:13px;background:rgba(31,122,116,.05)}.mood-day span{font-size:19px}.mood-day small{display:block;font-size:9px;color:var(--island-muted);margin-top:3px}
 .moment-topic{display:inline-flex;margin-bottom:8px;padding:5px 10px;border-radius:12px;background:rgba(31,122,116,.08);color:var(--island-primary);font-size:11px;font-weight:700}.moment-mood{margin-left:6px;color:var(--island-accent)}
@@ -1172,6 +1173,7 @@ body{background:linear-gradient(145deg,#e9e4d8,#f8eee4);color:var(--island-text)
         <button class="lobby-tab active" data-tab="all" onclick="lobbyTab('all')">全部</button>
         <button class="lobby-tab" data-tab="male" onclick="lobbyTab('male')"><span data-gender-icon="male"></span> 男生</button>
         <button class="lobby-tab" data-tab="female" onclick="lobbyTab('female')"><span data-gender-icon="female"></span> 女生</button>
+        <button class="feed-refresh-icon" id="lobbyRefreshBtn" onclick="refreshLobbyFeed(this)" aria-label="刷新大厅"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v5h-5"/><path d="M18.5 15a7 7 0 1 1-.7-7.8L20 10"/></svg></button>
       </div>
       <div id="lobbyList"></div>
     </div>
@@ -1272,6 +1274,9 @@ body{background:linear-gradient(145deg,#e9e4d8,#f8eee4);color:var(--island-text)
     <div class="nav-bar resonance-nav">
       <div class="resonance-title"><span>共鸣广场</span><small>遇见与你同频的灵魂</small></div>
       <div class="nav-bar__right" style="display:flex;align-items:center;gap:8px">
+        <button class="nav-bar__icon-btn" id="communityRefreshBtn" onclick="refreshCommunityFeed(this)" aria-label="刷新共鸣广场">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v5h-5"/><path d="M18.5 15a7 7 0 1 1-.7-7.8L20 10"/></svg>
+        </button>
         <button class="nav-bar__icon-btn" onclick="openCommunitySearch()" aria-label="搜索">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
         </button>
@@ -2393,6 +2398,13 @@ function lobbyTab(tab) {
   lobbyFilter = tab;
   document.querySelectorAll('.lobby-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   renderLobby(true);
+}
+
+async function refreshLobbyFeed(button) {
+  if (button) { button.disabled = true; button.classList.add('is-refreshing'); }
+  resetApiCache();
+  await renderLobby(true);
+  if (button && button.isConnected) { button.disabled = false; button.classList.remove('is-refreshing'); }
 }
 
 /* ================================================================
@@ -4457,13 +4469,13 @@ function renderZoneOnboarding(zoneId) {
     <div class="zone-field"><label>专区昵称</label><input id="zoneAlias" maxlength="16" value="${escapeHtml(alias)}" placeholder="设置一个专区昵称"></div>`;
   let fields = '';
   if (zoneId === 'letter') {
-    const tags = ['S','M','Switch','新手','了解中'].map(tag => `<label class="zone-choice"><input type="checkbox" name="zoneTags" value="${tag}" ${(saved.tags || []).includes(tag) ? 'checked' : ''}> ${tag}</label>`).join('');
+    const tags = ['S','M','Switch','新手','了解中'].map(tag => { const selected = (saved.tags || []).includes(tag); return `<label class="zone-choice${selected ? ' selected' : ''}"><input type="checkbox" name="zoneTags" value="${tag}" ${selected ? 'checked' : ''} onchange="limitZoneChoices(this,'zoneTags',3)"> ${tag}</label>`; }).join('');
     fields = `<div class="zone-field"><label>身份标签（最多3项）</label><div class="zone-choice-list">${tags}</div></div>
       <div class="zone-field"><label>经验程度</label><select id="zoneExperience"><option value="new">新人</option><option value="beginner">入门</option><option value="familiar">熟悉</option></select></div>
       <div class="zone-field"><label>交流目的（选填）</label><input id="zonePurpose" maxlength="60" value="${escapeHtml(saved.purpose || '')}" placeholder="希望交流什么"></div>
       <div class="zone-field"><label>个人边界</label><textarea id="zoneBoundary" maxlength="120" placeholder="明确不接受的行为与话题">${escapeHtml(saved.boundary || '')}</textarea></div>`;
   } else {
-    const interests = ['情感交流','生活阅历','婚恋关系','职场成长','旅行','阅读'].map(tag => `<label class="zone-choice"><input type="checkbox" name="zoneInterests" value="${tag}" ${(saved.interests || []).includes(tag) ? 'checked' : ''}> ${tag}</label>`).join('');
+    const interests = ['情感交流','生活阅历','婚恋关系','职场成长','旅行','阅读'].map(tag => { const selected = (saved.interests || []).includes(tag); return `<label class="zone-choice${selected ? ' selected' : ''}"><input type="checkbox" name="zoneInterests" value="${tag}" ${selected ? 'checked' : ''} onchange="limitZoneChoices(this,'zoneInterests',4)"> ${tag}</label>`; }).join('');
     fields = `<div class="zone-field"><label>年龄段</label><select id="zoneAgeRange"><option value="18-24">18-24</option><option value="25-30">25-30</option><option value="31-40">31-40</option><option value="40+">40+</option></select></div>
       <div class="zone-field"><label>当前状态</label><select id="zoneRelationship"><option value="single">单身</option><option value="dating">交往中</option><option value="married">已婚</option><option value="private">不公开</option></select></div>
       <div class="zone-field"><label>感兴趣的话题</label><div class="zone-choice-list">${interests}</div></div>
@@ -4476,6 +4488,16 @@ function renderZoneOnboarding(zoneId) {
     <button class="primary-button zone-submit" onclick="saveZoneOnboarding('${zoneId}')">${editing ? '保存修改' : '保存并下一步'}</button></div>`;
   if (zoneId === 'letter' && $('zoneExperience')) $('zoneExperience').value = saved.experience || 'new';
   if (zoneId === 'mature') { if ($('zoneAgeRange')) $('zoneAgeRange').value = saved.ageRange || '25-30'; if ($('zoneRelationship')) $('zoneRelationship').value = saved.relationshipStatus || 'single'; }
+}
+
+function limitZoneChoices(input, name, max) {
+  const selected = document.querySelectorAll(`input[name="${name}"]:checked`);
+  if (selected.length > max) {
+    input.checked = false;
+    showToast(`最多选择 ${max} 项`);
+  }
+  const choice = input.closest('.zone-choice');
+  if (choice) choice.classList.toggle('selected', input.checked);
 }
 
 async function saveZoneOnboarding(zoneId) {
@@ -4554,7 +4576,7 @@ async function renderCommunityZone(zoneId) {
     if (!res.success) throw new Error(res.error || '加载失败');
     const intro = zoneId === 'story' ? '带上角色设定、世界观或一句开场，邀请岛友一起续写。' : (zoneId === 'letter' ? '尊重边界与自愿原则，交流从明确表达开始。' : '分享阅历、关系与真实生活，不催促，不评判。');
     const expiry = window._activeZoneStatus && window._activeZoneStatus.accessExpiresAt ? `访问有效至 ${new Date(window._activeZoneStatus.accessExpiresAt).toLocaleString()}` : '免费开放';
-    root.innerHTML = `<div class="zone-hero"><small>ISLAND ZONE</small><h2>${meta.label}</h2><p>${intro}</p></div><div class="zone-feed-head"><h3>${zoneId === 'story' ? '正在发生的剧情' : '专区交流'}</h3><span class="zone-pass-tip">${expiry}</span></div>${res.moments.length ? res.moments.map(momentCardHtml).join('') : `<div class="empty-state"><div class="empty-state__title">这里还很安静</div><div class="empty-state__desc">发布第一条内容，开启一段新的交流</div></div>`}`;
+    root.innerHTML = `<div class="zone-hero"><small>ISLAND ZONE</small><h2>${meta.label}</h2><p>${intro}</p></div><div class="zone-feed-head"><h3>${zoneId === 'story' ? '正在发生的剧情' : '专区交流'}</h3><div class="zone-feed-tools"><span class="zone-pass-tip">${expiry}</span><button class="feed-refresh-icon" onclick="refreshCurrentZone(this)" aria-label="刷新专区">${feedRefreshIconSvg()}</button></div></div>${res.moments.length ? res.moments.map(momentCardHtml).join('') : `<div class="empty-state"><div class="empty-state__title">这里还很安静</div><div class="empty-state__desc">发布第一条内容，开启一段新的交流</div></div>`}`;
   } catch (e) { root.innerHTML = `<div class="empty-state"><div class="empty-state__title">${escapeHtml(e.message || '加载失败')}</div></div>`; }
 }
 
@@ -4593,7 +4615,7 @@ async function renderMatureDirectory(root) {
         : '<button class="mature-chat-btn" disabled>暂不私聊</button>';
       return `<div class="mature-member">${avatar}<div class="mature-member-body"><div class="mature-member-name"><b>${escapeHtml(member.alias)}</b><span class="mature-member-age ${member.gender === 'female' ? 'female' : ''}">${genderMark}${escapeHtml(member.ageRange || '18+')}</span></div><div class="mature-member-tags">${tags}</div>${member.purpose ? `<div class="mature-member-purpose">${escapeHtml(member.purpose)}</div>` : ''}</div>${chatButton}</div>`;
     }).join('');
-    root.innerHTML = `<div class="mature-directory-head"><div class="mature-directory-head__title"><span>专区成员 · ${Number(res.total) || 0}</span><small>${escapeHtml(expiry)}</small></div><button class="mature-filter-btn" onclick="openMatureFilters()">筛选⌄</button></div><div class="mature-member-list">${rows || '<div class="empty-state"><div class="empty-state__title">暂时没有符合条件的成员</div><div class="empty-state__desc">调整筛选条件后再看看</div></div>'}</div>`;
+    root.innerHTML = `<div class="mature-directory-head"><div class="mature-directory-head__title"><span>专区成员 · ${Number(res.total) || 0}</span><small>${escapeHtml(expiry)}</small></div><div class="zone-feed-tools"><button class="mature-filter-btn" onclick="openMatureFilters()">筛选⌄</button><button class="feed-refresh-icon" onclick="refreshCurrentZone(this)" aria-label="刷新专区">${feedRefreshIconSvg()}</button></div></div><div class="mature-member-list">${rows || '<div class="empty-state"><div class="empty-state__title">暂时没有符合条件的成员</div><div class="empty-state__desc">调整筛选条件后再看看</div></div>'}</div>`;
   } catch (error) {
     root.innerHTML = `<div class="empty-state"><div class="empty-state__title">${escapeHtml(error.message || '加载失败')}</div></div>`;
   }
@@ -4689,7 +4711,7 @@ function renderCommunityFeed(sort, reuseRecent = false) {
   window._communityOffset = 0;
   window._communitySort = sort;
   window._communityFeedSession = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-  loadMoreCommunity(true);
+  return loadMoreCommunity(true);
 }
 
 function openNearbyPeople() {
@@ -4755,6 +4777,27 @@ function switchCommunityTab(tab, reuseRecent = false) {
   $('ctab-latest').classList.toggle('active', tab === 'latest');
   $('ctab-following').classList.toggle('active', tab === 'following');
   renderCommunityFeed(tab, reuseRecent);
+}
+
+function feedRefreshIconSvg() {
+  return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v5h-5"/><path d="M18.5 15a7 7 0 1 1-.7-7.8L20 10"/></svg>';
+}
+
+async function refreshCurrentZone(button) {
+  if (!window._activeZoneId) return;
+  if (button) { button.disabled = true; button.classList.add('is-refreshing'); }
+  resetApiCache();
+  await renderCommunityZone(window._activeZoneId);
+}
+
+async function refreshCommunityFeed(button) {
+  if (button) { button.disabled = true; button.classList.add('is-refreshing'); }
+  resetApiCache();
+  window._communityLoading = false;
+  const tab = window._communityTab || 'recommend';
+  if (tab === 'nearby') await renderNearby();
+  else await Promise.all([renderCommunityFeed(tab, false), loadCommunityHubs()]);
+  if (button && button.isConnected) { button.disabled = false; button.classList.remove('is-refreshing'); }
 }
 
 async function renderNearby() {
