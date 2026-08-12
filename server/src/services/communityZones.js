@@ -28,6 +28,7 @@ function profileComplete(profile, zoneId) {
   return true;
 }
 function pricing() {
+  if (db().config.coin_operation_mode !== 'normal') return { day: 0, week: 0 };
   return {
     day: Math.max(0, Number(db().config.community_zone_day_cost) || 20),
     week: Math.max(0, Number(db().config.community_zone_week_cost) || 50)
@@ -42,16 +43,18 @@ function getZoneStatus(userOrId, zoneId, now = Date.now()) {
   const pass = zone.paid ? activePass(user.id, zoneId, now) : null;
   const complete = !zone.paid || profileComplete(profile, zoneId);
   const eligible = verifiedContact(user) && level >= zone.minimumLevel && complete;
+  const freeMode = db().config.coin_operation_mode !== 'normal';
   return {
     zone,
     level,
     verifiedContact: verifiedContact(user),
     profileComplete: complete,
     eligible,
-    accessActive: zone.paid ? !!pass && eligible : true,
+    accessActive: zone.paid ? (freeMode ? eligible : !!pass && eligible) : true,
     accessExpiresAt: pass ? pass.expiresAt : null,
     profile,
-    pricing: pricing()
+    pricing: pricing(),
+    coinOperationMode: freeMode ? 'free' : 'normal'
   };
 }
 function sanitizeText(value, max) { return String(value || '').trim().slice(0, max); }
@@ -107,6 +110,9 @@ function purchaseZoneAccess(user, zoneId, plan, now = Date.now()) {
   if (!status || !status.zone.paid) return { success: false, status: 404, error: '专区不存在' };
   if (!status.eligible) return { success: false, status: 403, error: status.profileComplete ? '暂不满足开通条件' : '请先完善专区资料' };
   if (!['day', 'week'].includes(plan)) return { success: false, status: 400, error: '开通周期无效' };
+  if (status.coinOperationMode === 'free') {
+    return { success: true, free: true, pass: null, coins: user.coins };
+  }
   const cost = status.pricing[plan];
   if (user.coins < cost) return { success: false, status: 402, error: '漂流币不足', required: cost, balance: user.coins };
   const existing = activePass(user.id, zoneId, now);
@@ -129,6 +135,7 @@ function canAccessZone(user, zoneId, now = Date.now()) {
 function listMatureMembers(requester, filters = {}, now = Date.now()) {
   if (!canAccessZone(requester, 'mature', now)) return { success: false, status: 403, error: '成熟专区尚未开通' };
   const database = db();
+  const freeMode = database.config.coin_operation_mode !== 'normal';
   const blockedIds = new Set((database.blacklist || []).flatMap(item => {
     if (item.blockerId === requester.id) return [item.blockedId];
     if (item.blockedId === requester.id) return [item.blockerId];
@@ -140,7 +147,7 @@ function listMatureMembers(requester, filters = {}, now = Date.now()) {
   const members = (database.communityZoneProfiles || [])
     .filter(profile => profile.zoneId === 'mature' && profile.userId !== requester.id && profileComplete(profile, 'mature'))
     .map(profile => ({ profile, user: findUserById(profile.userId), pass: activePass(profile.userId, 'mature', now) }))
-    .filter(item => item.user && item.user.status === 'active' && item.user.account_type !== 'BOT' && item.pass && !blockedIds.has(item.user.id))
+    .filter(item => item.user && item.user.status === 'active' && item.user.account_type !== 'BOT' && (freeMode || item.pass) && !blockedIds.has(item.user.id))
     .filter(item => !allowedGender || item.user.gender === allowedGender)
     .filter(item => !allowedAge || item.profile.ageRange === allowedAge)
     .filter(item => !allowedRelationship || item.profile.relationshipStatus === allowedRelationship)

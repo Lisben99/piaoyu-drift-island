@@ -922,6 +922,15 @@ async function renderConfig() {
   const c = res.config;
   window.pendingPaymentQR = c.paymentQR || '';
   document.getElementById('pageContent').innerHTML = `
+    <div class="card" style="margin-bottom:20px;border:2px solid ${c.coin_operation_mode === 'normal' ? '#efb35e' : '#61b6a8'}">
+      <div class="card__title">漂流币运营模式</div>
+      <div style="font-size:13px;line-height:1.8;color:#667;margin-bottom:14px">免费推广模式下，聊天、漂流瓶、永久续聊和付费专区均不扣漂流币；正常运营模式会立即恢复下方配置的费用及等级免费额度。切换不会清空用户现有余额。</div>
+      <div class="config-item"><label>当前模式</label><select id="cfg_coin_operation_mode" style="width:100%;padding:10px;border:1px solid #d9dfdd;border-radius:8px">
+        <option value="free" ${c.coin_operation_mode !== 'normal' ? 'selected' : ''}>免费推广模式（正式上线积累用户）</option>
+        <option value="normal" ${c.coin_operation_mode === 'normal' ? 'selected' : ''}>正常运营模式（按规则消耗漂流币）</option>
+      </select></div>
+      <button class="btn-sm btn-primary" style="margin-top:12px;padding:10px 24px" onclick="saveCoinOperationMode()">立即切换模式</button>
+    </div>
     <div class="card">
       <div class="card__title">共建期基础与签到奖励</div>
       <div class="config-item" style="margin-bottom:14px"><label><input type="checkbox" id="cfg_growth_mode_enabled" ${c.growth_mode_enabled!==false?'checked':''}> 开启“用户增长共建期”经济规则</label></div>
@@ -1051,9 +1060,22 @@ async function renderConfig() {
     </div>`;
 }
 
+async function saveCoinOperationMode() {
+  const select = document.getElementById('cfg_coin_operation_mode');
+  if (!select) return;
+  const mode = select.value;
+  const label = mode === 'normal' ? '正常运营模式' : '免费推广模式';
+  if (!confirm(`确认切换为“${label}”？`)) return;
+  const res = await api('/config', { method:'POST', body:JSON.stringify({ coin_operation_mode: mode }) });
+  if (!res.success) return showToast(res.error || '切换失败', 'error');
+  showToast(`已切换为${label}`);
+  renderConfig();
+}
+
 async function saveConfig() {
   const levelList = id => document.getElementById(id).value.split(',').map(value => parseInt(value.trim(), 10));
   const updates = {
+    coin_operation_mode: document.getElementById('cfg_coin_operation_mode').value,
     growth_mode_enabled: document.getElementById('cfg_growth_mode_enabled').checked,
     growth_campaign_name: document.getElementById('cfg_growth_campaign_name').value,
     new_user_bonus: parseInt(document.getElementById('cfg_new_user_bonus').value),

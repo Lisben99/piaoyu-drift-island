@@ -12,6 +12,8 @@ router.get('/packages', (req, res) => {
   const cfg = db().config;
   res.json({
     success: true,
+    coinOperationMode: cfg.coin_operation_mode === 'normal' ? 'normal' : 'free',
+    rechargeEnabled: cfg.enable_recharge === true && cfg.coin_operation_mode === 'normal',
     packages: PACKAGES,
     rate: cfg.recharge_rate,
     paymentQR: cfg.paymentQR || '',
@@ -21,6 +23,9 @@ router.get('/packages', (req, res) => {
 
 // Create order
 router.post('/order', auth, async (req, res) => {
+  if (db().config.coin_operation_mode !== 'normal') {
+    return res.status(409).json({ success: false, error: '当前为免费推广模式，无需充值漂流币。' });
+  }
   const { packageId } = req.body;
   const result = await createOrder(req.user.id, packageId);
   res.json(result);

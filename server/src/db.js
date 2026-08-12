@@ -30,6 +30,8 @@ if (USE_PG) {
 }
 
 const DEFAULT_CONFIG = {
+  // free: 用户行为不消耗漂流币；normal: 按下方费用与等级额度正常结算。
+  coin_operation_mode: 'free',
   growth_mode_enabled: true,
   growth_campaign_name: '漂屿共建期',
   new_user_bonus: 20,

@@ -28,6 +28,7 @@ router.get('/balance', auth, (req, res) => {
     success: true,
     balance: user.coins,
     config: {
+      coin_operation_mode: config.coin_operation_mode === 'normal' ? 'normal' : 'free',
       daily_login_bonus: config.daily_login_bonus,
       consecutive_day3_bonus: config.consecutive_day3_bonus,
       consecutive_day7_bonus: config.consecutive_day7_bonus,

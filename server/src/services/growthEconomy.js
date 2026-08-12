@@ -236,16 +236,19 @@ function consumeGrowthAction(user, action, sourceId, now = Date.now()) {
   const rule = rules[action];
   if (!rule) throw new Error('Unknown growth action');
   const refId = `${action}:${rule.period}:${sourceId}:${Date.now()}`;
+  if (config.coin_operation_mode !== 'normal') {
+    return { success: true, free: true, charged: 0, mode: 'free', benefits };
+  }
   if (db().config.growth_mode_enabled !== false && benefits[rule.remaining] > 0) {
     addCoinTransaction(user.id, 0, rule.freeType, `${rule.label}（等级免费额度）`, refId);
-    return { success: true, free: true, charged: 0, benefits: getBenefits(user, now) };
+    return { success: true, free: true, charged: 0, mode: 'normal', benefits: getBenefits(user, now) };
   }
   const cost = numberConfig(rule.cost, 0);
   if ((Number(user.coins) || 0) < cost) {
     return { success: false, error: '漂流币不足，请先签到或完成任务', needRecharge: true, cost, benefits };
   }
   addCoinTransaction(user.id, -cost, rule.paidType, rule.label, refId);
-  return { success: true, free: false, charged: cost, benefits: getBenefits(user, now) };
+  return { success: true, free: false, charged: cost, mode: 'normal', benefits: getBenefits(user, now) };
 }
 
 function getMonthlyCheckinCount(userId, now = Date.now()) {

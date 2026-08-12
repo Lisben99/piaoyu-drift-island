@@ -523,7 +523,11 @@ router.post('/config', adminAuth, (req, res) => {
       }
       updates[key] = value;
     } else {
-      updates[key] = String(raw == null ? '' : raw).slice(0, key === 'paymentQR' ? 4000000 : 500);
+      const value = String(raw == null ? '' : raw).slice(0, key === 'paymentQR' ? 4000000 : 500);
+      if (key === 'coin_operation_mode' && !['free', 'normal'].includes(value)) {
+        return res.status(400).json({ success: false, error: '运营模式只能是免费推广模式或正常运营模式' });
+      }
+      updates[key] = value;
     }
   }
   if (!Object.keys(updates).length) return res.status(400).json({ success: false, error: '没有可保存的配置' });

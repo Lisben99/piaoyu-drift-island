@@ -1271,7 +1271,7 @@ body{background:linear-gradient(145deg,#e9e4d8,#f8eee4);color:var(--island-text)
         <div class="publish-info__row"><span class="label">发布费用</span><span class="value" id="publishCostValue">按等级权益计算</span></div>
         <div class="publish-info__row"><span class="label">展示时长</span><span class="value">48 小时</span></div>
       </div>
-      <div class="publish-warn" id="publishCostHint">每天可按等级享受免费漂流瓶额度，超出后每个消耗 2 枚漂流币</div>
+      <div class="publish-warn" id="publishCostHint">正式上线推广期间，发布漂流瓶不消耗漂流币</div>
       <div class="publish-anon" onclick="document.getElementById('anonSwitch').classList.toggle('on')">
         <div>
           <div class="publish-anon__title">匿名发布</div>
@@ -1658,6 +1658,9 @@ async function api(path, options = {}) {
    STATE
    ================================================================ */
 let currentUser = null;
+function isCoinFreeMode() {
+  return !!(window._coinPolicy && window._coinPolicy.config && window._coinPolicy.config.coin_operation_mode === 'free');
+}
 let navStack = [];
 let currentPage = null;
 let ws = null;
@@ -2789,13 +2792,16 @@ async function renderPublish() {
     const policy = await api('/coins/balance');
     if (policy.success) {
       window._coinPolicy = policy;
+      const promotionFree = policy.config && policy.config.coin_operation_mode === 'free';
       const free = policy.benefits && policy.benefits.remainingFreeBottles > 0;
       const cost = Number(policy.config.bottle_publish_cost) || 0;
       $('publishBalance').textContent = policy.balance + ' 枚';
-      if ($('publishCostValue')) $('publishCostValue').textContent = free ? '今日等级免费' : `${cost} 枚漂流币`;
-      if ($('publishCostHint')) $('publishCostHint').textContent = free
-        ? `Lv.${policy.benefits.level} 今日还可免费扔出 ${policy.benefits.remainingFreeBottles} 个瓶子`
-        : `今日免费额度已用完，本次发布消耗 ${cost} 枚漂流币`;
+      if ($('publishCostValue')) $('publishCostValue').textContent = promotionFree ? '推广期免费' : (free ? '今日等级免费' : `${cost} 枚漂流币`);
+      if ($('publishCostHint')) $('publishCostHint').textContent = promotionFree
+        ? '正式上线推广期间，发布漂流瓶不消耗漂流币'
+        : (free
+          ? `Lv.${policy.benefits.level} 今日还可免费扔出 ${policy.benefits.remainingFreeBottles} 个瓶子`
+          : `今日免费额度已用完，本次发布消耗 ${cost} 枚漂流币`);
     }
   } catch (_) {}
 }
@@ -2809,7 +2815,8 @@ $('publishBtn').onclick = async function() {
     const res = await api('/bottles', { method: 'POST', body: JSON.stringify({ content, anonymous }) });
     if (res.success) {
       const reward = (res.coinAwards || []).reduce((sum, item) => sum + Math.max(0, Number(item.amount) || 0), 0);
-      showToast(res.economy && res.economy.free ? `已使用免费额度投入大海${reward ? `，奖励 ${reward} 币` : ''}` : `漂流瓶已投入大海${reward ? `，奖励 ${reward} 币` : ''}`);
+      const freeText = res.economy && res.economy.mode === 'free' ? '推广期免费投入大海' : '已使用免费额度投入大海';
+      showToast(res.economy && res.economy.free ? `${freeText}${reward ? `，奖励 ${reward} 币` : ''}` : `漂流瓶已投入大海${reward ? `，奖励 ${reward} 币` : ''}`);
       currentUser.coins = res.coins;
       navigateBack();
     } else {
@@ -3134,7 +3141,7 @@ async function startChat(targetUserId, firstMsg) {
     if (res.success) {
       if (res.coins !== undefined) currentUser.coins = res.coins;
       if (res.economy && res.economy.benefits && window._coinPolicy) window._coinPolicy.benefits = res.economy.benefits;
-      if (res.economy && res.economy.free) showToast('已使用今日免费私聊额度');
+      if (res.economy && res.economy.free) showToast(res.economy.mode === 'free' || isCoinFreeMode() ? '推广期免费发起聊天' : '已使用今日免费私聊额度');
       else if (res.economy && res.economy.charged > 0) showToast(`已消耗 ${res.economy.charged} 枚漂流币`);
       openChat(res.session.id);
     } else {
@@ -3205,12 +3212,13 @@ function renderChatPage(session, messages) {
       <button class="chat-send-btn" onclick="sendChatMsg()">↑</button>
     </div>`;
   } else if (session.status === 'expired') {
+    const permanentCostText = isCoinFreeMode() ? '当前推广期免费' : '需支付 2 枚漂流币';
     const isRequester = session.permanentRequestedBy === currentUser.id;
     if (isRequester) {
       html += `<div class="chat-pending-banner"><p>续聊请求已发送，等待对方确认...</p></div>`;
     } else {
       html += `<div class="chat-expired-banner">
-        <p>会话已过期，是否续聊为永久好友？<br>对方需支付 2 枚漂流币</p>
+        <p>会话已过期，是否续聊为永久好友？<br>对方${permanentCostText}</p>
         <div class="chat-invite-actions">
           <button class="ghost-button" onclick="respondPermanent(false)">拒绝</button>
           <button class="primary-button" style="flex:1" onclick="respondPermanent(true)">接受续聊</button>
@@ -3220,7 +3228,7 @@ function renderChatPage(session, messages) {
     // Allow requesting permanent
     if (!session.permanentRequested) {
       html += `<div class="chat-expired-banner">
-        <p>会话已过期，发起永久续聊（2枚漂流币）</p>
+        <p>会话已过期，发起永久续聊（${isCoinFreeMode() ? '推广期免费' : '2枚漂流币'}）</p>
         <button class="primary-button" onclick="requestPermanent()">发起续聊</button>
       </div>`;
     }
@@ -3434,6 +3442,8 @@ async function renderCoinCenter() {
       api('/coins/transactions?limit=50')
     ]);
     if (balRes.success) {
+      window._coinPolicy = balRes;
+      const promotionFree = balRes.config && balRes.config.coin_operation_mode === 'free';
       currentUser.coins = balRes.balance;
       const credits = txRes.transactions.filter(t => t.amount > 0).reduce((s,t) => s + t.amount, 0);
       const debits = txRes.transactions.filter(t => t.amount < 0).reduce((s,t) => s + Math.abs(t.amount), 0);
@@ -3441,13 +3451,16 @@ async function renderCoinCenter() {
       let html = `<div class="coin-balance-card">
         <div class="label">当前余额</div>
         <div class="balance">${balRes.balance}</div>
-        <div class="recharge-btn" onclick="navigate('recharge')">充值</div>
+        <div class="recharge-btn" ${promotionFree ? '' : 'onclick="navigate(\'recharge\')"'}>${promotionFree ? '推广期全站免费' : '充值'}</div>
       </div>
       <div class="coin-stats">
         <div class="coin-stat"><div class="num">${credits}</div><div class="lbl">累计获得</div></div>
         <div class="coin-stat"><div class="num">${debits}</div><div class="lbl">累计消耗</div></div>
         <div class="coin-stat"><div class="num">${balRes.checkin.consecutive || 0}</div><div class="lbl">连续签到</div></div>
       </div>`;
+      if (promotionFree) {
+        html += `<div class="level-section-card" style="margin:0 0 14px;background:#eef8f5;border-color:#b9ded6"><div class="level-section-title">免费推广模式已开启</div><p style="font-size:13px;line-height:1.8;color:#4f6865">目前聊天、发布漂流瓶、永久续聊及专区访问均不消耗漂流币。余额和签到奖励会继续保留，后续切换为正常运营模式时使用。</p></div>`;
+      }
       if (balRes.config.growth_mode_enabled && balRes.benefits) {
         const b = balRes.benefits;
         const taskRows = ((balRes.growthRules && balRes.growthRules.tasks) || []).map(task => `<div class="level-rule-row"><span class="level-rule-label">${escapeHtml(task.label)}<small style="display:block;color:#98a2a0;margin-top:3px">每日最多 ${task.limit || 1} 次</small></span><span class="level-history-points">+${task.coins || 0}</span></div>`).join('');
@@ -3500,24 +3513,23 @@ async function renderRecharge() {
     if (!pkgRes.success) return;
     payInfo = { qr: pkgRes.paymentQR || '', note: pkgRes.paymentQRNote || '' };
     payPackages = pkgRes.packages || [];
+    const promotionFree = pkgRes.coinOperationMode === 'free';
     selectedPkg = null;
     currentPayOrderId = null;
     let html = `<div class="recharge-balance">
         <div class="label">当前余额</div>
         <div class="amount">${balRes.balance} 枚</div>
       </div>
-      <div class="coin-section-title">选择充值套餐</div>
-      <div class="recharge-packages">`;
-    html += payPackages.map(p => `
+      ${promotionFree ? `<div class="level-section-card" style="margin:14px 0;background:#eef8f5;border-color:#b9ded6"><div class="level-section-title">当前为免费推广模式</div><p style="font-size:13px;line-height:1.8;color:#4f6865">全站原漂流币消费功能均已免费开放，暂时无需购买漂流币。已有兑换码仍可在下方正常兑换。</p></div>` : `<div class="coin-section-title">选择充值套餐</div><div class="recharge-packages">`}`;
+    if (!promotionFree) html += payPackages.map(p => `
         <div class="recharge-pkg" onclick="selectPkg('${p.id}',this)">
           <div class="recharge-pkg__coins">${p.coins + (p.coinsBonus || 0)} 枚${p.coinsBonus ? `<small>（含赠${p.coinsBonus}）</small>` : ''}</div>
           <div class="recharge-pkg__price">¥${p.price}</div>
         </div>`).join('');
-    html += `</div>
+    if (!promotionFree) html += `</div>
       <div id="payPanel" style="display:none;margin-top:18px"></div>
-      <div style="text-align:center;margin-top:14px;font-size:12px;color:#98a2a0">通过闲鱼担保交易购买 · 卖家将在闲鱼聊天中发送一次性兑换码</div>
-
-      <div class="coin-section-title" style="margin-top:22px">兑换码充值</div>
+      <div style="text-align:center;margin-top:14px;font-size:12px;color:#98a2a0">通过闲鱼担保交易购买 · 卖家将在闲鱼聊天中发送一次性兑换码</div>`;
+    html += `<div class="coin-section-title" style="margin-top:22px">兑换码充值</div>
       <div style="display:flex;gap:10px;margin-top:10px">
         <input id="redeemCodeInput" placeholder="输入兑换码，如 TEST-XXXX-XXXX-XXXX" style="flex:1;padding:12px 14px;border:2px solid #e6e4dc;border-radius:12px;font-size:14px;outline:none" />
         <button id="redeemBtn" onclick="doRedeem()" style="padding:0 22px;background:#1f7a74;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer">兑换</button>
@@ -4749,6 +4761,11 @@ async function saveZoneOnboarding(zoneId) {
   showToast('专区资料已保存');
   window._editingZoneProfile = false;
   if (editing && window._activeZoneStatus.accessActive) return navigateBack();
+  if (window._activeZoneStatus.accessActive) {
+    navigateTo('community-zone', true);
+    navStack = ['community'];
+    return;
+  }
   navigate('zone-purchase');
 }
 
@@ -4760,6 +4777,10 @@ function renderZonePurchase(zoneId) {
   if (!status || !status.success) return openCommunityHub(zoneId);
   $('zonePurchaseTitle').textContent = meta.label;
   const pricing = status.pricing || { day: 20, week: 50 };
+  if (status.coinOperationMode === 'free') {
+    root.innerHTML = `<div class="zone-hero"><small>FREE ACCESS</small><h2>${meta.label}</h2><p>正式上线推广期间免费开放，完成专区资料即可进入。</p></div><div class="zone-gate-card"><button class="primary-button" onclick="openCommunityHub('${zoneId}')">免费进入专区</button></div>`;
+    return;
+  }
   root.innerHTML = `<div class="zone-hero"><small>VERIFIED ACCESS</small><h2>${meta.label}</h2><p>完成开通后进入专区。所有用户执行相同价格与准入标准。</p></div>
     <div class="zone-gate-card"><h3>选择开通时长</h3><div class="zone-price-grid">
       <button class="zone-price${window._zonePurchasePlan === 'day' ? ' selected' : ''}" onclick="selectZonePlan('day')"><b>${pricing.day}</b><span>漂流币 / 24小时</span></button>
