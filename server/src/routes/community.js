@@ -8,7 +8,7 @@ const {
   COMMUNITY_INTERESTS, COMMUNITY_MOODS, listCommunityTopics, getTodayPrompt
 } = require('../communityCatalog');
 const {
-  ZONES, getZoneStatus, saveZoneProfile, purchaseZoneAccess, moodDashboard, checkinMood
+  ZONES, getZoneStatus, saveZoneProfile, purchaseZoneAccess, listMatureMembers, moodDashboard, checkinMood
 } = require('../services/communityZones');
 
 router.use(auth);
@@ -48,6 +48,15 @@ router.post('/zones/:zoneId/profile', (req, res) => {
 
 router.post('/zones/:zoneId/purchase', (req, res) => {
   const result = purchaseZoneAccess(req.user, req.params.zoneId, req.body && req.body.plan);
+  return res.status(result.status || 200).json(result);
+});
+
+router.get('/zones/mature/members', (req, res) => {
+  const result = listMatureMembers(req.user, {
+    gender: req.query.gender,
+    ageRange: req.query.ageRange,
+    relationshipStatus: req.query.relationshipStatus
+  });
   return res.status(result.status || 200).json(result);
 });
 

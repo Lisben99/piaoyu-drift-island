@@ -125,6 +125,40 @@ function canAccessZone(user, zoneId, now = Date.now()) {
   return !!(status && status.accessActive);
 }
 
+function listMatureMembers(requester, filters = {}, now = Date.now()) {
+  if (!canAccessZone(requester, 'mature', now)) return { success: false, status: 403, error: '成熟专区尚未开通' };
+  const database = db();
+  const blockedIds = new Set((database.blacklist || []).flatMap(item => {
+    if (item.blockerId === requester.id) return [item.blockedId];
+    if (item.blockedId === requester.id) return [item.blockerId];
+    return [];
+  }));
+  const allowedGender = ['male', 'female'].includes(filters.gender) ? filters.gender : '';
+  const allowedAge = ['18-24', '25-30', '31-40', '40+'].includes(filters.ageRange) ? filters.ageRange : '';
+  const allowedRelationship = ['single', 'dating', 'married', 'private'].includes(filters.relationshipStatus) ? filters.relationshipStatus : '';
+  const members = (database.communityZoneProfiles || [])
+    .filter(profile => profile.zoneId === 'mature' && profile.userId !== requester.id && profileComplete(profile, 'mature'))
+    .map(profile => ({ profile, user: findUserById(profile.userId), pass: activePass(profile.userId, 'mature', now) }))
+    .filter(item => item.user && item.user.status === 'active' && item.user.account_type !== 'BOT' && item.pass && !blockedIds.has(item.user.id))
+    .filter(item => !allowedGender || item.user.gender === allowedGender)
+    .filter(item => !allowedAge || item.profile.ageRange === allowedAge)
+    .filter(item => !allowedRelationship || item.profile.relationshipStatus === allowedRelationship)
+    .sort((a, b) => Number(b.profile.updatedAt || 0) - Number(a.profile.updatedAt || 0))
+    .slice(0, 100)
+    .map(({ profile, user }) => ({
+      id: user.id,
+      alias: profile.alias,
+      avatar: profile.avatar || '',
+      gender: user.gender || '',
+      ageRange: profile.ageRange,
+      relationshipStatus: profile.relationshipStatus,
+      purpose: profile.purpose || '',
+      interests: (profile.interests || []).slice(0, 4),
+      allowStrangerChat: profile.allowStrangerChat !== false
+    }));
+  return { success: true, members, total: members.length };
+}
+
 function moodDashboard(userId, now = Date.now()) {
   const database = db();
   const today = chinaDateKey(now);
@@ -158,5 +192,5 @@ function checkinMood(user, mood, note = '', now = Date.now()) {
 
 module.exports = {
   ZONES, AGREEMENT_VERSION, zoneById, profileFor, getZoneStatus, saveZoneProfile,
-  purchaseZoneAccess, canAccessZone, moodDashboard, checkinMood
+  purchaseZoneAccess, canAccessZone, listMatureMembers, moodDashboard, checkinMood
 };

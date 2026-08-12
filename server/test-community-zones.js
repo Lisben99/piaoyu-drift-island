@@ -39,6 +39,20 @@ assert.equal(female.coins, 80);
 assert.equal(male.coins, 80);
 assert.equal(zones.getZoneStatus(female, 'letter', 1000001).accessActive, true);
 
+const matureProfile = {
+  alias: '海岛姐姐', ageRange: '31-40', relationshipStatus: 'single', purpose: '认真交流',
+  interests: ['旅行', '阅读'], adultConfirmed: true, rulesAccepted: true, allowStrangerChat: true
+};
+assert.equal(zones.saveZoneProfile(female, 'mature', matureProfile).success, true);
+assert.equal(zones.saveZoneProfile(male, 'mature', { ...matureProfile, alias: '月亮上的人', ageRange: '25-30' }).success, true);
+assert.equal(zones.purchaseZoneAccess(female, 'mature', 'day', 1000000).success, true);
+assert.equal(zones.purchaseZoneAccess(male, 'mature', 'day', 1000000).success, true);
+const matureMembers = zones.listMatureMembers(female, {}, 1000001);
+assert.equal(matureMembers.success, true);
+assert.equal(matureMembers.members.length, 1);
+assert.equal(matureMembers.members[0].alias, '月亮上的人');
+assert.equal(zones.listMatureMembers(female, { gender: 'female' }, 1000001).members.length, 0);
+
 const moodOne = zones.checkinMood(female, 'calm', '', 1723334400000);
 const moodTwo = zones.checkinMood(female, 'happy', '', 1723334401000);
 assert.equal(moodOne.success, true);

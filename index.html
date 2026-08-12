@@ -795,6 +795,7 @@ body{background:linear-gradient(145deg,#e9e4d8,#f8eee4);color:var(--island-text)
 .zone-price-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}.zone-price{padding:18px 10px;border-radius:18px;background:#fff;border:1.5px solid rgba(31,122,116,.15);text-align:center}.zone-price b{display:block;font-size:24px;color:var(--island-primary)}.zone-price span{font-size:12px;color:var(--island-muted)}.zone-price.selected{border-color:var(--island-primary);background:rgba(31,122,116,.07)}
 .zone-field{margin-top:14px}.zone-field label{display:block;margin-bottom:7px;font-size:12px;font-weight:700;color:var(--island-muted)}.zone-field input,.zone-field select,.zone-field textarea{width:100%;padding:12px;border:1px solid rgba(31,122,116,.16);border-radius:13px;background:#fffdf8;color:var(--island-text)}.zone-field textarea{min-height:78px;resize:none}.zone-choice-list{display:flex;flex-wrap:wrap;gap:8px}.zone-choice{padding:8px 12px;border-radius:15px;background:rgba(31,122,116,.07);color:var(--island-muted);font-size:12px}.zone-choice.active{background:var(--island-primary);color:#fff}
 .zone-check{display:flex;align-items:flex-start;gap:9px;margin-top:14px;font-size:12px;line-height:1.5;color:var(--island-muted)}.zone-check input{margin-top:2px}.zone-submit{margin-top:18px}.zone-feed-head{display:flex;align-items:center;justify-content:space-between;margin:18px 2px 10px}.zone-feed-head h3{font-size:18px}.zone-pass-tip{font-size:11px;color:var(--island-muted)}
+.mature-directory-head{display:flex;align-items:center;justify-content:space-between;padding:7px 2px 14px;border-bottom:1px solid rgba(31,122,116,.08)}.mature-directory-head__title{display:flex;flex-direction:column;gap:3px;color:var(--island-text);font-weight:800}.mature-directory-head__title small{font-size:10px;color:var(--island-muted);font-weight:500}.mature-filter-btn{display:flex;align-items:center;gap:5px;padding:8px 12px;border-radius:14px;background:rgba(31,122,116,.08);color:var(--island-primary);font-size:12px;font-weight:750}.mature-member-list{padding:4px 0 24px}.mature-member{display:flex;align-items:center;gap:12px;padding:16px 2px;border-bottom:1px solid rgba(31,122,116,.08)}.mature-member-avatar{width:58px;height:58px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;background-position:center;background-size:cover;color:#fff;font-size:20px;font-weight:800}.mature-member-body{flex:1;min-width:0}.mature-member-name{display:flex;align-items:center;gap:6px;min-width:0}.mature-member-name b{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px;color:var(--island-text)}.mature-member-age{padding:3px 8px;border-radius:11px;background:rgba(91,141,239,.12);color:#4f83db;font-size:10px;font-weight:750;white-space:nowrap}.mature-member-age.female{background:rgba(239,123,152,.14);color:#df6789}.mature-member-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.mature-member-tags span{max-width:100px;padding:4px 9px;border-radius:11px;background:#f1f1f3;color:#8b9197;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mature-member-purpose{margin-top:6px;color:var(--island-muted);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mature-chat-btn{flex:none;min-width:58px;padding:9px 12px;border-radius:15px;background:var(--island-primary);color:#fff;font-size:12px;font-weight:800}.mature-chat-btn:disabled{background:#e7e8e9;color:#a1a5a8}.mature-filter-form label{display:block;margin:12px 0 6px;color:var(--island-muted);font-size:12px}.mature-filter-form select{width:100%;height:42px;padding:0 11px;border:1px solid rgba(31,122,116,.16);border-radius:12px;background:#fffdf8;color:var(--island-text)}
 .mood-options{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:13px}.mood-option{padding:13px 5px;border-radius:16px;background:rgba(31,122,116,.06);text-align:center;color:var(--island-text)}.mood-option span{display:block;font-size:24px}.mood-option small{display:block;margin-top:4px}.mood-option.active{background:rgba(239,123,98,.13);outline:1.5px solid var(--island-accent)}.mood-stats{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.mood-stat{padding:7px 10px;border-radius:13px;background:rgba(31,122,116,.07);font-size:11px;color:var(--island-muted)}.mood-trend{display:flex;gap:8px;margin-top:13px}.mood-day{flex:1;text-align:center;padding:9px 3px;border-radius:13px;background:rgba(31,122,116,.05)}.mood-day span{font-size:19px}.mood-day small{display:block;font-size:9px;color:var(--island-muted);margin-top:3px}
 .moment-topic{display:inline-flex;margin-bottom:8px;padding:5px 10px;border-radius:12px;background:rgba(31,122,116,.08);color:var(--island-primary);font-size:11px;font-weight:700}.moment-mood{margin-left:6px;color:var(--island-accent)}
 .moment-actions{border-color:rgba(31,122,116,.08);gap:14px}.moment-act{padding:7px 5px;border-radius:10px}.moment-chat-action{margin-left:auto;color:var(--island-primary)}
@@ -1315,7 +1316,7 @@ body{background:linear-gradient(145deg,#e9e4d8,#f8eee4);color:var(--island-text)
 
   <!-- ===== PAGE: Community Zone ===== -->
   <div class="page" id="page-community-zone">
-    <div class="nav-bar"><button class="nav-bar__back" onclick="navigateBack()">←</button><div class="nav-bar__title" id="communityZoneTitle">专区</div><button class="compose-pill-btn" onclick="openZoneCompose()">发布</button></div>
+    <div class="nav-bar"><button class="nav-bar__back" onclick="navigateBack()">←</button><div class="nav-bar__title" id="communityZoneTitle">专区</div><button class="compose-pill-btn" id="communityZoneComposeBtn" onclick="openZoneCompose()">发布</button></div>
     <div class="community-content" id="communityZoneContent" data-scroll-root></div>
   </div>
 
@@ -4532,12 +4533,15 @@ async function renderCommunityZone(zoneId) {
   const meta = COMMUNITY_ZONE_META[zoneId];
   if (!root || !meta) return;
   $('communityZoneTitle').textContent = meta.label;
+  const composeButton = $('communityZoneComposeBtn');
+  if (composeButton) composeButton.style.display = zoneId === 'mature' ? 'none' : '';
   root.innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
   if (meta.paid) {
     const status = await api('/community/zones/' + zoneId + '/status');
     window._activeZoneStatus = status;
     if (!status.success || !status.accessActive) return openCommunityHub(zoneId);
   }
+  if (zoneId === 'mature') return renderMatureDirectory(root);
   try {
     const res = await api('/moments/community?sort=latest&zoneId=' + encodeURIComponent(zoneId) + '&limit=50');
     if (!res.success) throw new Error(res.error || '加载失败');
@@ -4547,7 +4551,44 @@ async function renderCommunityZone(zoneId) {
   } catch (e) { root.innerHTML = `<div class="empty-state"><div class="empty-state__title">${escapeHtml(e.message || '加载失败')}</div></div>`; }
 }
 
-function openZoneCompose() { if (window._activeZoneId) openMomentCompose('community', '', window._activeZoneId); }
+async function renderMatureDirectory(root) {
+  const filters = window._matureFilters || { gender: '', ageRange: '', relationshipStatus: '' };
+  const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value)).toString();
+  try {
+    const res = await api('/community/zones/mature/members' + (query ? '?' + query : ''));
+    if (!res.success) throw new Error(res.error || '加载失败');
+    const relationshipLabels = { single: '单身', dating: '恋爱中', married: '已婚', private: '状态保密' };
+    const expiry = window._activeZoneStatus && window._activeZoneStatus.accessExpiresAt
+      ? `访问有效至 ${new Date(window._activeZoneStatus.accessExpiresAt).toLocaleString()}` : '';
+    const rows = (res.members || []).map(member => {
+      const avatar = avatarMarkup(member.alias, member.avatar, 'mature-member-avatar', avatarColor(member.alias));
+      const genderMark = member.gender === 'female' ? '♀' : (member.gender === 'male' ? '♂' : '');
+      const tags = [relationshipLabels[member.relationshipStatus] || '', ...(member.interests || [])].filter(Boolean).map(tag => `<span>${escapeHtml(tag)}</span>`).join('');
+      const chatButton = member.allowStrangerChat
+        ? `<button class="mature-chat-btn" onclick="startChat('${member.id}')">私聊</button>`
+        : '<button class="mature-chat-btn" disabled>暂不私聊</button>';
+      return `<div class="mature-member">${avatar}<div class="mature-member-body"><div class="mature-member-name"><b>${escapeHtml(member.alias)}</b><span class="mature-member-age ${member.gender === 'female' ? 'female' : ''}">${genderMark}${escapeHtml(member.ageRange || '18+')}</span></div><div class="mature-member-tags">${tags}</div>${member.purpose ? `<div class="mature-member-purpose">${escapeHtml(member.purpose)}</div>` : ''}</div>${chatButton}</div>`;
+    }).join('');
+    root.innerHTML = `<div class="mature-directory-head"><div class="mature-directory-head__title"><span>专区成员 · ${Number(res.total) || 0}</span><small>${escapeHtml(expiry)}</small></div><button class="mature-filter-btn" onclick="openMatureFilters()">筛选⌄</button></div><div class="mature-member-list">${rows || '<div class="empty-state"><div class="empty-state__title">暂时没有符合条件的成员</div><div class="empty-state__desc">调整筛选条件后再看看</div></div>'}</div>`;
+  } catch (error) {
+    root.innerHTML = `<div class="empty-state"><div class="empty-state__title">${escapeHtml(error.message || '加载失败')}</div></div>`;
+  }
+}
+
+function openMatureFilters() {
+  const filters = window._matureFilters || { gender: '', ageRange: '', relationshipStatus: '' };
+  const option = (value, label, selected) => `<option value="${value}" ${selected === value ? 'selected' : ''}>${label}</option>`;
+  const body = `<div class="mature-filter-form"><label>性别</label><select id="matureFilterGender">${option('', '全部', filters.gender)}${option('female', '女性', filters.gender)}${option('male', '男性', filters.gender)}</select><label>年龄段</label><select id="matureFilterAge">${option('', '全部', filters.ageRange)}${option('18-24', '18-24', filters.ageRange)}${option('25-30', '25-30', filters.ageRange)}${option('31-40', '31-40', filters.ageRange)}${option('40+', '40+', filters.ageRange)}</select><label>关系状态</label><select id="matureFilterRelationship">${option('', '全部', filters.relationshipStatus)}${option('single', '单身', filters.relationshipStatus)}${option('dating', '恋爱中', filters.relationshipStatus)}${option('married', '已婚', filters.relationshipStatus)}${option('private', '状态保密', filters.relationshipStatus)}</select></div>`;
+  showModal('筛选专区成员', body, [
+    { text: '重置', cancel: true, onClick: () => { window._matureFilters = { gender: '', ageRange: '', relationshipStatus: '' }; renderMatureDirectory($('communityZoneContent')); } },
+    { text: '应用', onClick: () => { window._matureFilters = { gender: $('matureFilterGender').value, ageRange: $('matureFilterAge').value, relationshipStatus: $('matureFilterRelationship').value }; renderMatureDirectory($('communityZoneContent')); } }
+  ]);
+}
+
+function openZoneCompose() {
+  if (window._activeZoneId === 'mature') return;
+  if (window._activeZoneId) openMomentCompose('community', '', window._activeZoneId);
+}
 
 // Build a single moment (动态) card. Avatars are intentionally NOT
 // clickable here (community feed rule). XSS-safe via escapeHtml.
