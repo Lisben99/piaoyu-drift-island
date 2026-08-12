@@ -63,12 +63,12 @@ router.get('/search', (req, res) => {
     });
   const topics = listCommunityTopics().filter(item => `${item.label} ${item.description}`.toLowerCase().includes(q)).slice(0, 10);
   const moments = (db().moments || [])
-    .filter(m => !m.deleted && m.type !== 'moment' && !m.zoneId && String(m.content || '').toLowerCase().includes(q))
+    .filter(m => !m.deleted && m.type !== 'moment' && !m.zoneId && `${m.content || ''} ${m.topicLabel || ''}`.toLowerCase().includes(q))
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, 20)
     .map(m => {
       const author = findUserById(m.userId) || {};
-      return { id: m.id, content: m.content, images: m.images || [], topicId: m.topicId || null, mood: m.mood || null, createdAt: m.createdAt, author: { id: m.userId, nickname: author.nickname || '用户', avatar: author.avatar || '' } };
+      return { id: m.id, content: m.content, images: m.images || [], topicId: m.topicId || null, topicLabel: m.topicLabel || null, mood: m.mood || null, createdAt: m.createdAt, author: { id: m.userId, nickname: author.nickname || '用户', avatar: author.avatar || '' } };
     });
   res.json({ success: true, users, topics, moments });
 });

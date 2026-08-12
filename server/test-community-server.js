@@ -50,6 +50,17 @@ const call = async (method, path, body) => {
     const feed = await call('GET', '/api/moments/community?sort=recommend&topicId=music&feedSession=http-test');
     assert.equal(feed.json.moments.length, 1); assert.equal(feed.json.moments[0].topicId, 'music');
     assert.equal(feed.json.moments[0].resonanceCount, 0);
+    const customPost = await call('POST', '/api/moments', { content: 'custom topic post', type: 'community', topicLabel: '夜间摄影' });
+    assert.equal(customPost.status, 200);
+    assert.match(customPost.json.moment.topicId, /^custom:[a-f0-9]{16}$/);
+    assert.equal(customPost.json.moment.topic.label, '夜间摄影');
+    assert.equal(customPost.json.moment.mood, null);
+    const customFeed = await call('GET', `/api/moments/community?sort=latest&topicId=${encodeURIComponent(customPost.json.moment.topicId)}`);
+    assert.equal(customFeed.json.moments.length, 1);
+    assert.equal(customFeed.json.moments[0].topic.label, '夜间摄影');
+    const customSearch = await call('GET', `/api/community/search?q=${encodeURIComponent('夜间摄影')}`);
+    assert.equal(customSearch.json.moments.length, 1);
+    assert.equal(customSearch.json.moments[0].topicLabel, '夜间摄影');
     const search = await call('GET', '/api/community/search?q=private');
     assert.equal(search.json.moments.length, 0, 'private moment must not be searchable');
     console.log('community server assertions passed');

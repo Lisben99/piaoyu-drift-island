@@ -801,6 +801,7 @@ body{background:linear-gradient(145deg,#e9e4d8,#f8eee4);color:var(--island-text)
 .moment-more-wrap{margin-left:auto}.moment-chat-action+.moment-more-wrap{margin-left:0}.moment-more-btn{background:rgba(31,122,116,.08);color:var(--island-primary)}
 .moment-overflow-menu{right:0;bottom:32px;background:#23413f;min-width:108px}.moment-overflow-menu button{display:block;width:100%;height:34px;color:#fff;padding:0 12px;text-align:left;font-size:12px}
 .compose-section-label{font-size:12px;color:var(--island-muted);font-weight:700;margin:12px 0 7px}.modal-sheet{border-radius:24px 24px 0 0}
+.compose-topic-input{height:46px;display:flex;align-items:center;gap:7px;padding:0 13px;border:1px solid rgba(31,122,116,.18);border-radius:14px;background:#fffdf8}.compose-topic-input span{font-weight:800;color:var(--island-primary)}.compose-topic-input input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--island-text);font-size:14px}.compose-topic-hint{margin:6px 2px 2px;color:var(--island-muted);font-size:10px}
 .community-search-shell{flex:1;overflow-y:auto;padding:12px 14px 30px}.community-search-box{display:flex;align-items:center;gap:9px;height:48px;padding:0 10px 0 15px;border-radius:18px;background:#fffdf8;border:1px solid rgba(31,122,116,.12);box-shadow:var(--island-shadow)}
 .community-search-box span{font-size:24px;color:var(--island-primary)}.community-search-box input{flex:1;min-width:0;border:0;background:transparent;color:var(--island-text);font-size:14px}.community-search-box button{padding:8px 12px;border-radius:12px;background:var(--island-primary);color:#fff;font-weight:700}
 .community-search-results section{margin-top:20px}.community-search-results h3{font-size:13px;color:var(--island-muted);margin:0 3px 9px;letter-spacing:1px}.search-welcome{height:48vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;color:var(--island-muted)}.search-welcome div{font-size:46px;color:var(--island-primary)}.search-welcome b{font-size:17px;color:var(--island-text)}.search-welcome span{font-size:12px}
@@ -1344,11 +1345,12 @@ body{background:linear-gradient(145deg,#e9e4d8,#f8eee4);color:var(--island-text)
   <div class="modal-mask" id="momentComposeMask" style="display:none" onclick="if(event.target===this)closeMomentCompose()">
     <div class="modal-sheet">
       <div class="modal-title">发布动态</div>
-      <textarea id="momentComposeText" maxlength="500" placeholder="分享此刻的心情、想法或见闻..."></textarea>
-      <div class="compose-section-label">此刻心情</div>
-      <div class="compose-choice-row" id="momentMoodChoices"></div>
-      <div class="compose-section-label">选择话题</div>
-      <div class="compose-choice-row" id="momentTopicChoices"></div>
+      <textarea id="momentComposeText" maxlength="500" placeholder="分享你的想法、见闻或故事..."></textarea>
+      <div id="momentTopicField">
+        <div class="compose-section-label">添加话题（可选）</div>
+        <label class="compose-topic-input"><span>#</span><input id="momentTopicInput" maxlength="20" placeholder="输入自定义话题，如：周末去哪儿"></label>
+        <div class="compose-topic-hint">最多 20 个字，发布后可点击话题查看相关内容</div>
+      </div>
       <div class="moment-compose-imgs" id="momentComposeImgs"></div>
       <div class="moment-compose-bar">
         <button class="mc-img-btn" type="button" onclick="document.getElementById('momentComposeFile').click()" title="添加图片"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#5F5E5A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></button>
@@ -4568,7 +4570,9 @@ function momentCardHtml(m) {
     ? `<div class="moment-comments">${m.comments.map(c => `<button type="button" class="moment-comment${c.parentCommentId ? ' is-reply' : ''}" onclick="event.stopPropagation();prepareMomentReply('${m.id}','${c.id}',this)"><span class="mc-name">${escapeHtml(c.nickname)}</span>${c.replyToNickname ? `<span class="mc-reply-to"> 回复 ${escapeHtml(c.replyToNickname)}</span>` : ''}<span>：${escapeHtml(c.content)}</span></button>`).join('')}</div>`
     : '';
   const contentHtml = m.content ? `<div class="moment-content">${escapeHtml(m.content)}</div>` : '';
-  const topicHtml = m.topic ? `<button class="moment-topic" onclick="viewCommunityTopic('${m.topic.id}')"># ${escapeHtml(m.topic.label)}</button>` : '';
+  const encodedTopicId = m.topic ? encodeURIComponent(m.topic.id).replace(/'/g, '%27') : '';
+  const encodedTopicLabel = m.topic ? encodeURIComponent(m.topic.label).replace(/'/g, '%27') : '';
+  const topicHtml = m.topic ? `<button class="moment-topic" onclick="openEncodedCommunityTopic('${encodedTopicId}','${encodedTopicLabel}')"># ${escapeHtml(m.topic.label)}</button>` : '';
   const moodHtml = m.mood ? `<span class="moment-mood">${escapeHtml(m.mood.emoji || '')} ${escapeHtml(m.mood.label || '')}</span>` : '';
   const headerActions = isSelf ? '' : `<div class="moment-head-actions">
       <button class="moment-follow-btn${following ? ' following' : ''}" data-uid="${author.id}" onclick="toggleFollowUser('${author.id}', this)">${following ? '已关注' : '+关注'}</button>
@@ -4943,10 +4947,9 @@ function ownMomentItemHtml(m) {
 }
 
 /* ===== Compose moment ===== */
-function openMomentCompose(type, presetTopicId, zoneId) {
+function openMomentCompose(type, presetTopicId, zoneId, presetTopicLabel) {
   window._composeType = type || 'community'; // 'community' | 'moment'
   window._composeImages = [];
-  window._composeMood = '';
   window._composeTopicId = presetTopicId || '';
   window._composePromptId = '';
   window._composeZoneId = zoneId || '';
@@ -4956,8 +4959,12 @@ function openMomentCompose(type, presetTopicId, zoneId) {
   // Update modal title based on context
   const titleEl = document.querySelector('#momentComposeMask .modal-title');
   if (titleEl) titleEl.textContent = type === 'moment' ? '发布朋友圈' : (zoneId && COMMUNITY_ZONE_META[zoneId] ? '发布到' + COMMUNITY_ZONE_META[zoneId].label : '发布共鸣');
-  const input = $('momentComposeText'); if (input) input.placeholder = '分享此刻的心情、想法或见闻...';
-  renderComposeChoices();
+  const input = $('momentComposeText'); if (input) input.placeholder = '分享你的想法、见闻或故事...';
+  const topicField = $('momentTopicField');
+  if (topicField) topicField.style.display = window._composeType === 'community' ? '' : 'none';
+  const presetTopic = (window._communityCatalog.topics || []).find(item => item.id === presetTopicId);
+  const topicInput = $('momentTopicInput');
+  if (topicInput) topicInput.value = presetTopicLabel || (presetTopic && presetTopic.label) || '';
   $('momentComposeMask').style.display = 'flex';
 }
 function closeMomentCompose() { $('momentComposeMask').style.display = 'none'; }
@@ -4980,26 +4987,20 @@ function renderComposeImgs() {
 }
 function removeComposeImg(i) { window._composeImages.splice(i, 1); renderComposeImgs(); }
 
-function renderComposeChoices() {
-  const moodRoot = $('momentMoodChoices');
-  const topicRoot = $('momentTopicChoices');
-  if (moodRoot) moodRoot.innerHTML = (window._communityCatalog.moods || []).map(item => `<button class="compose-choice${window._composeMood === item.id ? ' active' : ''}" onclick="selectComposeMood('${item.id}')">${escapeHtml(item.emoji)} ${escapeHtml(item.label)}</button>`).join('');
-  if (topicRoot) topicRoot.innerHTML = (window._communityCatalog.topics || []).map(item => `<button class="compose-choice${window._composeTopicId === item.id ? ' active' : ''}" onclick="selectComposeTopic('${item.id}')"># ${escapeHtml(item.label)}</button>`).join('');
-}
-function selectComposeMood(id) { window._composeMood = window._composeMood === id ? '' : id; renderComposeChoices(); }
-function selectComposeTopic(id) { window._composeTopicId = window._composeTopicId === id ? '' : id; renderComposeChoices(); }
-
 async function submitMoment() {
   const content = $('momentComposeText').value.trim();
   if (!content && window._composeImages.length === 0) { showToast('动态内容不能为空'); return; }
   const btn = $('momentComposeBtn');
   const type = window._composeType || 'community';
+  const topicLabel = type === 'community' ? (($('momentTopicInput') || {}).value || '').replace(/^#+\s*/, '').trim() : '';
+  const presetTopic = (window._communityCatalog.topics || []).find(item => item.id === window._composeTopicId);
+  const topicId = presetTopic && presetTopic.label === topicLabel ? presetTopic.id : null;
   btn.disabled = true; btn.textContent = '发布中...';
   try {
     const res = await api('/moments', { method: 'POST', body: JSON.stringify({
       content, images: window._composeImages, type,
-      topicId: type === 'community' ? (window._composeTopicId || null) : null,
-      mood: type === 'community' ? (window._composeMood || null) : null,
+      topicId: type === 'community' ? topicId : null,
+      topicLabel: type === 'community' ? (topicLabel || null) : null,
       dailyPromptId: type === 'community' ? (window._composePromptId || null) : null,
       zoneId: type === 'community' ? (window._composeZoneId || null) : null
     }) });
@@ -5146,14 +5147,23 @@ async function renderCommunitySearch(query) {
     if (!res.success) throw new Error();
     const users = (res.users || []).map(u => `<button class="search-user-row" onclick="viewUserMoments('${u.id}')">${avatarMarkup(u.nickname,u.avatar,'search-user-avatar',avatarColor(u.nickname))}<span><b>${escapeHtml(u.nickname)}</b><small>${escapeHtml(u.bio || '等待与你产生共鸣')}</small></span>${levelBadgeHtml(u.level,'')}</button>`).join('');
     const topics = (res.topics || []).map(t => `<button class="search-topic-card" onclick="viewCommunityTopic('${t.id}')"><b># ${escapeHtml(t.label)}</b><span>${escapeHtml(t.description)}</span></button>`).join('');
-    const moments = (res.moments || []).map(m => `<button class="search-moment-row" onclick="viewCommunityTopic('${m.topicId || ''}')"><b>${escapeHtml(m.author.nickname)}</b><span>${escapeHtml(m.content || '[图片动态]')}</span></button>`).join('');
+    const moments = (res.moments || []).map(m => {
+      const encodedId = encodeURIComponent(m.topicId || '').replace(/'/g, '%27');
+      const encodedLabel = encodeURIComponent(m.topicLabel || '').replace(/'/g, '%27');
+      return `<button class="search-moment-row" onclick="openEncodedCommunityTopic('${encodedId}','${encodedLabel}')"><b>${escapeHtml(m.author.nickname)}</b><span>${escapeHtml(m.content || '[图片动态]')}</span></button>`;
+    }).join('');
     root.innerHTML = `${users ? `<section><h3>灵魂</h3>${users}</section>` : ''}${topics ? `<section><h3>话题</h3><div class="search-topic-grid">${topics}</div></section>` : ''}${moments ? `<section><h3>动态</h3>${moments}</section>` : ''}` || '<div class="empty-state"><div class="empty-state__title">暂时没有找到共鸣</div><div class="empty-state__desc">换一个关键词试试</div></div>';
   } catch (_) { root.innerHTML = '<div class="empty-state"><div class="empty-state__title">搜索失败，请稍后重试</div></div>'; }
 }
 
-function viewCommunityTopic(topicId) {
+function openEncodedCommunityTopic(topicId, topicLabel) {
+  viewCommunityTopic(decodeURIComponent(topicId || ''), decodeURIComponent(topicLabel || ''));
+}
+
+function viewCommunityTopic(topicId, topicLabel) {
   if (!topicId) return;
   window._activeTopicId = topicId;
+  window._activeTopicLabel = topicLabel || '';
   navigate('community-topic');
 }
 
@@ -5161,13 +5171,18 @@ async function renderCommunityTopic(topicId) {
   const root = $('communityTopicContent');
   if (!root || !topicId) return;
   const topic = (window._communityCatalog.topics || []).find(item => item.id === topicId);
-  $('communityTopicTitle').textContent = topic ? '# ' + topic.label : '共鸣话题';
-  root.innerHTML = `<div class="topic-hero"><small>RESONANCE TOPIC</small><h2># ${escapeHtml(topic ? topic.label : topicId)}</h2><p>${escapeHtml(topic ? topic.description : '分享你与这个话题的故事')}</p><button onclick="openMomentCompose('community','${topicId}')">参与话题</button></div><div id="topicMomentList"></div>`;
+  const topicLabel = (topic && topic.label) || window._activeTopicLabel || '共鸣话题';
+  $('communityTopicTitle').textContent = '# ' + topicLabel;
+  root.innerHTML = `<div class="topic-hero"><small>RESONANCE TOPIC</small><h2># ${escapeHtml(topicLabel)}</h2><p>${escapeHtml(topic ? topic.description : '分享你与这个话题的故事')}</p><button onclick="openActiveTopicCompose()">参与话题</button></div><div id="topicMomentList"></div>`;
   try {
     const res = await api('/moments/community?sort=recommend&topicId=' + encodeURIComponent(topicId) + '&limit=50');
     const list = $('topicMomentList');
     if (list) list.innerHTML = res.success && res.moments.length ? res.moments.map(momentCardHtml).join('') : '<div class="empty-state"><div class="empty-state__title">等你发出第一声共鸣</div></div>';
   } catch (_) {}
+}
+
+function openActiveTopicCompose() {
+  openMomentCompose('community', window._activeTopicId || '', '', window._activeTopicLabel || '');
 }
 
 function openChatStarter(momentId, authorId) {
@@ -5195,7 +5210,7 @@ function editCommunityMoment(id) {
     { text: '取消', cancel: true },
     { text: '保存', onClick: async () => {
       const content = ($('editMomentText') || {}).value || '';
-      const res = await api('/moments/' + id, { method: 'PUT', body: JSON.stringify({ content, topicId: moment.topicId, mood: moment.mood && moment.mood.id }) });
+      const res = await api('/moments/' + id, { method: 'PUT', body: JSON.stringify({ content }) });
       if (res.success) { window._momentCache[id] = res.moment; const card = $('moment-' + id); if (card) card.outerHTML = momentCardHtml(res.moment); showToast('已保存'); }
       else showToast(res.error || '保存失败');
     }}

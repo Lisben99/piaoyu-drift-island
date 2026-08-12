@@ -471,7 +471,7 @@ function getActiveBottles(filters = {}) {
 //                                  (朋友圈), visible to the author and users who have
 //                                  had a conversation (chat session) with the author.
 // Images are stored as compressed data URLs.
-function createMoment(userId, { content = '', images = [], type = 'community', topicId = null, mood = null, dailyPromptId = null, zoneId = null } = {}) {
+function createMoment(userId, { content = '', images = [], type = 'community', topicId = null, topicLabel = null, mood = null, dailyPromptId = null, zoneId = null } = {}) {
   const moment = {
     id: genId('mo'),
     userId,
@@ -481,6 +481,7 @@ function createMoment(userId, { content = '', images = [], type = 'community', t
       : [],
     type: type === 'moment' ? 'moment' : 'community',
     topicId: topicId || null,
+    topicLabel: topicLabel ? String(topicLabel).slice(0, 20) : null,
     mood: mood || null,
     dailyPromptId: dailyPromptId || null,
     zoneId: zoneId || null,
@@ -626,6 +627,7 @@ function updateMoment(momentId, userId, updates = {}) {
   if (!moment || moment.deleted || moment.userId !== userId || moment.type === 'moment') return null;
   if (updates.content !== undefined) moment.content = String(updates.content || '').trim().slice(0, 1000);
   if (updates.topicId !== undefined) moment.topicId = updates.topicId || null;
+  if (updates.topicLabel !== undefined) moment.topicLabel = updates.topicLabel ? String(updates.topicLabel).slice(0, 20) : null;
   if (updates.mood !== undefined) moment.mood = updates.mood || null;
   moment.editedAt = Date.now();
   save();
