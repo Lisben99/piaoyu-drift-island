@@ -23,7 +23,7 @@ function verifiedContact(user) { return !!(String(user.phone || '').trim() || St
 function profileComplete(profile, zoneId) {
   if (!profile || !profile.adultConfirmed || profile.agreementVersion !== AGREEMENT_VERSION) return false;
   if (!String(profile.alias || '').trim()) return false;
-  if (zoneId === 'letter') return Array.isArray(profile.tags) && profile.tags.length > 0 && !!profile.experience && !!profile.boundary;
+  if (zoneId === 'letter') return Array.isArray(profile.tags) && profile.tags.length > 0 && !!profile.experience;
   if (zoneId === 'mature') return !!profile.ageRange && !!profile.relationshipStatus && Array.isArray(profile.interests) && profile.interests.length > 0;
   return true;
 }
@@ -80,7 +80,8 @@ function saveZoneProfile(user, zoneId, input = {}) {
       experience: uniqueAllowed([input.experience], ['new', 'beginner', 'familiar'], 1)[0] || '',
       purpose: sanitizeText(input.purpose, 60), boundary: sanitizeText(input.boundary, 120)
     };
-    if (!details.tags.length || !details.experience || !details.boundary) return { success: false, status: 400, error: '请完善身份标签、经验程度和个人边界' };
+    if (!details.tags.length) return { success: false, status: 400, error: '请至少选择一个身份标签' };
+    if (!details.experience) return { success: false, status: 400, error: '请选择经验程度' };
   } else {
     details = {
       ageRange: uniqueAllowed([input.ageRange], ['18-24', '25-30', '31-40', '40+'], 1)[0] || '',

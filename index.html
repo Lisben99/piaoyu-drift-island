@@ -4500,7 +4500,7 @@ function renderZoneOnboarding(zoneId) {
     fields = `<div class="zone-field"><label>身份标签（最多3项）</label><div class="zone-choice-list">${tags}</div></div>
       <div class="zone-field"><label>经验程度</label><select id="zoneExperience"><option value="new">新人</option><option value="beginner">入门</option><option value="familiar">熟悉</option></select></div>
       <div class="zone-field"><label>交流目的（选填）</label><input id="zonePurpose" maxlength="60" value="${escapeHtml(saved.purpose || '')}" placeholder="希望交流什么"></div>
-      <div class="zone-field"><label>个人边界</label><textarea id="zoneBoundary" maxlength="120" placeholder="明确不接受的行为与话题">${escapeHtml(saved.boundary || '')}</textarea></div>`;
+      <div class="zone-field"><label>个人边界（选填）</label><textarea id="zoneBoundary" maxlength="120" placeholder="如有需要，可填写不接受的行为与话题">${escapeHtml(saved.boundary || '')}</textarea></div>`;
   } else {
     const interests = ['情感交流','生活阅历','婚恋关系','职场成长','旅行','阅读'].map(tag => { const selected = (saved.interests || []).includes(tag); return `<label class="zone-choice${selected ? ' selected' : ''}"><input type="checkbox" name="zoneInterests" value="${tag}" ${selected ? 'checked' : ''} onchange="limitZoneChoices(this,'zoneInterests',4)"> ${tag}</label>`; }).join('');
     fields = `<div class="zone-field"><label>年龄段</label><select id="zoneAgeRange"><option value="18-24">18-24</option><option value="25-30">25-30</option><option value="31-40">31-40</option><option value="40+">40+</option></select></div>
