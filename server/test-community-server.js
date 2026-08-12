@@ -58,6 +58,13 @@ const call = async (method, path, body) => {
     const customFeed = await call('GET', `/api/moments/community?sort=latest&topicId=${encodeURIComponent(customPost.json.moment.topicId)}`);
     assert.equal(customFeed.json.moments.length, 1);
     assert.equal(customFeed.json.moments[0].topic.label, '夜间摄影');
+    const multiPost = await call('POST', '/api/moments', { content: 'multi topic post', type: 'community', topics: [{ topicId: 'music' }, { topicLabel: '岛屿夜话' }, { topicLabel: '周末散步' }] });
+    assert.equal(multiPost.status, 200);
+    assert.equal(multiPost.json.moment.topics.length, 3);
+    assert.deepEqual(multiPost.json.moment.topics.map(topic => topic.label), ['音乐', '岛屿夜话', '周末散步']);
+    const secondaryTopicId = multiPost.json.moment.topics[1].id;
+    const secondaryFeed = await call('GET', `/api/moments/community?sort=latest&topicId=${encodeURIComponent(secondaryTopicId)}`);
+    assert.equal(secondaryFeed.json.moments.some(moment => moment.id === multiPost.json.moment.id), true);
     const customSearch = await call('GET', `/api/community/search?q=${encodeURIComponent('夜间摄影')}`);
     assert.equal(customSearch.json.moments.length, 1);
     assert.equal(customSearch.json.moments[0].topicLabel, '夜间摄影');

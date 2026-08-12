@@ -473,7 +473,12 @@ function getActiveBottles(filters = {}) {
 //                                  (朋友圈), visible to the author and users who have
 //                                  had a conversation (chat session) with the author.
 // Images are stored as compressed data URLs.
-function createMoment(userId, { content = '', images = [], type = 'community', topicId = null, topicLabel = null, mood = null, dailyPromptId = null, zoneId = null } = {}) {
+function createMoment(userId, { content = '', images = [], type = 'community', topicId = null, topicLabel = null, topics = [], mood = null, dailyPromptId = null, zoneId = null } = {}) {
+  const normalizedTopics = (Array.isArray(topics) && topics.length ? topics : (topicId ? [{ topicId, topicLabel }] : []))
+    .filter(item => item && item.topicId)
+    .slice(0, 5)
+    .map(item => ({ topicId: item.topicId, topicLabel: item.topicLabel ? String(item.topicLabel).slice(0, 20) : null }));
+  const primaryTopic = normalizedTopics[0] || null;
   const moment = {
     id: genId('mo'),
     userId,
@@ -482,8 +487,9 @@ function createMoment(userId, { content = '', images = [], type = 'community', t
       ? images.filter(i => typeof i === 'string' && i.startsWith('data:image/')).slice(0, 9)
       : [],
     type: type === 'moment' ? 'moment' : 'community',
-    topicId: topicId || null,
-    topicLabel: topicLabel ? String(topicLabel).slice(0, 20) : null,
+    topicId: primaryTopic ? primaryTopic.topicId : null,
+    topicLabel: primaryTopic ? primaryTopic.topicLabel : null,
+    topics: normalizedTopics,
     mood: mood || null,
     dailyPromptId: dailyPromptId || null,
     zoneId: zoneId || null,
@@ -518,7 +524,7 @@ function listMoments({ userId = null, community = false, viewerId = null, follow
     // 朋友圈 (type='moment') are excluded — the two pools never intersect.
     list = list.filter(m => m.type !== 'moment');
     list = zoneId ? list.filter(m => m.zoneId === zoneId) : list.filter(m => !m.zoneId);
-    if (topicId) list = list.filter(m => m.topicId === topicId);
+    if (topicId) list = list.filter(m => m.topicId === topicId || (m.topics || []).some(item => item.topicId === topicId));
     if (viewerId) {
       const dismissed = new Set((cache.contentDismissals || [])
         .filter(item => item.userId === viewerId)
@@ -578,7 +584,9 @@ function listMoments({ userId = null, community = false, viewerId = null, follow
     const interests = new Set(viewer.interestIds || []);
     const followedIds = new Set(getFollows().filter(f => f.followerId === viewerId).map(f => f.followeeId));
     const score = m => {
-      const interestMatch = m.topicId && interests.has(m.topicId) ? 1 : 0;
+      const momentTopicIds = (m.topics || []).map(item => item.topicId).filter(Boolean);
+      if (m.topicId && !momentTopicIds.includes(m.topicId)) momentTopicIds.push(m.topicId);
+      const interestMatch = momentTopicIds.some(id => interests.has(id)) ? 1 : 0;
       const affinity = (cache.interactions || []).some(i => i.actorId === viewerId && i.targetUserId === m.userId) ? 1 : 0;
       const freshness = Math.max(0, 1 - (now - m.createdAt - 86400000) / (13 * 86400000));
       const quality = Math.min(1, ((m.likes || []).length + (m.comments || []).length * 2) / 12);
@@ -597,7 +605,9 @@ function listMoments({ userId = null, community = false, viewerId = null, follow
     for (const moment of list) {
       const block = diversified.slice(Math.floor(diversified.length / 10) * 10);
       if (block.some(item => item.userId === moment.userId)) continue;
-      if (moment.topicId && block.filter(item => item.topicId === moment.topicId).length >= 3) continue;
+      const topicIds = (moment.topics || []).map(item => item.topicId).filter(Boolean);
+      if (moment.topicId && !topicIds.includes(moment.topicId)) topicIds.push(moment.topicId);
+      if (topicIds.some(id => block.filter(item => item.topicId === id || (item.topics || []).some(topic => topic.topicId === id)).length >= 3)) continue;
       if (followedIds.has(moment.userId) && block.filter(item => followedIds.has(item.userId)).length >= 2) continue;
       diversified.push(moment);
     }
@@ -630,6 +640,11 @@ function updateMoment(momentId, userId, updates = {}) {
   if (updates.content !== undefined) moment.content = String(updates.content || '').trim().slice(0, 1000);
   if (updates.topicId !== undefined) moment.topicId = updates.topicId || null;
   if (updates.topicLabel !== undefined) moment.topicLabel = updates.topicLabel ? String(updates.topicLabel).slice(0, 20) : null;
+  if (updates.topics !== undefined) {
+    moment.topics = (Array.isArray(updates.topics) ? updates.topics : []).filter(item => item && item.topicId).slice(0, 5).map(item => ({ topicId: item.topicId, topicLabel: item.topicLabel ? String(item.topicLabel).slice(0, 20) : null }));
+    moment.topicId = moment.topics[0] ? moment.topics[0].topicId : null;
+    moment.topicLabel = moment.topics[0] ? moment.topics[0].topicLabel : null;
+  }
   if (updates.mood !== undefined) moment.mood = updates.mood || null;
   moment.editedAt = Date.now();
   save();

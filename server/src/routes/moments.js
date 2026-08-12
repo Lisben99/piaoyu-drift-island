@@ -52,6 +52,23 @@ function isAllowedTopicId(topicId) {
   return !topicId || isTopicId(topicId) || /^custom:[a-f0-9]{16}$/.test(topicId);
 }
 
+function normalizeTopics(topics, legacyTopicId, legacyTopicLabel) {
+  const source = Array.isArray(topics) && topics.length ? topics : (legacyTopicId || legacyTopicLabel ? [{ topicId: legacyTopicId, topicLabel: legacyTopicLabel }] : []);
+  const normalized = [];
+  for (const item of source.slice(0, 5)) {
+    const topic = typeof item === 'string'
+      ? normalizeTopic(null, item)
+      : normalizeTopic(item && (item.topicId || item.id), item && (item.topicLabel || item.label));
+    if (!topic.topicId || normalized.some(existing => existing.topicId === topic.topicId)) continue;
+    normalized.push(topic);
+  }
+  return normalized;
+}
+
+function topicView(topicId, topicLabel) {
+  return COMMUNITY_TOPICS.find(item => item.id === topicId) || (topicId && topicLabel ? { id: topicId, label: topicLabel, description: '用户自定义话题', custom: true } : null);
+}
+
 // Enrich a raw moment record with author info + like/comment meta for the client.
 // Comments are returned inline (moment threads are small); nicknames/avatars are
 // resolved from the user table so deleted users degrade gracefully to "用户".
@@ -60,6 +77,8 @@ function enrich(m, currentUserId) {
   const zoneProfile = m.zoneId ? profileFor(m.userId, m.zoneId) : null;
   const displayName = zoneProfile && zoneProfile.alias ? zoneProfile.alias : (author.nickname || '用户');
   const displayAvatar = zoneProfile && zoneProfile.avatar ? zoneProfile.avatar : (m.zoneId && m.zoneId !== 'story' ? '' : (author.avatar || ''));
+  const topics = (Array.isArray(m.topics) && m.topics.length ? m.topics : (m.topicId ? [{ topicId: m.topicId, topicLabel: m.topicLabel }] : []))
+    .map(item => topicView(item.topicId, item.topicLabel)).filter(Boolean);
   return {
     id: m.id,
     content: m.content,
@@ -69,7 +88,8 @@ function enrich(m, currentUserId) {
     editedAt: m.editedAt || null,
     topicId: m.topicId || null,
     topicLabel: m.topicLabel || null,
-    topic: COMMUNITY_TOPICS.find(item => item.id === m.topicId) || (m.topicId && m.topicLabel ? { id: m.topicId, label: m.topicLabel, description: '用户自定义话题', custom: true } : null),
+    topic: topics[0] || null,
+    topics,
     mood: COMMUNITY_MOODS.find(item => item.id === m.mood) || null,
     dailyPromptId: m.dailyPromptId || null,
     zoneId: m.zoneId || null,
@@ -118,7 +138,7 @@ function enrich(m, currentUserId) {
 // `type` defaults to 'community' (public). 'moment' = 朋友圈 (private, visible only
 // to the author and people who have chatted with them).
 router.post('/', (req, res) => {
-  const { content, images, type, topicId, topicLabel, mood, dailyPromptId, zoneId } = req.body || {};
+  const { content, images, type, topicId, topicLabel, topics, mood, dailyPromptId, zoneId } = req.body || {};
   const text = (content || '').trim();
   const imgs = Array.isArray(images) ? images : [];
   if (!text && imgs.length === 0) {
@@ -129,11 +149,14 @@ router.post('/', (req, res) => {
   if (zoneId && (!zone || !canAccessZone(req.user, zoneId))) return res.status(403).json({ success: false, error: '请先完成专区开通' });
   if (zoneId === 'mature') return res.status(400).json({ success: false, error: '成熟专区仅支持成员发现与私聊' });
   if (zoneId === 'story') return res.status(400).json({ success: false, error: '剧情岛请通过开房和角色群聊参与' });
-  if (momentType === 'community' && String(topicLabel || '').replace(/^#+\s*/, '').trim().length > 20) return res.status(400).json({ success: false, error: '话题最多 20 个字' });
+  const submittedTopics = Array.isArray(topics) ? topics : [];
+  if (submittedTopics.length > 5) return res.status(400).json({ success: false, error: '每条动态最多添加 5 个话题' });
+  if (momentType === 'community' && [topicLabel, ...submittedTopics.map(item => typeof item === 'string' ? item : item && (item.topicLabel || item.label))].some(label => String(label || '').replace(/^#+\s*/, '').trim().length > 20)) return res.status(400).json({ success: false, error: '每个话题最多 20 个字' });
   if (momentType === 'community' && topicId && !isAllowedTopicId(topicId)) return res.status(400).json({ success: false, error: '无效话题' });
+  if (momentType === 'community' && submittedTopics.some(item => item && (item.topicId || item.id) && !isAllowedTopicId(item.topicId || item.id))) return res.status(400).json({ success: false, error: '无效话题' });
   if (momentType === 'community' && mood && !isMoodId(mood)) return res.status(400).json({ success: false, error: '无效心情' });
-  const normalizedTopic = momentType === 'community' ? normalizeTopic(topicId, topicLabel) : { topicId: null, topicLabel: null };
-  const moment = createMoment(req.user.id, { content: text, images: imgs, type: momentType, ...normalizedTopic, mood, dailyPromptId, zoneId: zone ? zone.id : null });
+  const normalizedTopics = momentType === 'community' ? normalizeTopics(topics, topicId, topicLabel) : [];
+  const moment = createMoment(req.user.id, { content: text, images: imgs, type: momentType, topics: normalizedTopics, mood, dailyPromptId, zoneId: zone ? zone.id : null });
   const experienceAward = awardExperience(req.user.id, momentType === 'community' ? 'community_daily_post' : 'moment_created', {
     eventKey: `moment:${moment.id}`,
     sourceId: moment.id
@@ -239,11 +262,11 @@ router.post('/:id/like', (req, res) => {
 });
 
 router.put('/:id', (req, res) => {
-  const { content, topicId, topicLabel, mood } = req.body || {};
+  const { content, topicId, topicLabel, topics, mood } = req.body || {};
   if (topicId && !isAllowedTopicId(topicId)) return res.status(400).json({ success: false, error: '无效话题' });
   if (mood && !isMoodId(mood)) return res.status(400).json({ success: false, error: '无效心情' });
   const updates = { content };
-  if (topicId !== undefined || topicLabel !== undefined) Object.assign(updates, normalizeTopic(topicId, topicLabel));
+  if (topics !== undefined || topicId !== undefined || topicLabel !== undefined) updates.topics = normalizeTopics(topics, topicId, topicLabel);
   if (mood !== undefined) updates.mood = mood;
   const moment = updateMoment(req.params.id, req.user.id, updates);
   if (!moment) return res.status(404).json({ success: false, error: '动态不存在或无权限' });
