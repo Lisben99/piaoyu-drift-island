@@ -3515,7 +3515,7 @@ async function renderRecharge() {
         </div>`).join('');
     html += `</div>
       <div id="payPanel" style="display:none;margin-top:18px"></div>
-      <div style="text-align:center;margin-top:14px;font-size:12px;color:#98a2a0">1元 = ${pkgRes.rate}枚漂流币 · 管理员确认后将发放兑换码</div>
+      <div style="text-align:center;margin-top:14px;font-size:12px;color:#98a2a0">通过闲鱼担保交易购买 · 卖家将在闲鱼聊天中发送一次性兑换码</div>
 
       <div class="coin-section-title" style="margin-top:22px">兑换码充值</div>
       <div style="display:flex;gap:10px;margin-top:10px">
@@ -3574,13 +3574,15 @@ function selectPkg(id, el) {
   const total = p.coins + (p.coinsBonus || 0);
   const panel = $('payPanel');
   panel.style.display = 'block';
+  if (!p.purchaseUrl) {
+    panel.innerHTML = `<div style="font-size:13px;color:#ef7b62;padding:12px 0">该套餐暂未配置购买链接，请稍后再试。</div>`;
+    return;
+  }
   panel.innerHTML = `
-    <div class="coin-section-title">扫码支付</div>
-    ${payInfo.qr ? `<img src="${payInfo.qr}" style="width:180px;height:180px;object-fit:contain;border:1px solid #e6e4dc;border-radius:10px" />` : `<div style="font-size:12px;color:#ef7b62;margin:8px 0">管理员尚未配置收款码，请直接联系管理员获取付款方式。</div>`}
-    <div style="margin:8px 0;font-size:14px">支付金额：<b>¥${p.price}</b> → 得 <b>${total}</b> 枚</div>
-    ${payInfo.note ? `<div style="font-size:12px;color:#718082;margin-bottom:8px">${payInfo.note}</div>` : ''}
-    <button class="primary-button" id="payBtn" onclick="startPayment()">我已支付</button>
-    <div id="payProofBox" style="display:none;margin-top:12px"></div>`;
+    <div class="coin-section-title">闲鱼担保交易</div>
+    <div style="margin:8px 0 12px;font-size:14px">购买 <b>${total}</b> 枚漂流币，闲鱼售价 <b>¥${p.price}</b></div>
+    <a class="primary-button" href="${p.purchaseUrl}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">前往闲鱼购买</a>
+    <div style="margin-top:10px;font-size:12px;line-height:1.7;color:#718082">付款后请在闲鱼聊天中接收一次性兑换码，再回到本页下方兑换。请勿脱离闲鱼付款，也不要公开或转发兑换码。</div>`;
 }
 
 async function startPayment() {

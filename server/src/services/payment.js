@@ -64,10 +64,10 @@ function generateOneRedeemCode({ coins, createdBy, note, refOrderId }) {
 }
 
 const PACKAGES = [
-  { id: 'pkg1', price: 1, coins: 10, label: '10枚' },
-  { id: 'pkg2', price: 5, coins: 50, coinsBonus: 5, label: '55枚（送5枚）' },
-  { id: 'pkg3', price: 10, coins: 100, coinsBonus: 12, label: '112枚（送12枚）' },
-  { id: 'pkg4', price: 20, coins: 200, coinsBonus: 30, label: '230枚（送30枚）' }
+  { id: 'pkg1', price: 1, coins: 10, label: '10枚', purchaseUrl: 'https://www.goofish.com/item?id=1073558818836' },
+  { id: 'pkg2', price: 5, coins: 50, coinsBonus: 5, label: '55枚（送5枚）', purchaseUrl: 'https://www.goofish.com/item?id=1075577368875' },
+  { id: 'pkg3', price: 10, coins: 100, coinsBonus: 12, label: '112枚（送12枚）', purchaseUrl: 'https://www.goofish.com/item?id=1072713859611' },
+  { id: 'pkg4', price: 20, coins: 200, coinsBonus: 30, label: '230枚（送30枚）', purchaseUrl: 'https://www.goofish.com/item?id=1075577884344' }
 ];
 
 function getPackage(pkgId) {
