@@ -28,6 +28,10 @@ const letterProfile = {
 };
 assert.equal(zones.saveZoneProfile(female, 'letter', letterProfile).success, true);
 assert.equal(zones.saveZoneProfile(male, 'letter', { ...letterProfile, alias: '海岸' }).success, true);
+const originalLetterProfileId = zones.profileFor(female.id, 'letter').id;
+assert.equal(zones.saveZoneProfile(female, 'letter', { ...letterProfile, alias: '潮汐已更新' }).success, true);
+assert.equal(zones.profileFor(female.id, 'letter').id, originalLetterProfileId, 'editing keeps the original profile id');
+assert.equal(zones.profileFor(female.id, 'letter').alias, '潮汐已更新');
 
 const femalePurchase = zones.purchaseZoneAccess(female, 'letter', 'day', 1000000);
 const malePurchase = zones.purchaseZoneAccess(male, 'letter', 'day', 1000000);

@@ -42,6 +42,7 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 .nav-bar__icon-btn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:10px;background:#1f7a74;color:#fff;font-size:18px;font-weight:600}
 .nav-bar__icon-btn svg{width:18px;height:18px;stroke:currentColor;stroke-width:2.5;fill:none}
 .compose-pill-btn{padding:6px 16px;border-radius:14px;background:#1f7a74;color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer;white-space:nowrap}
+.zone-profile-edit-btn{padding:6px 10px;border-radius:13px;background:rgba(31,122,116,.09);color:#1f7a74;font-size:12px;font-weight:750;white-space:nowrap}
 .nav-bar__spacer{width:60px}
 
 /* ===== Pages ===== */
@@ -1316,13 +1317,13 @@ body{background:linear-gradient(145deg,#e9e4d8,#f8eee4);color:var(--island-text)
 
   <!-- ===== PAGE: Community Zone ===== -->
   <div class="page" id="page-community-zone">
-    <div class="nav-bar"><button class="nav-bar__back" onclick="navigateBack()">←</button><div class="nav-bar__title" id="communityZoneTitle">专区</div><button class="compose-pill-btn" id="communityZoneComposeBtn" onclick="openZoneCompose()">发布</button></div>
+    <div class="nav-bar"><button class="nav-bar__back" onclick="navigateBack()">←</button><div class="nav-bar__title" id="communityZoneTitle">专区</div><div class="nav-bar__right"><button class="zone-profile-edit-btn" id="communityZoneProfileBtn" onclick="editActiveZoneProfile()">编辑资料</button><button class="compose-pill-btn" id="communityZoneComposeBtn" onclick="openZoneCompose()">发布</button></div></div>
     <div class="community-content" id="communityZoneContent" data-scroll-root></div>
   </div>
 
   <!-- ===== PAGE: Zone Profile Setup ===== -->
   <div class="page" id="page-zone-onboarding">
-    <div class="nav-bar"><button class="nav-bar__back" onclick="navigateBack()">←</button><div class="nav-bar__title" id="zoneOnboardingTitle">编辑信息</div><div class="nav-bar__spacer"></div></div>
+    <div class="nav-bar"><button class="nav-bar__back" onclick="closeZoneProfileEditor()">←</button><div class="nav-bar__title" id="zoneOnboardingTitle">编辑信息</div><div class="nav-bar__spacer"></div></div>
     <div class="zone-shell" id="zoneOnboardingContent" data-scroll-root></div>
   </div>
 
@@ -4415,7 +4416,7 @@ async function openCommunityHub(zoneId) {
         { text: '稍后', cancel: true }, { text: '查看等级', onClick: () => navigate('level-detail') }
       ]);
     }
-    if (!status.profileComplete) return navigate('zone-onboarding');
+    if (!status.profileComplete) { window._editingZoneProfile = false; return navigate('zone-onboarding'); }
     if (!status.accessActive) return navigate('zone-purchase');
     navigate('community-zone');
   } catch (_) { showToast('网络错误，请稍后重试'); }
@@ -4468,15 +4469,17 @@ function renderZoneOnboarding(zoneId) {
       <div class="zone-field"><label>感兴趣的话题</label><div class="zone-choice-list">${interests}</div></div>
       <div class="zone-field"><label>交流目的（选填）</label><input id="zonePurpose" maxlength="60" value="${escapeHtml(saved.purpose || '')}" placeholder="希望遇见怎样的交流"></div>`;
   }
+  const editing = !!(window._editingZoneProfile && saved.id);
   root.innerHTML = commonTop + fields + `<label class="zone-check"><input type="checkbox" id="zoneAllowChat" ${saved.allowStrangerChat === false ? '' : 'checked'}>允许专区用户向我发起私聊</label>
-    <label class="zone-check"><input type="checkbox" id="zoneAdult">我确认已年满18周岁</label>
-    <label class="zone-check"><input type="checkbox" id="zoneRules">我同意专区规则：尊重、自愿、知情、可随时停止；禁止交易、胁迫、骚扰、未成年人内容及泄露隐私。</label>
-    <button class="primary-button zone-submit" onclick="saveZoneOnboarding('${zoneId}')">保存并下一步</button></div>`;
+    <label class="zone-check"><input type="checkbox" id="zoneAdult" ${saved.adultConfirmed ? 'checked' : ''}>我确认已年满18周岁</label>
+    <label class="zone-check"><input type="checkbox" id="zoneRules" ${saved.rulesAccepted ? 'checked' : ''}>我同意专区规则：尊重、自愿、知情、可随时停止；禁止交易、胁迫、骚扰、未成年人内容及泄露隐私。</label>
+    <button class="primary-button zone-submit" onclick="saveZoneOnboarding('${zoneId}')">${editing ? '保存修改' : '保存并下一步'}</button></div>`;
   if (zoneId === 'letter' && $('zoneExperience')) $('zoneExperience').value = saved.experience || 'new';
   if (zoneId === 'mature') { if ($('zoneAgeRange')) $('zoneAgeRange').value = saved.ageRange || '25-30'; if ($('zoneRelationship')) $('zoneRelationship').value = saved.relationshipStatus || 'single'; }
 }
 
 async function saveZoneOnboarding(zoneId) {
+  const editing = !!window._editingZoneProfile;
   const body = {
     alias: ($('zoneAlias') || {}).value || '', adultConfirmed: !!($('zoneAdult') || {}).checked,
     rulesAccepted: !!($('zoneRules') || {}).checked, allowStrangerChat: !!($('zoneAllowChat') || {}).checked,
@@ -4495,6 +4498,8 @@ async function saveZoneOnboarding(zoneId) {
   if (!res.success) return showToast(res.error || '保存失败');
   window._activeZoneStatus = await api('/community/zones/' + zoneId + '/status');
   showToast('专区资料已保存');
+  window._editingZoneProfile = false;
+  if (editing && window._activeZoneStatus.accessActive) return navigateBack();
   navigate('zone-purchase');
 }
 
@@ -4533,6 +4538,8 @@ async function renderCommunityZone(zoneId) {
   const meta = COMMUNITY_ZONE_META[zoneId];
   if (!root || !meta) return;
   $('communityZoneTitle').textContent = meta.label;
+  const profileButton = $('communityZoneProfileBtn');
+  if (profileButton) profileButton.style.display = meta.paid ? '' : 'none';
   const composeButton = $('communityZoneComposeBtn');
   if (composeButton) composeButton.style.display = zoneId === 'mature' ? 'none' : '';
   root.innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
@@ -4549,6 +4556,23 @@ async function renderCommunityZone(zoneId) {
     const expiry = window._activeZoneStatus && window._activeZoneStatus.accessExpiresAt ? `访问有效至 ${new Date(window._activeZoneStatus.accessExpiresAt).toLocaleString()}` : '免费开放';
     root.innerHTML = `<div class="zone-hero"><small>ISLAND ZONE</small><h2>${meta.label}</h2><p>${intro}</p></div><div class="zone-feed-head"><h3>${zoneId === 'story' ? '正在发生的剧情' : '专区交流'}</h3><span class="zone-pass-tip">${expiry}</span></div>${res.moments.length ? res.moments.map(momentCardHtml).join('') : `<div class="empty-state"><div class="empty-state__title">这里还很安静</div><div class="empty-state__desc">发布第一条内容，开启一段新的交流</div></div>`}`;
   } catch (e) { root.innerHTML = `<div class="empty-state"><div class="empty-state__title">${escapeHtml(e.message || '加载失败')}</div></div>`; }
+}
+
+function closeZoneProfileEditor() {
+  window._editingZoneProfile = false;
+  navigateBack();
+}
+
+async function editActiveZoneProfile() {
+  const zoneId = window._activeZoneId;
+  if (!zoneId || !COMMUNITY_ZONE_META[zoneId] || !COMMUNITY_ZONE_META[zoneId].paid) return;
+  try {
+    const status = await api('/community/zones/' + zoneId + '/status');
+    if (!status.success) return showToast(status.error || '资料加载失败');
+    window._activeZoneStatus = status;
+    window._editingZoneProfile = true;
+    navigate('zone-onboarding');
+  } catch (_) { showToast('网络错误，请稍后重试'); }
 }
 
 async function renderMatureDirectory(root) {

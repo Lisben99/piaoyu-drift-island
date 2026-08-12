@@ -67,7 +67,7 @@ function saveZoneProfile(user, zoneId, input = {}) {
     return { success: false, status: 400, error: '请确认已满18周岁并同意专区规则' };
   }
   const base = {
-    id: '', userId: user.id, zoneId, alias: sanitizeText(input.alias, 16),
+    userId: user.id, zoneId, alias: sanitizeText(input.alias, 16),
     avatar: sanitizeText(input.avatar, 200000), adultConfirmed: true, rulesAccepted: true,
     agreementVersion: AGREEMENT_VERSION, allowStrangerChat: input.allowStrangerChat !== false,
     updatedAt: Date.now()
