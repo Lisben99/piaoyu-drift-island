@@ -11,6 +11,7 @@ const { PACKAGES, refundOrder, confirmPayment, rejectOrder } = require('../servi
 const botEngine = require('../services/botEngine');
 const aiProvider = require('../services/aiProvider');
 const { sendSiteMail, listAdminMail } = require('../services/siteMail');
+const { sendPopupNotification, listAdminPopups } = require('../services/popupNotifications');
 const { sendToUser } = require('../services/websocket');
 
 // Admin login
@@ -564,6 +565,32 @@ router.post('/mail/send', adminAuth, (req, res) => {
     res.json({
       success: true,
       mail: result.mail,
+      deliveredCount: result.recipients.length,
+      unresolved: result.unresolved
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message || '发送失败' });
+  }
+});
+
+router.get('/popups', adminAuth, (req, res) => {
+  const limit = Math.min(Math.max(parseInt(req.query.pageSize, 10) || 50, 1), 100);
+  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+  const result = listAdminPopups({ limit, offset: (page - 1) * limit });
+  res.json({ success: true, popups: result.items, total: result.total, page, pageSize: limit });
+});
+
+router.post('/popups/send', adminAuth, (req, res) => {
+  try {
+    const result = sendPopupNotification({ ...(req.body || {}), adminId: req.admin.id });
+    addAuditLog(req.admin.id, 'popup_notification_send', result.popup.id,
+      `发送重要弹窗“${result.popup.title}”，送达 ${result.recipients.length} 人`);
+    for (const user of result.recipients) {
+      sendToUser(user.id, { type: 'important_popup', data: { popupId: result.popup.id } });
+    }
+    res.json({
+      success: true,
+      popup: result.popup,
       deliveredCount: result.recipients.length,
       unresolved: result.unresolved
     });

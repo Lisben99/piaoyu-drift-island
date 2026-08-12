@@ -176,6 +176,7 @@ input,textarea,select{font-family:inherit;outline:none;resize:none}
       <div class="sidebar__item" onclick="switchTab('reports')">⚠️ 举报管理 <span class="sidebar__badge hidden" id="reportBadge"></span></div>
       <div class="sidebar__item" onclick="switchTab('support')">🎫 客服工单 <span class="sidebar__badge hidden" id="supportBadge"></span></div>
       <div class="sidebar__item" onclick="switchTab('mail')">✉️ 站内信推送</div>
+      <div class="sidebar__item" onclick="switchTab('popups')">📣 弹窗推送</div>
       <div class="sidebar__item" onclick="switchTab('bots')">🤖 机器人管理</div>
       <div class="sidebar__item" onclick="switchTab('config')">⚙️ 业务配置</div>
       <div class="sidebar__item" onclick="switchTab('audit')">📋 审计日志</div>
@@ -303,10 +304,10 @@ function adminLogout() {
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.sidebar__item').forEach((el, i) => {
-    const tabs = ['dashboard','users','bottles','moments','coins','orders','redeem','reports','support','mail','bots','config','audit'];
+    const tabs = ['dashboard','users','bottles','moments','coins','orders','redeem','reports','support','mail','popups','bots','config','audit'];
     el.classList.toggle('active', tabs[i] === tab);
   });
-  const titles = { dashboard:'数据概览', users:'用户管理', bottles:'漂流瓶管理', moments:'动态管理', coins:'漂流币管理', orders:'充值订单', redeem:'卡密管理', reports:'举报管理', support:'客服工单', mail:'站内信推送', bots:'机器人管理', config:'业务配置', audit:'审计日志' };
+  const titles = { dashboard:'数据概览', users:'用户管理', bottles:'漂流瓶管理', moments:'动态管理', coins:'漂流币管理', orders:'充值订单', redeem:'卡密管理', reports:'举报管理', support:'客服工单', mail:'站内信推送', popups:'弹窗推送', bots:'机器人管理', config:'业务配置', audit:'审计日志' };
   document.getElementById('pageTitle').textContent = titles[tab];
   pagination = { page: 1, pageSize: 20, total: 0 };
   renderTab();
@@ -325,6 +326,7 @@ async function renderTab() {
     else if (currentTab === 'reports') await renderReports();
     else if (currentTab === 'support') await renderSupport();
     else if (currentTab === 'mail') await renderSiteMail();
+    else if (currentTab === 'popups') await renderPopupNotifications();
     else if (currentTab === 'bots') await renderBots();
     else if (currentTab === 'config') await renderConfig();
     else if (currentTab === 'audit') await renderAudit();
@@ -1245,6 +1247,101 @@ async function sendSiteMailFromAdmin() {
     showToast(error.message || '发送失败');
     button.disabled = false;
     button.textContent = '确认推送';
+  }
+}
+
+const POPUP_TYPE_LABELS = { important:'重要通知', safety:'安全提醒', rules:'规则调整', service:'服务通知' };
+
+function togglePopupTargetInput() {
+  const target = document.getElementById('popupTargetType');
+  const group = document.getElementById('popupTargetGroup');
+  if (target && group) group.classList.toggle('hidden', target.value !== 'specific');
+}
+
+async function renderPopupNotifications() {
+  const res = await api('/popups?page=1&pageSize=50');
+  if (!res.success) throw new Error(res.error || '加载失败');
+  const c = document.getElementById('pageContent');
+  c.innerHTML = `
+    <div class="mail-compose">
+      <div class="card">
+        <div class="card__title">发送重要弹窗</div>
+        <div style="padding:10px 12px;border-radius:9px;background:#fff6e7;color:#8a6325;font-size:12px;line-height:1.6;margin-bottom:16px">弹窗会打断用户当前操作，请仅用于必须立即看到的重要信息。版本更新和普通活动请使用“站内信推送”。</div>
+        <div class="form-row">
+          <div class="form-group"><label>通知类型</label><select id="popupType">
+            <option value="important">重要通知</option><option value="safety">安全提醒</option>
+            <option value="rules">规则调整</option><option value="service">服务通知</option>
+          </select></div>
+          <div class="form-group"><label>有效时间</label><select id="popupValidHours">
+            <option value="24">24 小时</option><option value="72">3 天</option><option value="168" selected>7 天</option><option value="720">30 天</option>
+          </select></div>
+        </div>
+        <div class="form-group"><label>弹窗标题</label><input id="popupTitle" maxlength="60" placeholder="例如：服务维护通知"></div>
+        <div class="form-group"><label>弹窗正文</label><textarea id="popupContent" maxlength="3000" style="min-height:180px;resize:vertical;line-height:1.7" placeholder="请清楚说明用户必须知道的内容"></textarea></div>
+        <div class="form-row">
+          <div class="form-group"><label>确认按钮文字</label><input id="popupButtonText" maxlength="12" value="我知道了"></div>
+          <div class="form-group"><label>接收对象</label><select id="popupTargetType" onchange="togglePopupTargetInput()">
+            <option value="all">全体可登录用户</option><option value="specific">指定用户</option>
+          </select></div>
+        </div>
+        <div class="form-group hidden" id="popupTargetGroup"><label>用户 ID / 手机号 / 邮箱</label>
+          <textarea id="popupTargets" style="min-height:90px;resize:vertical" placeholder="多个用户用逗号、空格或换行分隔"></textarea>
+        </div>
+        <button class="btn-sm btn-warning" id="popupSendBtn" onclick="sendPopupFromAdmin()" style="padding:10px 24px">确认发送弹窗</button>
+      </div>
+      <div class="card">
+        <div class="card__title">用户端规则</div>
+        <div style="font-size:13px;color:#5f6e6c;line-height:1.9">
+          <p>• 在线用户会立即看到弹窗。</p>
+          <p>• 离线用户下次登录或回到首页时看到。</p>
+          <p>• 用户必须点击确认按钮，不能点击空白处绕过。</p>
+          <p>• 确认后不再重复展示；过期通知自动停止展示。</p>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card__title">弹窗发送记录</div>
+      <div style="overflow-x:auto"><table class="table">
+        <thead><tr><th>类型</th><th>标题与内容</th><th>接收范围</th><th>送达 / 已确认</th><th>有效期</th><th>发送时间</th></tr></thead>
+        <tbody>${res.popups.map(popup => `<tr>
+          <td><span class="badge badge-pending">${POPUP_TYPE_LABELS[popup.type] || '重要通知'}</span></td>
+          <td><div class="mail-history-title">${escapeHtml(popup.title)}</div><div class="mail-history-summary">${escapeHtml(popup.content)}</div></td>
+          <td>${popup.targetType === 'specific' ? '指定用户' : '全体用户'}</td>
+          <td class="mail-stat">${popup.recipientCount || 0} / ${popup.acknowledgedCount || 0}</td>
+          <td>${Date.now() > popup.expiresAt ? '<span style="color:#999">已过期</span>' : formatTime(popup.expiresAt)}</td>
+          <td>${formatTime(popup.createdAt)}</td>
+        </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:#999">还没有弹窗记录</td></tr>'}</tbody>
+      </table></div>
+    </div>`;
+}
+
+async function sendPopupFromAdmin() {
+  const button = document.getElementById('popupSendBtn');
+  const payload = {
+    type: document.getElementById('popupType').value,
+    validHours: Number(document.getElementById('popupValidHours').value),
+    title: document.getElementById('popupTitle').value.trim(),
+    content: document.getElementById('popupContent').value.trim(),
+    buttonText: document.getElementById('popupButtonText').value.trim(),
+    targetType: document.getElementById('popupTargetType').value,
+    targetIdentifiers: document.getElementById('popupTargets')?.value || ''
+  };
+  if (!payload.title) return showToast('请填写弹窗标题');
+  if (!payload.content) return showToast('请填写弹窗正文');
+  if (payload.targetType === 'specific' && !payload.targetIdentifiers.trim()) return showToast('请填写指定用户');
+  if (!confirm(`重要弹窗会打断用户当前操作，确认向${payload.targetType === 'all' ? '全体可登录用户' : '指定用户'}发送？`)) return;
+  button.disabled = true;
+  button.textContent = '发送中...';
+  try {
+    const res = await api('/popups/send', { method:'POST', body:JSON.stringify(payload) });
+    if (!res.success) throw new Error(res.error || '发送失败');
+    const suffix = res.unresolved && res.unresolved.length ? `，${res.unresolved.length} 个账号未匹配` : '';
+    showToast(`弹窗已送达 ${res.deliveredCount} 位用户${suffix}`);
+    await renderPopupNotifications();
+  } catch (error) {
+    showToast(error.message || '发送失败');
+    button.disabled = false;
+    button.textContent = '确认发送弹窗';
   }
 }
 

@@ -124,6 +124,7 @@ function listAdminMail({ limit = 50, offset = 0 } = {}) {
 
 module.exports = {
   MAIL_TYPES,
+  resolveRecipients,
   sendSiteMail,
   listUserMail,
   getUnreadMailCount,

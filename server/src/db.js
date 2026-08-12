@@ -163,6 +163,8 @@ function createDefaultDB() {
     notifications: [],
     siteMails: [],
     siteMailReceipts: [],
+    popupAnnouncements: [],
+    popupAnnouncementReceipts: [],
     moments: [],
     follows: [],
     visits: [],

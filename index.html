@@ -253,6 +253,11 @@ html.keyboard-open #app .main-tab-page.active>[data-scroll-root]{scroll-padding-
 .mail-detail-title{font-size:23px;line-height:1.35;font-weight:800;color:#173735;margin-top:14px;word-break:break-word}
 .mail-detail-meta{font-size:11px;color:#98a2a0;margin-top:9px;padding-bottom:18px;border-bottom:1px solid #eceae4}
 .mail-detail-body{font-size:15px;line-height:1.9;color:#2d4140;padding-top:18px;word-break:break-word}
+.important-popup-head{display:flex;align-items:center;gap:9px;margin-bottom:13px}
+.important-popup-icon{width:36px;height:36px;border-radius:12px;background:rgba(239,123,98,.12);display:flex;align-items:center;justify-content:center;font-size:18px}
+.important-popup-type{font-size:12px;font-weight:800;color:#d7644d;letter-spacing:.04em}
+.important-popup-content{font-size:14px;line-height:1.85;color:#3a4a49;white-space:normal;word-break:break-word}
+.important-popup-note{font-size:10px;color:#a0aaa7;margin-top:15px;padding-top:10px;border-top:1px solid #eceae4}
 .chat-btn-primary{background:#1f7a74;color:#fff}
 .chat-btn-active{background:rgba(31,122,116,.1);color:#1f7a74}
 .chat-btn-expired{background:rgba(223,169,72,.12);color:#8a6d2f}
@@ -1890,6 +1895,7 @@ function redirectTo(pageId) { navigateTo(pageId, true); }
 function onPageEnter(pageId) {
   if (pageId === 'login') {}
   if (pageId === 'home') renderHome();
+  if (pageId === 'home') checkPendingImportantPopup();
   if (pageId === 'lobby') renderLobby();
   if (pageId === 'publish') renderPublish();
   if (pageId === 'mine-bottles') renderMineBottles();
@@ -2495,6 +2501,49 @@ async function markAllSiteMailsRead() {
     showToast('已全部标记为已读');
     renderMailbox();
   } catch (_) { showToast('操作失败，请稍后重试'); }
+}
+
+/* ================================================================
+   IMPORTANT POPUP NOTIFICATIONS
+   ================================================================ */
+const IMPORTANT_POPUP_LABELS = { important:'重要通知', safety:'安全提醒', rules:'规则调整', service:'服务通知' };
+const IMPORTANT_POPUP_ICONS = { important:'📣', safety:'🛡️', rules:'📋', service:'⚠️' };
+
+async function checkPendingImportantPopup() {
+  if (!getToken() || window._activeImportantPopupId || window._popupCheckInFlight) return;
+  const overlay = $('modal-overlay');
+  if (overlay && overlay.classList.contains('show')) {
+    clearTimeout(window._popupRetryTimer);
+    window._popupRetryTimer = setTimeout(checkPendingImportantPopup, 1200);
+    return;
+  }
+  window._popupCheckInFlight = true;
+  try {
+    const res = await api('/popups/pending', { cacheMs: 0 });
+    if (!res || !res.success || !res.popup) return;
+    const popup = res.popup;
+    window._activeImportantPopupId = popup.id;
+    const label = IMPORTANT_POPUP_LABELS[popup.type] || '重要通知';
+    const icon = IMPORTANT_POPUP_ICONS[popup.type] || '📣';
+    showModal(popup.title, `<div class="important-popup-head"><div class="important-popup-icon">${icon}</div><div class="important-popup-type">${label}</div></div><div class="important-popup-content">${escapeHtml(popup.content).replace(/\n/g, '<br>')}</div><div class="important-popup-note">漂屿官方通知 · ${formatTime(popup.createdAt)}</div>`, [
+      { text: popup.buttonText || '我知道了', keepOpen: true, onClick: () => acknowledgeImportantPopup(popup.id) }
+    ]);
+  } catch (_) {
+    // 网络恢复或下次回到首页时会再次检查。
+  } finally {
+    window._popupCheckInFlight = false;
+  }
+}
+
+async function acknowledgeImportantPopup(popupId) {
+  try {
+    const res = await api('/popups/' + encodeURIComponent(popupId) + '/acknowledge', { method:'POST' });
+    if (!res.success) throw new Error(res.error || '确认失败');
+    hideModal();
+    window._activeImportantPopupId = null;
+    resetApiCache();
+    setTimeout(checkPendingImportantPopup, 250);
+  } catch (_) { showToast('确认失败，请检查网络后重试'); }
 }
 
 function confirmLogout() {
@@ -3324,6 +3373,9 @@ function connectWS() {
         refreshSiteMailUnread();
         if (currentPage === 'mailbox') renderMailbox();
         showToast('收到一封新的漂屿站内信');
+      } else if (msg.type === 'important_popup') {
+        resetApiCache();
+        checkPendingImportantPopup();
       } else if (msg.type === 'error') {
         showToast(msg.error);
       }
@@ -4446,6 +4498,7 @@ async function init() {
           refreshNotifUnread();
           refreshInteractUnread();
           refreshSiteMailUnread();
+          checkPendingImportantPopup();
           if (!window.__notifPoll) {
             window.__notifPoll = setInterval(() => { refreshNotifUnread(); refreshInteractUnread(); refreshSiteMailUnread(); }, 30000);
           }
