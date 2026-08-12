@@ -128,6 +128,7 @@ router.post('/', (req, res) => {
   const zone = zoneId ? zoneById(zoneId) : null;
   if (zoneId && (!zone || !canAccessZone(req.user, zoneId))) return res.status(403).json({ success: false, error: '请先完成专区开通' });
   if (zoneId === 'mature') return res.status(400).json({ success: false, error: '成熟专区仅支持成员发现与私聊' });
+  if (zoneId === 'story') return res.status(400).json({ success: false, error: '剧情岛请通过开房和角色群聊参与' });
   if (momentType === 'community' && String(topicLabel || '').replace(/^#+\s*/, '').trim().length > 20) return res.status(400).json({ success: false, error: '话题最多 20 个字' });
   if (momentType === 'community' && topicId && !isAllowedTopicId(topicId)) return res.status(400).json({ success: false, error: '无效话题' });
   if (momentType === 'community' && mood && !isMoodId(mood)) return res.status(400).json({ success: false, error: '无效心情' });

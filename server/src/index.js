@@ -124,6 +124,7 @@ app.use('/api/reports', require('./routes/report'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/moments', require('./routes/moments'));
 app.use('/api/community', require('./routes/community'));
+app.use('/api/story-rooms', require('./routes/storyRooms'));
 app.use('/api/follow', require('./routes/follow'));
 app.use('/api/visits', require('./routes/visits'));
 app.use('/api/interactions', require('./routes/interactions'));

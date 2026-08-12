@@ -171,6 +171,8 @@ function createDefaultDB() {
     communityZoneProfiles: [],
     communityZonePasses: [],
     moodCheckins: [],
+    storyRooms: [],
+    storyRoomMessages: [],
     deletedIdentities: [],
     config: { ...DEFAULT_CONFIG },
     admins: [DEFAULT_ADMIN]

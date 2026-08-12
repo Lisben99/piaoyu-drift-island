@@ -26,6 +26,7 @@ router.get('/hubs', (req, res) => {
   Object.keys(ZONES).forEach(zoneId => {
     counts[zoneId] = (database.moments || []).filter(moment => !moment.deleted && moment.zoneId === zoneId).length;
   });
+  counts.story = (database.storyRooms || []).filter(room => room.status !== 'ended').length;
   res.json({ success: true, counts, mood: moodDashboard(req.user.id) });
 });
 

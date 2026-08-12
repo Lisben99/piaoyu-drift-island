@@ -48,6 +48,7 @@ function purgeUserAccount(userOrId, { reason = 'user_request' } = {}) {
   const bottleIds = new Set((database.bottles || []).filter(bottle => bottle.authorId === userId).map(bottle => bottle.id));
   const momentIds = new Set((database.moments || []).filter(moment => moment.userId === userId).map(moment => moment.id));
   const orderIds = new Set((database.rechargeOrders || []).filter(order => order.userId === userId).map(order => order.id));
+  const hostedStoryRoomIds = new Set((database.storyRooms || []).filter(room => room.hostId === userId).map(room => room.id));
 
   removeWhere('chatSessions', session => sessionIds.has(session.id));
   removeWhere('messages', message => message.senderId === userId || sessionIds.has(message.sessionId));
@@ -93,6 +94,15 @@ function purgeUserAccount(userOrId, { reason = 'user_request' } = {}) {
   removeWhere('communityZoneProfiles', item => item.userId === userId);
   removeWhere('communityZonePasses', item => item.userId === userId);
   removeWhere('moodCheckins', item => item.userId === userId);
+  removeWhere('storyRoomMessages', item => item.senderId === userId || hostedStoryRoomIds.has(item.roomId));
+  const storyRooms = Array.isArray(database.storyRooms) ? database.storyRooms : [];
+  summary.storyRooms = storyRooms.filter(room => room.hostId === userId).length;
+  database.storyRooms = storyRooms
+    .filter(room => room.hostId !== userId)
+    .map(room => ({
+      ...room,
+      roles: Array.isArray(room.roles) ? room.roles.map(role => role.userId === userId ? { ...role, userId: null, joinedAt: null } : role) : []
+    }));
   removeWhere('inviteCodes', item => item.userId === userId || item.ownerId === userId);
   removeWhere('botProfiles', item => item.userId === userId);
   removeWhere('smsCodes', item => user.phone && item.phone === user.phone);
