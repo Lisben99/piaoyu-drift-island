@@ -3,9 +3,9 @@
 const { db, save, genId, findUserById, computeUserLevel, addCoinTransaction, chinaDateKey } = require('../db');
 
 const ZONES = Object.freeze({
-  letter: Object.freeze({ id: 'letter', label: '字母圈', paid: true, minimumLevel: 2 }),
-  mature: Object.freeze({ id: 'mature', label: '成熟专区', paid: true, minimumLevel: 2 }),
-  story: Object.freeze({ id: 'story', label: '剧情岛', paid: false, minimumLevel: 1 })
+  letter: Object.freeze({ id: 'letter', label: '字母圈', paid: true }),
+  mature: Object.freeze({ id: 'mature', label: '成熟专区', paid: true }),
+  story: Object.freeze({ id: 'story', label: '剧情岛', paid: false })
 });
 const AGREEMENT_VERSION = '2026-08-12';
 const DAY_MS = 86400000;
@@ -42,7 +42,7 @@ function getZoneStatus(userOrId, zoneId, now = Date.now()) {
   const profile = profileFor(user.id, zoneId);
   const pass = zone.paid ? activePass(user.id, zoneId, now) : null;
   const complete = !zone.paid || profileComplete(profile, zoneId);
-  const eligible = verifiedContact(user) && level >= zone.minimumLevel && complete;
+  const eligible = verifiedContact(user) && complete;
   const freeMode = db().config.coin_operation_mode !== 'normal';
   return {
     zone,
@@ -65,7 +65,6 @@ function saveZoneProfile(user, zoneId, input = {}) {
   const zone = zoneById(zoneId);
   if (!zone || !zone.paid) return { success: false, status: 404, error: '专区不存在' };
   if (!verifiedContact(user)) return { success: false, status: 403, error: '请先完成手机号或邮箱验证' };
-  if (computeUserLevel(user).level < zone.minimumLevel) return { success: false, status: 403, error: `达到 Lv.${zone.minimumLevel} 后可开通` };
   if (input.adultConfirmed !== true || input.rulesAccepted !== true) {
     return { success: false, status: 400, error: '请确认已满18周岁并同意专区规则' };
   }

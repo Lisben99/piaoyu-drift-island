@@ -4762,11 +4762,6 @@ async function openCommunityHub(zoneId) {
     if (!status.success) return showToast(status.error || '暂时无法进入');
     window._activeZoneStatus = status;
     if (!status.verifiedContact) return showToast('请先完成手机号或邮箱验证');
-    if (status.level < 2) {
-      return showModal('专区准入要求', '达到 Lv.2 后可以设置专区资料并开通。先去看看如何提升等级吧。', [
-        { text: '稍后', cancel: true }, { text: '查看等级', onClick: () => navigate('level-detail') }
-      ]);
-    }
     if (!status.profileComplete) { window._editingZoneProfile = false; return navigate('zone-onboarding'); }
     if (!status.accessActive) return navigate('zone-purchase');
     navigate('community-zone');

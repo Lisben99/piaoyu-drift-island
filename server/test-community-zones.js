@@ -16,11 +16,21 @@ const female = database.createUser('13800008881', '', 'secret1');
 female.gender = 'female'; female.experienceBase = 20; female.coins = 100;
 const male = database.createUser('13800008882', '', 'secret1');
 male.gender = 'male'; male.experienceBase = 20; male.coins = 100;
+const newcomer = database.createUser('13800008883', '', 'secret1');
+newcomer.gender = 'male'; newcomer.experienceBase = 0; newcomer.coins = 100;
 
 let status = zones.getZoneStatus(female, 'letter');
 assert.equal(status.level, 2);
 assert.equal(status.profileComplete, false);
 assert.equal(status.accessActive, false);
+
+const newcomerProfile = {
+  alias: '新岛民', tags: ['新手'], experience: 'new', boundary: '', purpose: '',
+  adultConfirmed: true, rulesAccepted: true, allowStrangerChat: true
+};
+assert.equal(zones.getZoneStatus(newcomer, 'letter').level, 1);
+assert.equal(zones.saveZoneProfile(newcomer, 'letter', newcomerProfile).success, true, 'Lv.1 users can create zone profiles');
+assert.equal(zones.getZoneStatus(newcomer, 'letter').eligible, true, 'zone eligibility is independent of level');
 
 const letterProfile = {
   alias: '潮汐', tags: ['Switch', '新手'], experience: 'new', boundary: '拒绝线下邀约',
