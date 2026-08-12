@@ -7,6 +7,9 @@ const { db, findUserById, computeUserLevel, isFollowing } = require('../db');
 const {
   COMMUNITY_INTERESTS, COMMUNITY_MOODS, listCommunityTopics, getTodayPrompt
 } = require('../communityCatalog');
+const {
+  ZONES, getZoneStatus, saveZoneProfile, purchaseZoneAccess, moodDashboard, checkinMood
+} = require('../services/communityZones');
 
 router.use(auth);
 
@@ -16,6 +19,37 @@ router.get('/catalog', (req, res) => {
 
 router.get('/topics', (req, res) => res.json({ success: true, topics: listCommunityTopics() }));
 router.get('/prompts/today', (req, res) => res.json({ success: true, prompt: getTodayPrompt() }));
+
+router.get('/hubs', (req, res) => {
+  const database = db();
+  const counts = {};
+  Object.keys(ZONES).forEach(zoneId => {
+    counts[zoneId] = (database.moments || []).filter(moment => !moment.deleted && moment.zoneId === zoneId).length;
+  });
+  res.json({ success: true, counts, mood: moodDashboard(req.user.id) });
+});
+
+router.get('/mood', (req, res) => res.json({ success: true, ...moodDashboard(req.user.id) }));
+router.post('/mood', (req, res) => {
+  const result = checkinMood(req.user, req.body && req.body.mood, req.body && req.body.note);
+  return res.status(result.status || 200).json(result);
+});
+
+router.get('/zones/:zoneId/status', (req, res) => {
+  const status = getZoneStatus(req.user, req.params.zoneId);
+  if (!status) return res.status(404).json({ success: false, error: '专区不存在' });
+  return res.json({ success: true, ...status });
+});
+
+router.post('/zones/:zoneId/profile', (req, res) => {
+  const result = saveZoneProfile(req.user, req.params.zoneId, req.body || {});
+  return res.status(result.status || 200).json(result);
+});
+
+router.post('/zones/:zoneId/purchase', (req, res) => {
+  const result = purchaseZoneAccess(req.user, req.params.zoneId, req.body && req.body.plan);
+  return res.status(result.status || 200).json(result);
+});
 
 router.get('/search', (req, res) => {
   const q = String(req.query.q || '').trim().toLowerCase().slice(0, 40);
@@ -29,7 +63,7 @@ router.get('/search', (req, res) => {
     });
   const topics = listCommunityTopics().filter(item => `${item.label} ${item.description}`.toLowerCase().includes(q)).slice(0, 10);
   const moments = (db().moments || [])
-    .filter(m => !m.deleted && m.type !== 'moment' && String(m.content || '').toLowerCase().includes(q))
+    .filter(m => !m.deleted && m.type !== 'moment' && !m.zoneId && String(m.content || '').toLowerCase().includes(q))
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, 20)
     .map(m => {

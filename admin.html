@@ -611,7 +611,7 @@ async function renderCoins() {
   const res = await api('/coins/stats');
   if (!res.success) return;
   const c = document.getElementById('pageContent');
-  const typeNames = { new_user_bonus:'新用户赠送', checkin:'签到', invite:'邀请注册', invite_milestone:'邀请成长奖励', recharge:'充值', bottle_publish:'发布漂流瓶', free_bottle_publish:'等级免费漂流瓶', chat_session:'聊天会话', free_chat_session:'等级免费私聊', permanent_chat:'永久续聊', free_permanent_chat:'等级免费续聊', profile_completed:'完善资料', interest_completed:'兴趣标签', level_up:'升级奖励', first_community_post:'首次共鸣', first_bottle_publish:'首次漂流瓶', first_bottle_reply:'首次公开回应', first_mutual_chat:'首次双向聊天', first_follow:'首次关注', first_received_like:'首次获赞', growth_community_post:'每日共鸣任务', growth_bottle_reply:'每日回应任务', growth_comment:'每日评论任务', growth_mutual_chat:'每日聊天任务', growth_daily_prompt:'每日一问', growth_received_like:'收到点赞', growth_received_comment:'收到评论', daily_all_tasks:'完成每日任务', admin_adjust:'管理员调整', refund:'退款' };
+  const typeNames = { new_user_bonus:'新用户赠送', checkin:'签到', invite:'邀请注册', invite_milestone:'邀请成长奖励', recharge:'充值', bottle_publish:'发布漂流瓶', free_bottle_publish:'等级免费漂流瓶', chat_session:'聊天会话', free_chat_session:'等级免费私聊', permanent_chat:'永久续聊', free_permanent_chat:'等级免费续聊', community_zone_access:'专区开通', profile_completed:'完善资料', interest_completed:'兴趣标签', level_up:'升级奖励', first_community_post:'首次共鸣', first_bottle_publish:'首次漂流瓶', first_bottle_reply:'首次公开回应', first_mutual_chat:'首次双向聊天', first_follow:'首次关注', first_received_like:'首次获赞', growth_community_post:'每日共鸣任务', growth_bottle_reply:'每日回应任务', growth_comment:'每日评论任务', growth_mutual_chat:'每日聊天任务', growth_daily_prompt:'每日一问', growth_received_like:'收到点赞', growth_received_comment:'收到评论', daily_all_tasks:'完成每日任务', admin_adjust:'管理员调整', refund:'退款' };
   c.innerHTML = `
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-card__label">累计发放</div><div class="stat-card__value">${res.credits}</div></div>
@@ -939,6 +939,8 @@ async function renderConfig() {
         <div class="config-item"><label>聊天会话费用</label><input type="number" id="cfg_chat_session_cost" value="${c.chat_session_cost}"></div>
         <div class="config-item"><label>聊天会话时长(小时)</label><input type="number" id="cfg_chat_session_hours" value="${c.chat_session_hours}"></div>
         <div class="config-item"><label>永久续聊费用</label><input type="number" id="cfg_permanent_chat_cost" value="${c.permanent_chat_cost}"></div>
+        <div class="config-item"><label>专区日卡费用</label><input type="number" id="cfg_community_zone_day_cost" value="${c.community_zone_day_cost ?? 20}"></div>
+        <div class="config-item"><label>专区周卡费用</label><input type="number" id="cfg_community_zone_week_cost" value="${c.community_zone_week_cost ?? 50}"></div>
         <div class="config-item"><label>充值比例(币/元)</label><input type="number" id="cfg_recharge_rate" value="${c.recharge_rate}"></div>
       </div>
       <div class="config-item" style="margin-top:12px"><label>收款码（用户扫码付款用，支持微信/支付宝收款码图片）</label>
@@ -1105,6 +1107,8 @@ async function saveConfig() {
     chat_session_cost: parseInt(document.getElementById('cfg_chat_session_cost').value),
     chat_session_hours: parseInt(document.getElementById('cfg_chat_session_hours').value),
     permanent_chat_cost: parseInt(document.getElementById('cfg_permanent_chat_cost').value),
+    community_zone_day_cost: parseInt(document.getElementById('cfg_community_zone_day_cost').value),
+    community_zone_week_cost: parseInt(document.getElementById('cfg_community_zone_week_cost').value),
     recharge_rate: parseInt(document.getElementById('cfg_recharge_rate').value),
     system_announcement: document.getElementById('cfg_system_announcement').value,
     maintenance_mode: document.getElementById('cfg_maintenance_mode').checked,

@@ -90,6 +90,9 @@ function purgeUserAccount(userOrId, { reason = 'user_request' } = {}) {
   removeWhere('experienceEvents', item => item.userId === userId);
   removeWhere('contentDismissals', item => item.userId === userId || momentIds.has(item.momentId));
   removeWhere('feedExposures', item => item.userId === userId || momentIds.has(item.momentId));
+  removeWhere('communityZoneProfiles', item => item.userId === userId);
+  removeWhere('communityZonePasses', item => item.userId === userId);
+  removeWhere('moodCheckins', item => item.userId === userId);
   removeWhere('inviteCodes', item => item.userId === userId || item.ownerId === userId);
   removeWhere('botProfiles', item => item.userId === userId);
   removeWhere('smsCodes', item => user.phone && item.phone === user.phone);

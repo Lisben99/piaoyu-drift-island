@@ -30,6 +30,7 @@ const {
 } = require('../db');
 const { COMMUNITY_TOPICS, COMMUNITY_MOODS, isTopicId, isMoodId } = require('../communityCatalog');
 const { awardGrowthActivity, awardInviteMilestone } = require('../services/growthEconomy');
+const { zoneById, profileFor, canAccessZone } = require('../services/communityZones');
 
 router.use(auth);
 
@@ -38,6 +39,9 @@ router.use(auth);
 // resolved from the user table so deleted users degrade gracefully to "用户".
 function enrich(m, currentUserId) {
   const author = findUserById(m.userId) || {};
+  const zoneProfile = m.zoneId ? profileFor(m.userId, m.zoneId) : null;
+  const displayName = zoneProfile && zoneProfile.alias ? zoneProfile.alias : (author.nickname || '用户');
+  const displayAvatar = zoneProfile && zoneProfile.avatar ? zoneProfile.avatar : (m.zoneId && m.zoneId !== 'story' ? '' : (author.avatar || ''));
   return {
     id: m.id,
     content: m.content,
@@ -49,6 +53,7 @@ function enrich(m, currentUserId) {
     topic: COMMUNITY_TOPICS.find(item => item.id === m.topicId) || null,
     mood: COMMUNITY_MOODS.find(item => item.id === m.mood) || null,
     dailyPromptId: m.dailyPromptId || null,
+    zoneId: m.zoneId || null,
     likeCount: (m.likes || []).length,
     likedByMe: currentUserId ? (m.likes || []).includes(currentUserId) : false,
     resonanceCount: (m.likes || []).length,
@@ -56,23 +61,25 @@ function enrich(m, currentUserId) {
     commentCount: (m.comments || []).length,
     comments: (m.comments || []).map(c => {
       const cu = findUserById(c.userId) || {};
+      const commentProfile = m.zoneId ? profileFor(c.userId, m.zoneId) : null;
       const replyUser = c.replyToUserId ? (findUserById(c.replyToUserId) || {}) : {};
+      const replyProfile = m.zoneId && c.replyToUserId ? profileFor(c.replyToUserId, m.zoneId) : null;
       return {
         id: c.id,
         userId: c.userId,
-        nickname: cu.nickname || '用户',
-        avatar: cu.avatar || '',
+        nickname: commentProfile && commentProfile.alias ? commentProfile.alias : (cu.nickname || '用户'),
+        avatar: commentProfile && commentProfile.avatar ? commentProfile.avatar : (m.zoneId && m.zoneId !== 'story' ? '' : (cu.avatar || '')),
         content: c.content,
         parentCommentId: c.parentCommentId || null,
         replyToUserId: c.replyToUserId || null,
-        replyToNickname: c.replyToUserId ? (replyUser.nickname || '用户') : '',
+        replyToNickname: c.replyToUserId ? (replyProfile && replyProfile.alias ? replyProfile.alias : (replyUser.nickname || '用户')) : '',
         createdAt: c.createdAt
       };
     }),
     author: {
       id: m.userId,
-      nickname: author.nickname || '用户',
-      avatar: author.avatar || '',
+      nickname: displayName,
+      avatar: displayAvatar,
       gender: author.gender || '',
       verified: !!author.verified,
       verifiedType: author.verifiedType || '',
@@ -92,16 +99,18 @@ function enrich(m, currentUserId) {
 // `type` defaults to 'community' (public). 'moment' = 朋友圈 (private, visible only
 // to the author and people who have chatted with them).
 router.post('/', (req, res) => {
-  const { content, images, type, topicId, mood, dailyPromptId } = req.body || {};
+  const { content, images, type, topicId, mood, dailyPromptId, zoneId } = req.body || {};
   const text = (content || '').trim();
   const imgs = Array.isArray(images) ? images : [];
   if (!text && imgs.length === 0) {
     return res.status(400).json({ success: false, error: '动态内容不能为空' });
   }
   const momentType = type === 'moment' ? 'moment' : 'community';
+  const zone = zoneId ? zoneById(zoneId) : null;
+  if (zoneId && (!zone || !canAccessZone(req.user, zoneId))) return res.status(403).json({ success: false, error: '请先完成专区开通' });
   if (momentType === 'community' && topicId && !isTopicId(topicId)) return res.status(400).json({ success: false, error: '无效话题' });
   if (momentType === 'community' && mood && !isMoodId(mood)) return res.status(400).json({ success: false, error: '无效心情' });
-  const moment = createMoment(req.user.id, { content: text, images: imgs, type: momentType, topicId, mood, dailyPromptId });
+  const moment = createMoment(req.user.id, { content: text, images: imgs, type: momentType, topicId, mood, dailyPromptId, zoneId: zone ? zone.id : null });
   const experienceAward = awardExperience(req.user.id, momentType === 'community' ? 'community_daily_post' : 'moment_created', {
     eventKey: `moment:${moment.id}`,
     sourceId: moment.id
@@ -127,9 +136,11 @@ router.get('/community', (req, res) => {
   const sort = ['recommend', 'latest', 'following'].includes(req.query.sort) ? req.query.sort : 'recommend';
   const followedByUserId = sort === 'following' ? req.user.id : null;
   const topicId = req.query.topicId || null;
+  const zoneId = req.query.zoneId || null;
   const feedSessionId = String(req.query.feedSession || '').slice(0, 80);
   if (topicId && !isTopicId(topicId)) return res.status(400).json({ success: false, error: '无效话题' });
-  const { items, total } = listMoments({ community: true, viewerId: req.user.id, followedByUserId, topicId, sort, limit, offset, feedSessionId });
+  if (zoneId && (!zoneById(zoneId) || !canAccessZone(req.user, zoneId))) return res.status(403).json({ success: false, error: '专区尚未开通' });
+  const { items, total } = listMoments({ community: true, viewerId: req.user.id, followedByUserId, topicId, zoneId, sort, limit, offset, feedSessionId });
   if (sort === 'recommend') {
     recordFeedExposures(req.user.id, items.map(item => item.id), { feed: 'recommend', sessionId: feedSessionId });
   }
@@ -187,6 +198,8 @@ router.get('/user/:userId', (req, res) => {
 
 // Toggle like on a moment.
 router.post('/:id/like', (req, res) => {
+  const target = getMomentById(req.params.id);
+  if (target && target.zoneId && !canAccessZone(req.user, target.zoneId)) return res.status(403).json({ success: false, error: '专区访问已过期' });
   const r = toggleMomentLike(req.params.id, req.user.id);
   if (!r) return res.status(404).json({ success: false, error: '动态不存在' });
   if (r.liked) {
@@ -223,6 +236,7 @@ router.post('/:id/comment', (req, res) => {
   if (!text) return res.status(400).json({ success: false, error: '评论内容不能为空' });
   const targetMoment = getMomentById(req.params.id);
   if (!targetMoment) return res.status(404).json({ success: false, error: '动态不存在' });
+  if (targetMoment.zoneId && !canAccessZone(req.user, targetMoment.zoneId)) return res.status(403).json({ success: false, error: '专区访问已过期' });
   if (parentCommentId && !(targetMoment.comments || []).some(item => item.id === parentCommentId)) {
     return res.status(400).json({ success: false, error: '回复的评论不存在' });
   }
@@ -241,12 +255,15 @@ router.post('/:id/comment', (req, res) => {
     awardGrowthActivity(targetMoment.userId, 'received_comment', c.id);
   }
   const replyUser = c.replyToUserId ? findUserById(c.replyToUserId) : null;
+  const commenterProfile = targetMoment.zoneId ? profileFor(cu.id, targetMoment.zoneId) : null;
+  const replyProfile = targetMoment.zoneId && replyUser ? profileFor(replyUser.id, targetMoment.zoneId) : null;
+  const commenterName = commenterProfile && commenterProfile.alias ? commenterProfile.alias : (cu.nickname || '用户');
   if (replyUser) {
     createNotification({
       userId: replyUser.id,
       type: 'comment_reply',
       title: '有人回复了你',
-      content: `${cu.nickname || '用户'}：${c.content.slice(0, 80)}`,
+      content: `${commenterName}：${c.content.slice(0, 80)}`,
       refId: targetMoment.id,
       refType: 'moment',
       actorId: req.user.id
@@ -257,12 +274,12 @@ router.post('/:id/comment', (req, res) => {
     comment: {
       id: c.id,
       userId: cu.id,
-      nickname: cu.nickname || '用户',
-      avatar: cu.avatar || '',
+      nickname: commenterName,
+      avatar: commenterProfile && commenterProfile.avatar ? commenterProfile.avatar : (targetMoment.zoneId && targetMoment.zoneId !== 'story' ? '' : (cu.avatar || '')),
       content: c.content,
       parentCommentId: c.parentCommentId || null,
       replyToUserId: c.replyToUserId || null,
-      replyToNickname: replyUser ? (replyUser.nickname || '用户') : '',
+      replyToNickname: replyUser ? (replyProfile && replyProfile.alias ? replyProfile.alias : (replyUser.nickname || '用户')) : '',
       createdAt: c.createdAt
     },
     experienceAward,

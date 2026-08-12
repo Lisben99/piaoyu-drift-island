@@ -96,6 +96,8 @@ const DEFAULT_CONFIG = {
   chat_session_cost: 1,
   chat_session_hours: 24,
   permanent_chat_cost: 2,
+  community_zone_day_cost: 20,
+  community_zone_week_cost: 50,
   recharge_rate: 10,
   min_recharge: 1,
   paymentQR: '',
@@ -166,6 +168,9 @@ function createDefaultDB() {
     experienceEvents: [],
     contentDismissals: [],
     feedExposures: [],
+    communityZoneProfiles: [],
+    communityZonePasses: [],
+    moodCheckins: [],
     deletedIdentities: [],
     config: { ...DEFAULT_CONFIG },
     admins: [DEFAULT_ADMIN]
@@ -466,7 +471,7 @@ function getActiveBottles(filters = {}) {
 //                                  (朋友圈), visible to the author and users who have
 //                                  had a conversation (chat session) with the author.
 // Images are stored as compressed data URLs.
-function createMoment(userId, { content = '', images = [], type = 'community', topicId = null, mood = null, dailyPromptId = null } = {}) {
+function createMoment(userId, { content = '', images = [], type = 'community', topicId = null, mood = null, dailyPromptId = null, zoneId = null } = {}) {
   const moment = {
     id: genId('mo'),
     userId,
@@ -478,6 +483,7 @@ function createMoment(userId, { content = '', images = [], type = 'community', t
     topicId: topicId || null,
     mood: mood || null,
     dailyPromptId: dailyPromptId || null,
+    zoneId: zoneId || null,
     likes: [],
     comments: [],
     deleted: false,
@@ -501,13 +507,14 @@ function getMomentById(id) {
 //                Community posts are NEVER mixed into a personal page.
 //                viewerId: when set & differs from userId, the private 朋友圈 are only
 //                returned if the viewer has chatted with the author (friend circle).
-function listMoments({ userId = null, community = false, viewerId = null, followedByUserId = null, topicId = null, sort = 'latest', limit = 20, offset = 0, now = Date.now(), feedSessionId = '' } = {}) {
+function listMoments({ userId = null, community = false, viewerId = null, followedByUserId = null, topicId = null, zoneId = null, sort = 'latest', limit = 20, offset = 0, now = Date.now(), feedSessionId = '' } = {}) {
   let list = cache.moments.filter(m => !m.deleted);
 
   if (community) {
     // Community feed: public posts only (legacy moments with no type are public).
     // 朋友圈 (type='moment') are excluded — the two pools never intersect.
     list = list.filter(m => m.type !== 'moment');
+    list = zoneId ? list.filter(m => m.zoneId === zoneId) : list.filter(m => !m.zoneId);
     if (topicId) list = list.filter(m => m.topicId === topicId);
     if (viewerId) {
       const dismissed = new Set((cache.contentDismissals || [])
@@ -526,7 +533,7 @@ function listMoments({ userId = null, community = false, viewerId = null, follow
       );
       list = list.filter(m => followedIds.has(m.userId));
     }
-    if (sort === 'latest') {
+    if (sort === 'latest' && !zoneId) {
       list = list.filter(m => m.createdAt >= now - 86400000);
     } else if (sort === 'recommend' && viewerId) {
       const oldest = now - 14 * 86400000;

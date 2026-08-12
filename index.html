@@ -784,6 +784,18 @@ body{background:linear-gradient(145deg,#e9e4d8,#f8eee4);color:var(--island-text)
 .daily-prompt{position:relative;overflow:hidden;border-radius:18px;padding:16px;margin-bottom:14px;color:#fff;background:var(--island-warm-gradient);box-shadow:0 13px 28px rgba(31,122,116,.19)}
 .daily-prompt::after{content:'';position:absolute;width:110px;height:110px;border-radius:50%;right:-32px;top:-45px;background:rgba(255,255,255,.13)}
 .daily-prompt__eyebrow{font-size:10px;letter-spacing:2px;opacity:.78}.daily-prompt__question{font-size:16px;font-weight:750;line-height:1.45;margin:7px 55px 11px 0}.daily-prompt__action{font-size:12px;font-weight:700;color:#fff;opacity:.92}
+.community-hub-grid{display:grid;grid-template-columns:1.04fr 1fr;grid-template-rows:78px 78px 70px;gap:10px;margin-bottom:15px}
+.community-hub{position:relative;overflow:hidden;text-align:left;border-radius:18px;padding:14px;color:#fff;box-shadow:0 10px 22px rgba(31,122,116,.13);isolation:isolate}
+.community-hub::after{content:'';position:absolute;width:82px;height:82px;border-radius:50%;right:-22px;bottom:-28px;background:rgba(255,255,255,.17);z-index:-1}
+.community-hub b{display:block;font-size:17px;letter-spacing:.5px}.community-hub small{display:block;margin-top:5px;font-size:10px;line-height:1.35;opacity:.88}.community-hub em{position:absolute;right:12px;bottom:9px;font-style:normal;font-size:21px}
+.community-hub--mood{grid-row:1/3;background:linear-gradient(145deg,#ef7b62,#e6a760);padding-top:19px}.community-hub--letter{background:linear-gradient(135deg,#267f78,#65aaa0)}.community-hub--mature{background:linear-gradient(135deg,#bf8063,#e5a174)}.community-hub--story{grid-column:1/-1;background:linear-gradient(110deg,#297b75,#8ba596)}
+.zone-shell{flex:1;overflow-y:auto;padding:18px 16px 38px}.zone-hero{padding:22px;border-radius:23px;color:#fff;background:var(--island-warm-gradient);box-shadow:var(--island-shadow)}.zone-hero h2{font-size:27px;margin:5px 0}.zone-hero p{font-size:12px;line-height:1.6;opacity:.88}.zone-hero small{letter-spacing:2px;opacity:.75}
+.zone-gate-card,.zone-form-card,.mood-panel{margin-top:14px;padding:18px;border-radius:20px;background:var(--island-surface);border:1px solid rgba(31,122,116,.09);box-shadow:var(--island-shadow)}
+.zone-gate-card h3,.zone-form-card h3,.mood-panel h3{font-size:17px;margin-bottom:9px}.zone-gate-card p,.zone-form-note{font-size:12px;line-height:1.6;color:var(--island-muted)}
+.zone-price-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}.zone-price{padding:18px 10px;border-radius:18px;background:#fff;border:1.5px solid rgba(31,122,116,.15);text-align:center}.zone-price b{display:block;font-size:24px;color:var(--island-primary)}.zone-price span{font-size:12px;color:var(--island-muted)}.zone-price.selected{border-color:var(--island-primary);background:rgba(31,122,116,.07)}
+.zone-field{margin-top:14px}.zone-field label{display:block;margin-bottom:7px;font-size:12px;font-weight:700;color:var(--island-muted)}.zone-field input,.zone-field select,.zone-field textarea{width:100%;padding:12px;border:1px solid rgba(31,122,116,.16);border-radius:13px;background:#fffdf8;color:var(--island-text)}.zone-field textarea{min-height:78px;resize:none}.zone-choice-list{display:flex;flex-wrap:wrap;gap:8px}.zone-choice{padding:8px 12px;border-radius:15px;background:rgba(31,122,116,.07);color:var(--island-muted);font-size:12px}.zone-choice.active{background:var(--island-primary);color:#fff}
+.zone-check{display:flex;align-items:flex-start;gap:9px;margin-top:14px;font-size:12px;line-height:1.5;color:var(--island-muted)}.zone-check input{margin-top:2px}.zone-submit{margin-top:18px}.zone-feed-head{display:flex;align-items:center;justify-content:space-between;margin:18px 2px 10px}.zone-feed-head h3{font-size:18px}.zone-pass-tip{font-size:11px;color:var(--island-muted)}
+.mood-options{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:13px}.mood-option{padding:13px 5px;border-radius:16px;background:rgba(31,122,116,.06);text-align:center;color:var(--island-text)}.mood-option span{display:block;font-size:24px}.mood-option small{display:block;margin-top:4px}.mood-option.active{background:rgba(239,123,98,.13);outline:1.5px solid var(--island-accent)}.mood-stats{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.mood-stat{padding:7px 10px;border-radius:13px;background:rgba(31,122,116,.07);font-size:11px;color:var(--island-muted)}.mood-trend{display:flex;gap:8px;margin-top:13px}.mood-day{flex:1;text-align:center;padding:9px 3px;border-radius:13px;background:rgba(31,122,116,.05)}.mood-day span{font-size:19px}.mood-day small{display:block;font-size:9px;color:var(--island-muted);margin-top:3px}
 .moment-topic{display:inline-flex;margin-bottom:8px;padding:5px 10px;border-radius:12px;background:rgba(31,122,116,.08);color:var(--island-primary);font-size:11px;font-weight:700}.moment-mood{margin-left:6px;color:var(--island-accent)}
 .moment-actions{border-color:rgba(31,122,116,.08);gap:14px}.moment-act{padding:7px 5px;border-radius:10px}.moment-chat-action{margin-left:auto;color:var(--island-primary)}
 .moment-more-wrap{margin-left:auto}.moment-chat-action+.moment-more-wrap{margin-left:0}.moment-more-btn{background:rgba(31,122,116,.08);color:var(--island-primary)}
@@ -1270,7 +1282,7 @@ body{background:linear-gradient(145deg,#e9e4d8,#f8eee4);color:var(--island-text)
     </div>
     <div class="community-content" data-scroll-root>
       <div class="community-interest-chips" id="communityInterestChips"></div>
-      <div id="communityDailyPrompt"></div>
+      <div id="communityHubGrid"></div>
       <div id="communityContent"></div>
     </div>
     <div class="tab-bar" id="tabbar-community"></div>
@@ -1292,6 +1304,30 @@ body{background:linear-gradient(145deg,#e9e4d8,#f8eee4);color:var(--island-text)
   <div class="page" id="page-community-topic">
     <div class="nav-bar"><button class="nav-bar__back" onclick="navigateBack()">←</button><div class="nav-bar__title" id="communityTopicTitle">话题</div><button class="compose-pill-btn" onclick="openMomentCompose('community',window._activeTopicId)">参与</button></div>
     <div class="community-content" id="communityTopicContent" data-scroll-root></div>
+  </div>
+
+  <!-- ===== PAGE: Community Mood ===== -->
+  <div class="page" id="page-community-mood">
+    <div class="nav-bar"><button class="nav-bar__back" onclick="navigateBack()">←</button><div class="nav-bar__title">心情打卡</div><div class="nav-bar__spacer"></div></div>
+    <div class="zone-shell" id="communityMoodContent" data-scroll-root></div>
+  </div>
+
+  <!-- ===== PAGE: Community Zone ===== -->
+  <div class="page" id="page-community-zone">
+    <div class="nav-bar"><button class="nav-bar__back" onclick="navigateBack()">←</button><div class="nav-bar__title" id="communityZoneTitle">专区</div><button class="compose-pill-btn" onclick="openZoneCompose()">发布</button></div>
+    <div class="community-content" id="communityZoneContent" data-scroll-root></div>
+  </div>
+
+  <!-- ===== PAGE: Zone Profile Setup ===== -->
+  <div class="page" id="page-zone-onboarding">
+    <div class="nav-bar"><button class="nav-bar__back" onclick="navigateBack()">←</button><div class="nav-bar__title" id="zoneOnboardingTitle">编辑信息</div><div class="nav-bar__spacer"></div></div>
+    <div class="zone-shell" id="zoneOnboardingContent" data-scroll-root></div>
+  </div>
+
+  <!-- ===== PAGE: Zone Purchase ===== -->
+  <div class="page" id="page-zone-purchase">
+    <div class="nav-bar"><button class="nav-bar__back" onclick="navigateBack()">←</button><div class="nav-bar__title" id="zonePurchaseTitle">专区开通</div><div class="nav-bar__spacer"></div></div>
+    <div class="zone-shell" id="zonePurchaseContent" data-scroll-root></div>
   </div>
 
   <!-- ===== PAGE: User Moments (个人动态) ===== -->
@@ -1789,6 +1825,10 @@ function onPageEnter(pageId) {
   if (pageId === 'community') { renderTabBar('tabbar-community', 'community'); loadCommunityCatalog(); switchCommunityTab('recommend', true); }
   if (pageId === 'community-search') renderCommunitySearch('');
   if (pageId === 'community-topic') renderCommunityTopic(window._activeTopicId);
+  if (pageId === 'community-mood') renderMoodCheckin();
+  if (pageId === 'community-zone') renderCommunityZone(window._activeZoneId);
+  if (pageId === 'zone-onboarding') renderZoneOnboarding(window._activeZoneId);
+  if (pageId === 'zone-purchase') renderZonePurchase(window._activeZoneId);
   if (pageId === 'user-moments') renderUserMoments(window._viewMomentUser);
 }
 
@@ -4284,26 +4324,40 @@ window._activeTopicId = '';
 window._composeMood = '';
 window._composeTopicId = '';
 window._composePromptId = '';
+window._activeZoneId = '';
+window._activeZoneStatus = null;
+window._zonePurchasePlan = 'week';
+window._communityHubs = { counts: {}, mood: null };
+
+const COMMUNITY_ZONE_META = {
+  letter: { label: '字母圈', subtitle: '尊重边界，真诚交流', icon: '◈', paid: true },
+  mature: { label: '成熟专区', subtitle: '阅历、关系与生活对谈', icon: '◎', paid: true },
+  story: { label: '剧情岛', subtitle: '角色设定与剧情接龙', icon: '✦', paid: false }
+};
+const MOOD_META = {
+  calm: ['🌿','平静'], happy: ['☀️','开心'], healing: ['🌸','治愈'],
+  lonely: ['☁️','孤独'], hopeful: ['🌤️','期待'], thinking: ['💭','思考']
+};
 
 async function loadCommunityCatalog() {
   if (window._communityCatalogLoadedAt && Date.now() - window._communityCatalogLoadedAt < 5 * 60 * 1000) {
     renderInterestChips();
-    renderDailyPrompt();
+    loadCommunityHubs();
     return;
   }
   try {
-    const [catalog, topics, prompt] = await Promise.all([
-      api('/community/catalog'), api('/community/topics'), api('/community/prompts/today')
+    const [catalog, topics, hubs] = await Promise.all([
+      api('/community/catalog'), api('/community/topics'), api('/community/hubs')
     ]);
     if (catalog.success) {
       window._communityCatalog.interests = catalog.interests || [];
       window._communityCatalog.moods = catalog.moods || [];
     }
     if (topics.success) window._communityCatalog.topics = topics.topics || [];
-    if (prompt.success) window._communityCatalog.prompt = prompt.prompt || null;
+    if (hubs.success) window._communityHubs = hubs;
     window._communityCatalogLoadedAt = Date.now();
     renderInterestChips();
-    renderDailyPrompt();
+    renderCommunityHubs();
   } catch (_) {}
 }
 
@@ -4322,23 +4376,176 @@ function selectCommunityInterest(id) {
   renderCommunityFeed(window._communitySort || 'recommend');
 }
 
-function renderDailyPrompt() {
-  const root = $('communityDailyPrompt');
-  const prompt = window._communityCatalog.prompt;
-  if (!root) return '';
-  const html = prompt ? `<button class="daily-prompt" onclick="openDailyPromptCompose()"><div class="daily-prompt__eyebrow">每日一问 · TODAY</div><div class="daily-prompt__question">${escapeHtml(prompt.text)}</div><div class="daily-prompt__action">写下此刻的答案 →</div></button>` : '';
-  root.innerHTML = html;
-  return html;
+async function loadCommunityHubs() {
+  try {
+    const res = await api('/community/hubs');
+    if (res.success) window._communityHubs = res;
+  } catch (_) {}
+  renderCommunityHubs();
 }
 
-function openDailyPromptCompose() {
-  const prompt = window._communityCatalog.prompt;
-  if (!prompt) return openMomentCompose('community');
-  openMomentCompose('community', prompt.topicId);
-  window._composePromptId = prompt.id;
-  const input = $('momentComposeText');
-  if (input) input.placeholder = prompt.text;
+function renderCommunityHubs() {
+  const root = $('communityHubGrid');
+  if (!root) return '';
+  const data = window._communityHubs || { counts: {} };
+  const moodDone = data.mood && data.mood.today;
+  root.innerHTML = `<div class="community-hub-grid">
+    <button class="community-hub community-hub--mood" onclick="openCommunityHub('mood')"><b>心情打卡</b><small>${moodDone ? '今天已记录 · 查看岛屿心情' : '记录此刻，看看岛上大家的心情'}</small><em>☀</em></button>
+    <button class="community-hub community-hub--letter" onclick="openCommunityHub('letter')"><b>字母圈</b><small>${Number(data.counts && data.counts.letter) || 0} 条交流</small><em>◈</em></button>
+    <button class="community-hub community-hub--mature" onclick="openCommunityHub('mature')"><b>成熟专区</b><small>${Number(data.counts && data.counts.mature) || 0} 条对谈</small><em>◎</em></button>
+    <button class="community-hub community-hub--story" onclick="openCommunityHub('story')"><b>剧情岛</b><small>进入角色，和岛友续写一个故事</small><em>✦</em></button>
+  </div>`;
+  return root.innerHTML;
 }
+
+async function openCommunityHub(zoneId) {
+  if (zoneId === 'mood') return navigate('community-mood');
+  window._activeZoneId = zoneId;
+  if (zoneId === 'story') return navigate('community-zone');
+  try {
+    const status = await api('/community/zones/' + zoneId + '/status');
+    if (!status.success) return showToast(status.error || '暂时无法进入');
+    window._activeZoneStatus = status;
+    if (!status.verifiedContact) return showToast('请先完成手机号或邮箱验证');
+    if (status.level < 2) {
+      return showModal('专区准入要求', '达到 Lv.2 后可以设置专区资料并开通。先去看看如何提升等级吧。', [
+        { text: '稍后', cancel: true }, { text: '查看等级', onClick: () => navigate('level-detail') }
+      ]);
+    }
+    if (!status.profileComplete) return navigate('zone-onboarding');
+    if (!status.accessActive) return navigate('zone-purchase');
+    navigate('community-zone');
+  } catch (_) { showToast('网络错误，请稍后重试'); }
+}
+
+async function renderMoodCheckin() {
+  const root = $('communityMoodContent');
+  if (!root) return;
+  root.innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
+  try {
+    const res = await api('/community/mood');
+    if (!res.success) throw new Error();
+    const todayMood = res.today && res.today.mood;
+    const options = Object.entries(MOOD_META).map(([id, meta]) => `<button class="mood-option${todayMood === id ? ' active' : ''}" onclick="submitMoodCheckin('${id}')"><span>${meta[0]}</span><small>${meta[1]}</small></button>`).join('');
+    const stats = Object.entries(MOOD_META).map(([id, meta]) => `<span class="mood-stat">${meta[0]} ${meta[1]} ${Number(res.counts && res.counts[id]) || 0}</span>`).join('');
+    const trend = (res.trend || []).map(item => { const meta = MOOD_META[item.mood] || ['·','']; return `<div class="mood-day"><span>${meta[0]}</span><small>${escapeHtml(item.dateKey.slice(5))}</small></div>`; }).join('');
+    root.innerHTML = `<div class="zone-hero"><small>ISLAND MOOD</small><h2>今天的你，是什么天气？</h2><p>每天记录一次心情。无需写长文，也能看见自己的情绪轨迹。</p></div>
+      <div class="mood-panel"><h3>${todayMood ? '今天的心情已记录' : '选择此刻的心情'}</h3><div class="mood-options">${options}</div></div>
+      <div class="mood-panel"><h3>今日岛屿心情</h3><p class="zone-form-note">已有 ${Number(res.todayTotal) || 0} 位岛友留下心情</p><div class="mood-stats">${stats}</div></div>
+      <div class="mood-panel"><h3>我的七日轨迹</h3>${trend ? `<div class="mood-trend">${trend}</div>` : '<p class="zone-form-note">从今天开始记录，心情轨迹会慢慢出现。</p>'}</div>`;
+  } catch (_) { root.innerHTML = '<div class="empty-state"><div class="empty-state__title">加载失败，请稍后重试</div></div>'; }
+}
+
+async function submitMoodCheckin(mood) {
+  const res = await api('/community/mood', { method: 'POST', body: JSON.stringify({ mood }) });
+  if (res.success) { showToast('今天的心情已记录'); window._communityHubs.mood = res.dashboard; renderMoodCheckin(); }
+  else showToast(res.error || '记录失败');
+}
+
+function renderZoneOnboarding(zoneId) {
+  const root = $('zoneOnboardingContent');
+  const meta = COMMUNITY_ZONE_META[zoneId];
+  if (!root || !meta) return;
+  $('zoneOnboardingTitle').textContent = meta.label + '资料';
+  const saved = (window._activeZoneStatus && window._activeZoneStatus.profile) || {};
+  const alias = saved.alias || '';
+  const commonTop = `<div class="zone-hero"><small>PRIVATE PROFILE</small><h2>${meta.label}</h2><p>专区资料与主站展示分开，仅在本专区内使用。</p></div><div class="zone-form-card"><h3>设置专区信息</h3>
+    <div class="zone-field"><label>专区昵称</label><input id="zoneAlias" maxlength="16" value="${escapeHtml(alias)}" placeholder="设置一个专区昵称"></div>`;
+  let fields = '';
+  if (zoneId === 'letter') {
+    const tags = ['S','M','Switch','新手','了解中'].map(tag => `<label class="zone-choice"><input type="checkbox" name="zoneTags" value="${tag}" ${(saved.tags || []).includes(tag) ? 'checked' : ''}> ${tag}</label>`).join('');
+    fields = `<div class="zone-field"><label>身份标签（最多3项）</label><div class="zone-choice-list">${tags}</div></div>
+      <div class="zone-field"><label>经验程度</label><select id="zoneExperience"><option value="new">新人</option><option value="beginner">入门</option><option value="familiar">熟悉</option></select></div>
+      <div class="zone-field"><label>交流目的（选填）</label><input id="zonePurpose" maxlength="60" value="${escapeHtml(saved.purpose || '')}" placeholder="希望交流什么"></div>
+      <div class="zone-field"><label>个人边界</label><textarea id="zoneBoundary" maxlength="120" placeholder="明确不接受的行为与话题">${escapeHtml(saved.boundary || '')}</textarea></div>`;
+  } else {
+    const interests = ['情感交流','生活阅历','婚恋关系','职场成长','旅行','阅读'].map(tag => `<label class="zone-choice"><input type="checkbox" name="zoneInterests" value="${tag}" ${(saved.interests || []).includes(tag) ? 'checked' : ''}> ${tag}</label>`).join('');
+    fields = `<div class="zone-field"><label>年龄段</label><select id="zoneAgeRange"><option value="18-24">18-24</option><option value="25-30">25-30</option><option value="31-40">31-40</option><option value="40+">40+</option></select></div>
+      <div class="zone-field"><label>当前状态</label><select id="zoneRelationship"><option value="single">单身</option><option value="dating">交往中</option><option value="married">已婚</option><option value="private">不公开</option></select></div>
+      <div class="zone-field"><label>感兴趣的话题</label><div class="zone-choice-list">${interests}</div></div>
+      <div class="zone-field"><label>交流目的（选填）</label><input id="zonePurpose" maxlength="60" value="${escapeHtml(saved.purpose || '')}" placeholder="希望遇见怎样的交流"></div>`;
+  }
+  root.innerHTML = commonTop + fields + `<label class="zone-check"><input type="checkbox" id="zoneAllowChat" ${saved.allowStrangerChat === false ? '' : 'checked'}>允许专区用户向我发起私聊</label>
+    <label class="zone-check"><input type="checkbox" id="zoneAdult">我确认已年满18周岁</label>
+    <label class="zone-check"><input type="checkbox" id="zoneRules">我同意专区规则：尊重、自愿、知情、可随时停止；禁止交易、胁迫、骚扰、未成年人内容及泄露隐私。</label>
+    <button class="primary-button zone-submit" onclick="saveZoneOnboarding('${zoneId}')">保存并下一步</button></div>`;
+  if (zoneId === 'letter' && $('zoneExperience')) $('zoneExperience').value = saved.experience || 'new';
+  if (zoneId === 'mature') { if ($('zoneAgeRange')) $('zoneAgeRange').value = saved.ageRange || '25-30'; if ($('zoneRelationship')) $('zoneRelationship').value = saved.relationshipStatus || 'single'; }
+}
+
+async function saveZoneOnboarding(zoneId) {
+  const body = {
+    alias: ($('zoneAlias') || {}).value || '', adultConfirmed: !!($('zoneAdult') || {}).checked,
+    rulesAccepted: !!($('zoneRules') || {}).checked, allowStrangerChat: !!($('zoneAllowChat') || {}).checked,
+    purpose: ($('zonePurpose') || {}).value || ''
+  };
+  if (zoneId === 'letter') {
+    body.tags = [...document.querySelectorAll('input[name="zoneTags"]:checked')].map(el => el.value);
+    body.experience = ($('zoneExperience') || {}).value || '';
+    body.boundary = ($('zoneBoundary') || {}).value || '';
+  } else {
+    body.ageRange = ($('zoneAgeRange') || {}).value || '';
+    body.relationshipStatus = ($('zoneRelationship') || {}).value || '';
+    body.interests = [...document.querySelectorAll('input[name="zoneInterests"]:checked')].map(el => el.value);
+  }
+  const res = await api('/community/zones/' + zoneId + '/profile', { method: 'POST', body: JSON.stringify(body) });
+  if (!res.success) return showToast(res.error || '保存失败');
+  window._activeZoneStatus = await api('/community/zones/' + zoneId + '/status');
+  showToast('专区资料已保存');
+  navigate('zone-purchase');
+}
+
+function renderZonePurchase(zoneId) {
+  const root = $('zonePurchaseContent');
+  const meta = COMMUNITY_ZONE_META[zoneId];
+  const status = window._activeZoneStatus;
+  if (!root || !meta) return;
+  if (!status || !status.success) return openCommunityHub(zoneId);
+  $('zonePurchaseTitle').textContent = meta.label;
+  const pricing = status.pricing || { day: 20, week: 50 };
+  root.innerHTML = `<div class="zone-hero"><small>VERIFIED ACCESS</small><h2>${meta.label}</h2><p>完成开通后进入专区。所有用户执行相同价格与准入标准。</p></div>
+    <div class="zone-gate-card"><h3>选择开通时长</h3><div class="zone-price-grid">
+      <button class="zone-price${window._zonePurchasePlan === 'day' ? ' selected' : ''}" onclick="selectZonePlan('day')"><b>${pricing.day}</b><span>漂流币 / 24小时</span></button>
+      <button class="zone-price${window._zonePurchasePlan === 'week' ? ' selected' : ''}" onclick="selectZonePlan('week')"><b>${pricing.week}</b><span>漂流币 / 7天</span></button>
+    </div><button class="primary-button" onclick="purchaseZoneAccess('${zoneId}')">确认开通</button>
+    <p class="zone-form-note" style="margin-top:14px;text-align:center">为了最大限度保证真实用户，进入专区需要完成资料设置并开通。当前余额：${Number(currentUser.coins) || 0} 漂流币</p></div>`;
+}
+
+function selectZonePlan(plan) { window._zonePurchasePlan = plan; renderZonePurchase(window._activeZoneId); }
+async function purchaseZoneAccess(zoneId) {
+  const res = await api('/community/zones/' + zoneId + '/purchase', { method: 'POST', body: JSON.stringify({ plan: window._zonePurchasePlan }) });
+  if (!res.success) {
+    if (res.status === 402 || res.error === '漂流币不足') return showModal('漂流币不足', '当前余额不足，是否前往充值？', [{ text: '取消', cancel: true }, { text: '去充值', onClick: () => navigate('recharge') }]);
+    return showToast(res.error || '开通失败');
+  }
+  currentUser.coins = res.coins;
+  showToast('专区已开通');
+  window._activeZoneStatus = await api('/community/zones/' + zoneId + '/status');
+  navigateTo('community-zone', true);
+  navStack = ['community'];
+}
+
+async function renderCommunityZone(zoneId) {
+  const root = $('communityZoneContent');
+  const meta = COMMUNITY_ZONE_META[zoneId];
+  if (!root || !meta) return;
+  $('communityZoneTitle').textContent = meta.label;
+  root.innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
+  if (meta.paid) {
+    const status = await api('/community/zones/' + zoneId + '/status');
+    window._activeZoneStatus = status;
+    if (!status.success || !status.accessActive) return openCommunityHub(zoneId);
+  }
+  try {
+    const res = await api('/moments/community?sort=latest&zoneId=' + encodeURIComponent(zoneId) + '&limit=50');
+    if (!res.success) throw new Error(res.error || '加载失败');
+    const intro = zoneId === 'story' ? '带上角色设定、世界观或一句开场，邀请岛友一起续写。' : (zoneId === 'letter' ? '尊重边界与自愿原则，交流从明确表达开始。' : '分享阅历、关系与真实生活，不催促，不评判。');
+    const expiry = window._activeZoneStatus && window._activeZoneStatus.accessExpiresAt ? `访问有效至 ${new Date(window._activeZoneStatus.accessExpiresAt).toLocaleString()}` : '免费开放';
+    root.innerHTML = `<div class="zone-hero"><small>ISLAND ZONE</small><h2>${meta.label}</h2><p>${intro}</p></div><div class="zone-feed-head"><h3>${zoneId === 'story' ? '正在发生的剧情' : '专区交流'}</h3><span class="zone-pass-tip">${expiry}</span></div>${res.moments.length ? res.moments.map(momentCardHtml).join('') : `<div class="empty-state"><div class="empty-state__title">这里还很安静</div><div class="empty-state__desc">发布第一条内容，开启一段新的交流</div></div>`}`;
+  } catch (e) { root.innerHTML = `<div class="empty-state"><div class="empty-state__title">${escapeHtml(e.message || '加载失败')}</div></div>`; }
+}
+
+function openZoneCompose() { if (window._activeZoneId) openMomentCompose('community', '', window._activeZoneId); }
 
 // Build a single moment (动态) card. Avatars are intentionally NOT
 // clickable here (community feed rule). XSS-safe via escapeHtml.
@@ -4736,18 +4943,19 @@ function ownMomentItemHtml(m) {
 }
 
 /* ===== Compose moment ===== */
-function openMomentCompose(type, presetTopicId) {
+function openMomentCompose(type, presetTopicId, zoneId) {
   window._composeType = type || 'community'; // 'community' | 'moment'
   window._composeImages = [];
   window._composeMood = '';
   window._composeTopicId = presetTopicId || '';
   window._composePromptId = '';
+  window._composeZoneId = zoneId || '';
   const t = $('momentComposeText'); if (t) t.value = '';
   $('momentComposeImgs').innerHTML = '';
   $('momentComposeCount').textContent = '0/9';
   // Update modal title based on context
   const titleEl = document.querySelector('#momentComposeMask .modal-title');
-  if (titleEl) titleEl.textContent = type === 'moment' ? '发布朋友圈' : '发布共鸣';
+  if (titleEl) titleEl.textContent = type === 'moment' ? '发布朋友圈' : (zoneId && COMMUNITY_ZONE_META[zoneId] ? '发布到' + COMMUNITY_ZONE_META[zoneId].label : '发布共鸣');
   const input = $('momentComposeText'); if (input) input.placeholder = '分享此刻的心情、想法或见闻...';
   renderComposeChoices();
   $('momentComposeMask').style.display = 'flex';
@@ -4792,7 +5000,8 @@ async function submitMoment() {
       content, images: window._composeImages, type,
       topicId: type === 'community' ? (window._composeTopicId || null) : null,
       mood: type === 'community' ? (window._composeMood || null) : null,
-      dailyPromptId: type === 'community' ? (window._composePromptId || null) : null
+      dailyPromptId: type === 'community' ? (window._composePromptId || null) : null,
+      zoneId: type === 'community' ? (window._composeZoneId || null) : null
     }) });
     if (res.success) {
       closeMomentCompose();
@@ -4802,6 +5011,8 @@ async function submitMoment() {
       } else if (currentPage === 'community') {
         window._communityTab = 'recommend';
         switchCommunityTab('recommend');
+      } else if (currentPage === 'community-zone') {
+        renderCommunityZone(window._activeZoneId);
       }
     } else {
       showToast(res.error || '发布失败');

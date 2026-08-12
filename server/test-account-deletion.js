@@ -11,7 +11,7 @@ for (const key of [
   'reports', 'supportTickets', 'auditLogs', 'inviteCodes', 'smsCodes', 'emailCodes',
   'redeemCodes', 'botProfiles', 'blacklist', 'notifications', 'moments', 'follows',
   'visits', 'interactions', 'experienceEvents', 'contentDismissals', 'feedExposures',
-  'deletedIdentities'
+  'deletedIdentities', 'communityZoneProfiles', 'communityZonePasses', 'moodCheckins'
 ]) cache[key] = [];
 cache.config = { ...database.DEFAULT_CONFIG };
 
@@ -52,6 +52,9 @@ cache.rechargeOrders.push({
 });
 cache.rechargeOrders.push({ id: 'order-submitted', userId: deletedId, status: 'submitted' });
 cache.redeemCodes.push({ id: 'code-1', batch: 'order-order-paid', status: 'unused' });
+cache.communityZoneProfiles.push({ id: 'zone-profile-1', userId: deletedId, zoneId: 'letter' });
+cache.communityZonePasses.push({ id: 'zone-pass-1', userId: deletedId, zoneId: 'letter' });
+cache.moodCheckins.push({ id: 'mood-1', userId: deletedId, dateKey: '2026-08-12' });
 
 assert.equal(hasUnresolvedRecharge(deletedId), true, 'submitted recharge blocks account deletion');
 cache.rechargeOrders.find(order => order.id === 'order-submitted').status = 'rejected';
@@ -78,6 +81,9 @@ assert.equal(cache.blacklist.length, 0);
 assert.equal(cache.experienceEvents.length, 0);
 assert.equal(cache.contentDismissals.length, 0);
 assert.equal(cache.feedExposures.length, 0);
+assert.equal(cache.communityZoneProfiles.length, 0);
+assert.equal(cache.communityZonePasses.length, 0);
+assert.equal(cache.moodCheckins.length, 0);
 
 const paidOrder = cache.rechargeOrders.find(order => order.id === 'order-paid');
 assert.notEqual(paidOrder.userId, deletedId, 'financial audit row is detached from the account');

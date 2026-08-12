@@ -110,7 +110,6 @@ function maybeAwardWeeklyProgress(userId, now = Date.now()) {
     { id: 'mutual-chat', types: ['growth_mutual_chat'], goal: numberConfig('weekly_mutual_chat_goal', 5), bonus: numberConfig('weekly_mutual_chat_bonus', 20), label: '每周完成5次双向聊天' },
     { id: 'interaction', types: ['growth_received_like', 'growth_received_comment'], goal: numberConfig('weekly_interaction_goal', 10), bonus: numberConfig('weekly_interaction_bonus', 20), label: '每周收到10次真实互动' },
     { id: 'bottle-reply', types: ['growth_bottle_reply'], goal: numberConfig('weekly_bottle_reply_goal', 5), bonus: numberConfig('weekly_bottle_reply_bonus', 15), label: '每周公开回应5个漂流瓶' },
-    { id: 'prompt', types: ['growth_daily_prompt'], goal: numberConfig('weekly_prompt_goal', 3), bonus: numberConfig('weekly_prompt_bonus', 15), label: '每周参与3次每日一问' }
   ];
   const awards = [];
   let completed = 0;

@@ -57,7 +57,6 @@ router.get('/balance', auth, (req, res) => {
         { label: '公开回应漂流瓶', coins: config.daily_bottle_reply_bonus, limit: config.daily_bottle_reply_limit },
         { label: '评论动态', coins: config.daily_comment_bonus, limit: config.daily_comment_limit },
         { label: '完成双向聊天', coins: config.daily_mutual_chat_bonus, limit: config.daily_mutual_chat_limit },
-        { label: '参与每日一问', coins: config.daily_prompt_bonus, limit: config.daily_prompt_limit },
         { label: '收到真实用户点赞', coins: config.daily_received_like_bonus, limit: config.daily_received_like_limit },
         { label: '收到真实用户评论', coins: config.daily_received_comment_bonus, limit: config.daily_received_comment_limit }
       ],
@@ -67,7 +66,6 @@ router.get('/balance', auth, (req, res) => {
         { label: `完成 ${config.weekly_mutual_chat_goal} 次双向聊天`, coins: config.weekly_mutual_chat_bonus },
         { label: `收到 ${config.weekly_interaction_goal} 次真实互动`, coins: config.weekly_interaction_bonus },
         { label: `公开回应 ${config.weekly_bottle_reply_goal} 个漂流瓶`, coins: config.weekly_bottle_reply_bonus },
-        { label: `参与 ${config.weekly_prompt_goal} 次每日一问`, coins: config.weekly_prompt_bonus }
       ],
       weeklyAllBonus: config.weekly_all_tasks_bonus,
       newcomerSixBonus: config.newcomer_six_tasks_bonus,
