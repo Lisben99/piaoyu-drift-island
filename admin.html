@@ -131,6 +131,14 @@ input,textarea,select{font-family:inherit;outline:none;resize:none}
 .config-item label{font-size:12px;color:#666;font-weight:600}
 .config-item input{padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px}
 
+/* Site mail */
+.mail-compose{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(340px,.95fr);gap:16px;align-items:start}
+.mail-help{font-size:12px;color:#888;line-height:1.6;margin-top:5px}
+.mail-history-title{max-width:260px;font-weight:700;color:#243b3a}
+.mail-history-summary{max-width:360px;color:#667673;white-space:normal;line-height:1.5}
+.mail-stat{white-space:nowrap;color:#1f7a74;font-weight:600}
+@media(max-width:1000px){.mail-compose{grid-template-columns:1fr}}
+
 .hidden{display:none!important}
 </style>
 </head>
@@ -167,6 +175,7 @@ input,textarea,select{font-family:inherit;outline:none;resize:none}
       <div class="sidebar__item" onclick="switchTab('redeem')">🎟️ 卡密管理</div>
       <div class="sidebar__item" onclick="switchTab('reports')">⚠️ 举报管理 <span class="sidebar__badge hidden" id="reportBadge"></span></div>
       <div class="sidebar__item" onclick="switchTab('support')">🎫 客服工单 <span class="sidebar__badge hidden" id="supportBadge"></span></div>
+      <div class="sidebar__item" onclick="switchTab('mail')">✉️ 站内信推送</div>
       <div class="sidebar__item" onclick="switchTab('bots')">🤖 机器人管理</div>
       <div class="sidebar__item" onclick="switchTab('config')">⚙️ 业务配置</div>
       <div class="sidebar__item" onclick="switchTab('audit')">📋 审计日志</div>
@@ -294,10 +303,10 @@ function adminLogout() {
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.sidebar__item').forEach((el, i) => {
-    const tabs = ['dashboard','users','bottles','moments','coins','orders','redeem','reports','support','bots','config','audit'];
+    const tabs = ['dashboard','users','bottles','moments','coins','orders','redeem','reports','support','mail','bots','config','audit'];
     el.classList.toggle('active', tabs[i] === tab);
   });
-  const titles = { dashboard:'数据概览', users:'用户管理', bottles:'漂流瓶管理', moments:'动态管理', coins:'漂流币管理', orders:'充值订单', redeem:'卡密管理', reports:'举报管理', support:'客服工单', bots:'机器人管理', config:'业务配置', audit:'审计日志' };
+  const titles = { dashboard:'数据概览', users:'用户管理', bottles:'漂流瓶管理', moments:'动态管理', coins:'漂流币管理', orders:'充值订单', redeem:'卡密管理', reports:'举报管理', support:'客服工单', mail:'站内信推送', bots:'机器人管理', config:'业务配置', audit:'审计日志' };
   document.getElementById('pageTitle').textContent = titles[tab];
   pagination = { page: 1, pageSize: 20, total: 0 };
   renderTab();
@@ -315,6 +324,7 @@ async function renderTab() {
     else if (currentTab === 'redeem') await renderRedeemCodes();
     else if (currentTab === 'reports') await renderReports();
     else if (currentTab === 'support') await renderSupport();
+    else if (currentTab === 'mail') await renderSiteMail();
     else if (currentTab === 'bots') await renderBots();
     else if (currentTab === 'config') await renderConfig();
     else if (currentTab === 'audit') await renderAudit();
@@ -1148,6 +1158,96 @@ async function saveConfig() {
 /* ================================================================
    BOT MANAGEMENT (AGENTS §16)
    ================================================================ */
+const SITE_MAIL_TYPE_LABELS = { update:'版本更新', activity:'活动通知', system:'系统通知', safety:'安全提醒' };
+
+function toggleMailTargetInput() {
+  const target = document.getElementById('mailTargetType');
+  const group = document.getElementById('mailTargetGroup');
+  if (target && group) group.classList.toggle('hidden', target.value !== 'specific');
+}
+
+async function renderSiteMail() {
+  const res = await api('/mail?page=1&pageSize=50');
+  if (!res.success) throw new Error(res.error || '加载失败');
+  const c = document.getElementById('pageContent');
+  c.innerHTML = `
+    <div class="mail-compose">
+      <div class="card">
+        <div class="card__title">新建站内信</div>
+        <div class="form-row">
+          <div class="form-group"><label>消息类型</label><select id="mailType">
+            <option value="update">版本更新</option><option value="activity">活动通知</option>
+            <option value="system">系统通知</option><option value="safety">安全提醒</option>
+          </select></div>
+          <div class="form-group"><label>版本号（选填）</label><input id="mailVersion" maxlength="30" placeholder="如 v1.3.0"></div>
+        </div>
+        <div class="form-group"><label>标题</label><input id="mailTitle" maxlength="60" placeholder="简洁说明本次更新或通知"></div>
+        <div class="form-group"><label>摘要（选填）</label><input id="mailSummary" maxlength="160" placeholder="展示在用户收件箱列表中"></div>
+        <div class="form-group"><label>正文</label><textarea id="mailContent" maxlength="10000" style="min-height:210px;resize:vertical;line-height:1.7" placeholder="填写完整通知内容，支持换行"></textarea></div>
+        <div class="form-group"><label>接收对象</label><select id="mailTargetType" onchange="toggleMailTargetInput()">
+          <option value="all">全体可登录用户</option><option value="specific">指定用户</option>
+        </select><div class="mail-help">全体发送会自动排除机器人、已注销、封禁及冻结账户。</div></div>
+        <div class="form-group hidden" id="mailTargetGroup"><label>用户 ID / 手机号 / 邮箱</label>
+          <textarea id="mailTargets" style="min-height:90px;resize:vertical" placeholder="多个用户用逗号、空格或换行分隔"></textarea>
+          <div class="mail-help">无法匹配的账号不会阻止其他用户正常收信，发送结果会列出未匹配项。</div>
+        </div>
+        <button class="btn-sm btn-primary" id="mailSendBtn" onclick="sendSiteMailFromAdmin()" style="padding:10px 24px">确认推送</button>
+      </div>
+      <div class="card">
+        <div class="card__title">推送说明</div>
+        <div style="font-size:13px;color:#5f6e6c;line-height:1.9">
+          <p>• 用户首页信封会立即显示未读角标。</p>
+          <p>• 在线用户会实时收到“新站内信”提醒。</p>
+          <p>• 标题、摘要和正文均以纯文本展示，避免不安全内容。</p>
+          <p>• 发送记录和阅读人数会长期保留，便于复盘。</p>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card__title">发送记录</div>
+      <div style="overflow-x:auto"><table class="table">
+        <thead><tr><th>类型</th><th>标题与摘要</th><th>接收范围</th><th>送达 / 已读</th><th>发送时间</th></tr></thead>
+        <tbody>${res.mails.map(mail => `<tr>
+          <td><span class="badge badge-active">${SITE_MAIL_TYPE_LABELS[mail.type] || '系统通知'}</span>${mail.version ? `<div style="font-size:11px;color:#999;margin-top:4px">${escapeHtml(mail.version)}</div>` : ''}</td>
+          <td><div class="mail-history-title">${escapeHtml(mail.title)}</div><div class="mail-history-summary">${escapeHtml(mail.summary || '')}</div></td>
+          <td>${mail.targetType === 'specific' ? '指定用户' : '全体用户'}</td>
+          <td class="mail-stat">${mail.recipientCount || 0} / ${mail.readCount || 0}</td>
+          <td>${formatTime(mail.createdAt)}</td>
+        </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:#999">还没有发送记录</td></tr>'}</tbody>
+      </table></div>
+    </div>`;
+}
+
+async function sendSiteMailFromAdmin() {
+  const button = document.getElementById('mailSendBtn');
+  const payload = {
+    type: document.getElementById('mailType').value,
+    version: document.getElementById('mailVersion').value.trim(),
+    title: document.getElementById('mailTitle').value.trim(),
+    summary: document.getElementById('mailSummary').value.trim(),
+    content: document.getElementById('mailContent').value.trim(),
+    targetType: document.getElementById('mailTargetType').value,
+    targetIdentifiers: document.getElementById('mailTargets')?.value || ''
+  };
+  if (!payload.title) return showToast('请填写站内信标题');
+  if (!payload.content) return showToast('请填写站内信正文');
+  if (payload.targetType === 'specific' && !payload.targetIdentifiers.trim()) return showToast('请填写指定用户');
+  if (!confirm(`确认向${payload.targetType === 'all' ? '全体可登录用户' : '指定用户'}推送这封站内信？`)) return;
+  button.disabled = true;
+  button.textContent = '推送中...';
+  try {
+    const res = await api('/mail/send', { method:'POST', body:JSON.stringify(payload) });
+    if (!res.success) throw new Error(res.error || '发送失败');
+    const suffix = res.unresolved && res.unresolved.length ? `，${res.unresolved.length} 个账号未匹配` : '';
+    showToast(`已送达 ${res.deliveredCount} 位用户${suffix}`);
+    await renderSiteMail();
+  } catch (error) {
+    showToast(error.message || '发送失败');
+    button.disabled = false;
+    button.textContent = '确认推送';
+  }
+}
+
 async function renderBots() {
   const res = await api('/bots');
   if (!res.success) return;

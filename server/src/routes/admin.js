@@ -10,6 +10,8 @@ const { comparePassword, hashPassword } = require('../utils/crypto');
 const { PACKAGES, refundOrder, confirmPayment, rejectOrder } = require('../services/payment');
 const botEngine = require('../services/botEngine');
 const aiProvider = require('../services/aiProvider');
+const { sendSiteMail, listAdminMail } = require('../services/siteMail');
+const { sendToUser } = require('../services/websocket');
 
 // Admin login
 router.post('/login', (req, res) => {
@@ -541,6 +543,33 @@ router.get('/audit', adminAuth, (req, res) => {
   const paged = logs.slice(start, start + parseInt(pageSize));
   
   res.json({ success: true, logs: paged, total });
+});
+
+// ===== Site mail =====
+router.get('/mail', adminAuth, (req, res) => {
+  const limit = Math.min(Math.max(parseInt(req.query.pageSize, 10) || 50, 1), 100);
+  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+  const result = listAdminMail({ limit, offset: (page - 1) * limit });
+  res.json({ success: true, mails: result.items, total: result.total, page, pageSize: limit });
+});
+
+router.post('/mail/send', adminAuth, (req, res) => {
+  try {
+    const result = sendSiteMail({ ...(req.body || {}), adminId: req.admin.id });
+    addAuditLog(req.admin.id, 'site_mail_send', result.mail.id,
+      `发送站内信“${result.mail.title}”，送达 ${result.recipients.length} 人`);
+    for (const user of result.recipients) {
+      sendToUser(user.id, { type: 'site_mail', data: { mailId: result.mail.id, title: result.mail.title } });
+    }
+    res.json({
+      success: true,
+      mail: result.mail,
+      deliveredCount: result.recipients.length,
+      unresolved: result.unresolved
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message || '发送失败' });
+  }
 });
 
 // ===== Bot management (AGENTS §16) =====

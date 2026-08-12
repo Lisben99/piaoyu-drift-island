@@ -88,6 +88,7 @@ function purgeUserAccount(userOrId, { reason = 'user_request' } = {}) {
   removeWhere('interactions', item => item.actorId === userId || item.targetUserId === userId);
   removeWhere('notifications', item => item.userId === userId || item.actorId === userId ||
     bottleIds.has(item.refId) || momentIds.has(item.refId) || sessionIds.has(item.refId));
+  removeWhere('siteMailReceipts', item => item.userId === userId);
   removeWhere('experienceEvents', item => item.userId === userId);
   removeWhere('contentDismissals', item => item.userId === userId || momentIds.has(item.momentId));
   removeWhere('feedExposures', item => item.userId === userId || momentIds.has(item.momentId));

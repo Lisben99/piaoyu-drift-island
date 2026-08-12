@@ -161,6 +161,8 @@ function createDefaultDB() {
     botProfiles: [],
     blacklist: [],
     notifications: [],
+    siteMails: [],
+    siteMailReceipts: [],
     moments: [],
     follows: [],
     visits: [],

@@ -177,6 +177,9 @@ html.keyboard-open #app .main-tab-page.active>[data-scroll-root]{scroll-padding-
 .home-greeting .sub{font-size:12px;color:#718082}
 .home-coin-pill{display:flex;align-items:center;gap:5px;padding:6px 12px;background:rgba(223,169,72,.12);border-radius:20px}
 .home-coin-pill .amount{font-size:14px;font-weight:700;color:#8a6d2f}
+.home-mail-btn{position:relative;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1f7a74;background:rgba(31,122,116,.09);flex:0 0 36px}
+.home-mail-btn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.mail-unread-badge{position:absolute;top:-4px;right:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#ef7b62;color:#fff;font-size:9px;font-weight:800;display:none;align-items:center;justify-content:center;box-shadow:0 0 0 2px #f7f5ef}
 .drift-coin-icon{display:block;width:18px;height:18px;flex:0 0 18px}
 .hero-card{position:relative;border-radius:20px;padding:28px 22px;background:linear-gradient(135deg,#1f7a74,#2a9d98);color:#fff;overflow:hidden;margin-bottom:12px}
 .hero-card::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;border:2px solid rgba(255,255,255,.1)}
@@ -231,6 +234,25 @@ html.keyboard-open #app .main-tab-page.active>[data-scroll-root]{scroll-padding-
 .notif-item__content{font-size:13px;color:#6b7c78;margin-top:3px;line-height:1.45}
 .notif-item__time{font-size:11px;color:#aab4b1;margin-top:4px}
 .notif-empty{text-align:center;color:#aab4b1;padding:48px 0;font-size:14px}
+.mailbox-content{flex:1;min-height:0;overflow-y:auto;padding:12px 14px 28px}
+.mailbox-toolbar{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 12px;color:#718082;font-size:12px}
+.mailbox-read-all{padding:7px 11px;border-radius:15px;background:rgba(31,122,116,.09);color:#1f7a74;font-size:12px;font-weight:700}
+.mail-card{display:flex;gap:12px;padding:15px 14px;margin-bottom:10px;background:#fffdf9;border:1px solid #ebe9e2;border-radius:16px;box-shadow:0 4px 14px rgba(43,66,62,.04);cursor:pointer}
+.mail-card.unread{border-color:#bfe0d9;background:#f6fbf9}
+.mail-card__icon{width:42px;height:42px;border-radius:14px;background:linear-gradient(145deg,#e0f1ed,#f5eee1);display:flex;align-items:center;justify-content:center;font-size:20px;flex:0 0 42px}
+.mail-card__body{flex:1;min-width:0}
+.mail-card__top{display:flex;align-items:center;gap:7px}
+.mail-card__title{font-size:15px;font-weight:750;color:#173735;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.mail-card__dot{width:7px;height:7px;border-radius:50%;background:#ef7b62;flex:0 0 7px}
+.mail-card__summary{font-size:12px;line-height:1.55;color:#718082;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mail-card__meta{display:flex;align-items:center;gap:7px;margin-top:8px;font-size:10px;color:#a0aaa7}
+.mail-type-tag{display:inline-flex;padding:3px 7px;border-radius:9px;background:rgba(31,122,116,.08);color:#1f7a74;font-weight:700}
+.mail-detail-content{flex:1;min-height:0;overflow-y:auto;padding:20px 18px 40px}
+.mail-detail-sheet{background:#fffdf9;border:1px solid #ebe9e2;border-radius:18px;padding:22px 18px;box-shadow:0 8px 26px rgba(43,66,62,.05)}
+.mail-detail-kicker{display:flex;align-items:center;gap:8px;color:#1f7a74;font-size:12px;font-weight:700}
+.mail-detail-title{font-size:23px;line-height:1.35;font-weight:800;color:#173735;margin-top:14px;word-break:break-word}
+.mail-detail-meta{font-size:11px;color:#98a2a0;margin-top:9px;padding-bottom:18px;border-bottom:1px solid #eceae4}
+.mail-detail-body{font-size:15px;line-height:1.9;color:#2d4140;padding-top:18px;word-break:break-word}
 .chat-btn-primary{background:#1f7a74;color:#fff}
 .chat-btn-active{background:rgba(31,122,116,.1);color:#1f7a74}
 .chat-btn-expired{background:rgba(223,169,72,.12);color:#8a6d2f}
@@ -1121,6 +1143,10 @@ body{background:linear-gradient(145deg,#e9e4d8,#f8eee4);color:var(--island-text)
           <div class="name" id="homeName"></div>
           <div class="sub" id="homeSub"></div>
         </div>
+        <button class="home-mail-btn" onclick="navigate('mailbox')" aria-label="漂屿信箱">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="m4 7 8 6 8-6"></path></svg>
+          <span class="mail-unread-badge" id="homeMailBadge">0</span>
+        </button>
         <div class="home-coin-pill" onclick="navigate('coin-center')">
           <svg class="drift-coin-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" fill="#dfa948"/><circle cx="12" cy="12" r="7.5" fill="none" stroke="#fff" stroke-opacity=".48"/><path d="M6.5 10.5c1.8-2 3.7-2 5.5 0s3.7 2 5.5 0M6.5 14c1.8-2 3.7-2 5.5 0s3.7 2 5.5 0" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>
           <span class="amount" id="homeCoins">0</span>
@@ -1152,6 +1178,28 @@ body{background:linear-gradient(145deg,#e9e4d8,#f8eee4);color:var(--island-text)
       </div>
     </div>
     <div class="tab-bar" id="tabbar-home"></div>
+  </div>
+
+  <!-- ===== PAGE: Site Mail ===== -->
+  <div class="page" id="page-mailbox">
+    <div class="nav-bar">
+      <div class="nav-bar__back" onclick="navigateBack()">←</div>
+      <div class="nav-bar__title">漂屿信箱</div>
+      <div class="nav-bar__right"></div>
+    </div>
+    <div class="mailbox-content" data-scroll-root>
+      <div class="mailbox-toolbar"><span id="mailboxCount">版本动态与岛屿通知</span><button class="mailbox-read-all" id="mailReadAllBtn" onclick="markAllSiteMailsRead()">全部已读</button></div>
+      <div id="mailboxList"></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-mail-detail">
+    <div class="nav-bar">
+      <div class="nav-bar__back" onclick="navigateBack()">←</div>
+      <div class="nav-bar__title">站内信</div>
+      <div class="nav-bar__right"></div>
+    </div>
+    <div class="mail-detail-content" id="mailDetailContent" data-scroll-root></div>
   </div>
 
   <!-- ===== PAGE: Lobby ===== -->
@@ -1533,6 +1581,7 @@ function apiCacheDuration(path) {
   if (path === '/coins/balance' || path === '/auth/me') return 8000;
   if (path === '/chat/sessions') return 3000;
   if (path === '/notifications/unread-count') return 5000;
+  if (path === '/mail/unread-count') return 5000;
   if (/^\/bottles\?/.test(path)) return 5000;
   return 0;
 }
@@ -1855,6 +1904,8 @@ function onPageEnter(pageId) {
   if (pageId === 'account-delete') renderAccountDelete();
   if (pageId === 'support') renderSupport();
   if (pageId === 'notifications') renderNotifications();
+  if (pageId === 'mailbox') renderMailbox();
+  if (pageId === 'mail-detail') renderMailDetail(window._activeSiteMailId);
   if (pageId === 'community') { renderTabBar('tabbar-community', 'community'); loadCommunityCatalog(); switchCommunityTab('recommend', true); }
   if (pageId === 'community-search') renderCommunitySearch('');
   if (pageId === 'community-topic') renderCommunityTopic(window._activeTopicId);
@@ -2342,6 +2393,7 @@ async function renderHome() {
       $('homeDayDesc').textContent = descs[idx];
       
       renderTabBar('tabbar-home', 'home');
+      refreshSiteMailUnread();
     }
   } catch (e) {}
 }
@@ -2356,6 +2408,93 @@ async function doCheckin() {
       showToast(res.error || '签到失败');
     }
   } catch (e) { showToast('签到失败'); }
+}
+
+/* ================================================================
+   SITE MAIL
+   ================================================================ */
+const SITE_MAIL_LABELS = { update:'版本更新', activity:'活动通知', system:'系统通知', safety:'安全提醒' };
+const SITE_MAIL_ICONS = { update:'✨', activity:'🎁', system:'📨', safety:'🛡️' };
+
+function updateSiteMailBadge(count) {
+  const badge = $('homeMailBadge');
+  if (!badge) return;
+  const unread = Math.max(0, Number(count) || 0);
+  badge.style.display = unread ? 'flex' : 'none';
+  badge.textContent = unread > 99 ? '99+' : unread;
+}
+
+async function refreshSiteMailUnread() {
+  try {
+    const res = await api('/mail/unread-count');
+    if (res && res.success) updateSiteMailBadge(res.unreadCount);
+  } catch (_) {}
+}
+
+function siteMailCardHtml(mail) {
+  const unread = !mail.readAt;
+  return `<div class="mail-card ${unread ? 'unread' : ''}" onclick="openSiteMail('${mail.id}')">
+    <div class="mail-card__icon">${SITE_MAIL_ICONS[mail.type] || '📨'}</div>
+    <div class="mail-card__body">
+      <div class="mail-card__top"><div class="mail-card__title">${escapeHtml(mail.title)}</div>${unread ? '<span class="mail-card__dot"></span>' : ''}</div>
+      <div class="mail-card__summary">${escapeHtml(mail.summary || '')}</div>
+      <div class="mail-card__meta"><span class="mail-type-tag">${SITE_MAIL_LABELS[mail.type] || '系统通知'}</span>${mail.version ? `<span>${escapeHtml(mail.version)}</span>` : ''}<span>${formatTime(mail.createdAt)}</span></div>
+    </div>
+  </div>`;
+}
+
+async function renderMailbox() {
+  const list = $('mailboxList');
+  if (!list) return;
+  list.innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
+  try {
+    const res = await api('/mail', { cacheMs: 0 });
+    if (!res.success) throw new Error(res.error || '加载失败');
+    updateSiteMailBadge(res.unreadCount);
+    $('mailboxCount').textContent = res.unreadCount ? `${res.unreadCount} 封未读 · 共 ${res.total} 封` : `共 ${res.total} 封 · 已全部读完`;
+    $('mailReadAllBtn').style.display = res.unreadCount ? '' : 'none';
+    list.innerHTML = res.mails.length
+      ? res.mails.map(siteMailCardHtml).join('')
+      : '<div class="empty-state"><div class="empty-state__icon">📭</div><div class="empty-state__title">信箱还是空的</div><div class="empty-state__desc">版本更新和岛屿通知会送到这里</div></div>';
+  } catch (_) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-state__icon">📡</div><div class="empty-state__title">信箱加载失败</div><div class="empty-state__desc">请稍后再试</div></div>';
+  }
+}
+
+function openSiteMail(mailId) {
+  window._activeSiteMailId = mailId;
+  navigate('mail-detail');
+}
+
+async function renderMailDetail(mailId) {
+  const content = $('mailDetailContent');
+  if (!content || !mailId) return;
+  content.innerHTML = '<div class="loading-spinner"><div class="dots"><span></span><span></span><span></span></div></div>';
+  try {
+    const res = await api('/mail/' + encodeURIComponent(mailId), { cacheMs: 0 });
+    if (!res.success) throw new Error(res.error || '加载失败');
+    const mail = res.mail;
+    updateSiteMailBadge(res.unreadCount);
+    content.innerHTML = `<article class="mail-detail-sheet">
+      <div class="mail-detail-kicker"><span>${SITE_MAIL_ICONS[mail.type] || '📨'}</span><span>${SITE_MAIL_LABELS[mail.type] || '系统通知'}${mail.version ? ` · ${escapeHtml(mail.version)}` : ''}</span></div>
+      <h1 class="mail-detail-title">${escapeHtml(mail.title)}</h1>
+      <div class="mail-detail-meta">漂屿官方 · ${formatTime(mail.createdAt)}</div>
+      <div class="mail-detail-body">${escapeHtml(mail.content).replace(/\n/g, '<br>')}</div>
+    </article>`;
+  } catch (_) {
+    content.innerHTML = '<div class="empty-state"><div class="empty-state__icon">📭</div><div class="empty-state__title">这封信暂时无法打开</div></div>';
+  }
+}
+
+async function markAllSiteMailsRead() {
+  try {
+    const res = await api('/mail/read-all', { method:'POST' });
+    if (!res.success) throw new Error(res.error || '操作失败');
+    resetApiCache();
+    updateSiteMailBadge(0);
+    showToast('已全部标记为已读');
+    renderMailbox();
+  } catch (_) { showToast('操作失败，请稍后重试'); }
 }
 
 function confirmLogout() {
@@ -3180,6 +3319,11 @@ function connectWS() {
         } else {
           refreshNotifUnread();
         }
+      } else if (msg.type === 'site_mail') {
+        resetApiCache();
+        refreshSiteMailUnread();
+        if (currentPage === 'mailbox') renderMailbox();
+        showToast('收到一封新的漂屿站内信');
       } else if (msg.type === 'error') {
         showToast(msg.error);
       }
@@ -4301,8 +4445,9 @@ async function init() {
           refreshUnread();
           refreshNotifUnread();
           refreshInteractUnread();
+          refreshSiteMailUnread();
           if (!window.__notifPoll) {
-            window.__notifPoll = setInterval(() => { refreshNotifUnread(); refreshInteractUnread(); }, 30000);
+            window.__notifPoll = setInterval(() => { refreshNotifUnread(); refreshInteractUnread(); refreshSiteMailUnread(); }, 30000);
           }
         }
         return;
