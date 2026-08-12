@@ -106,6 +106,9 @@ const DEFAULT_CONFIG = {
   paymentQRNote: '',
   system_announcement: '',
   maintenance_mode: false,
+  maintenance_title: '系统维护中',
+  maintenance_message: '漂屿正在进行系统升级与优化，请稍后再来。感谢你的理解与耐心等待。',
+  maintenance_end_at: '',
   // ===== Feature Flags (AGENTS §21) — all toggleable in admin backend =====
   enable_bot: true,
   enable_ai_reply: true,            // template-first by default; AI only if a provider key is present

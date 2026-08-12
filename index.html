@@ -53,6 +53,17 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:16px;height
 [data-scroll-root]{min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
 @keyframes pageIn{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
 
+/* ===== Maintenance ===== */
+.maintenance-page{position:relative;overflow:hidden!important;align-items:center;justify-content:center;padding:28px 24px calc(36px + env(safe-area-inset-bottom));text-align:center;background:radial-gradient(circle at 85% 12%,rgba(239,123,98,.18),transparent 27%),radial-gradient(circle at 8% 82%,rgba(31,122,116,.14),transparent 30%),#f7f3ea!important}
+.maintenance-page::before,.maintenance-page::after{content:'';position:absolute;left:-10%;width:120%;height:34px;border:3px solid rgba(31,122,116,.09);border-left:0;border-right:0;border-radius:50%}
+.maintenance-page::before{top:15%;transform:rotate(-5deg)}.maintenance-page::after{bottom:13%;transform:rotate(4deg)}
+.maintenance-card{position:relative;z-index:1;width:100%;padding:30px 22px 24px;border:1px solid rgba(31,122,116,.1);border-radius:28px;background:rgba(255,253,248,.94);box-shadow:0 18px 45px rgba(32,70,66,.12);backdrop-filter:blur(10px)}
+.maintenance-icon{width:78px;height:78px;margin:0 auto 18px;border-radius:26px;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(145deg,#1f7a74,#49a59b);box-shadow:0 14px 28px rgba(31,122,116,.22)}
+.maintenance-icon svg{width:42px;height:42px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.maintenance-kicker{font-size:10px;font-weight:800;letter-spacing:3px;color:#ef7b62}.maintenance-title{margin-top:8px;font-size:25px;line-height:1.3;color:#203536}.maintenance-message{margin:13px auto 0;max-width:310px;font-size:14px;line-height:1.8;color:#657476;white-space:pre-wrap;word-break:break-word}
+.maintenance-estimate{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:20px;padding:12px 14px;border-radius:15px;background:rgba(223,169,72,.12);color:#8a692d;font-size:12px;font-weight:700}.maintenance-estimate svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2}
+.maintenance-retry{margin-top:20px;width:100%;height:48px;border-radius:15px;background:#1f7a74;color:#fff;font-size:14px;font-weight:800;box-shadow:0 10px 20px rgba(31,122,116,.16)}.maintenance-note{margin-top:13px;font-size:10px;color:#9aa4a1}
+
 /* ===== Toast ===== */
 #toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.9);background:rgba(0,0,0,.72);color:#fff;padding:12px 24px;border-radius:14px;font-size:14px;font-weight:500;z-index:9999;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;max-width:280px;text-align:center;line-height:1.5}
 #toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
@@ -858,6 +869,24 @@ body{background:linear-gradient(145deg,#e9e4d8,#f8eee4);color:var(--island-text)
     </div>
   </div>
 
+  <!-- ===== PAGE: System Maintenance ===== -->
+  <div class="page maintenance-page" id="page-maintenance">
+    <div class="maintenance-card">
+      <div class="maintenance-icon" aria-hidden="true">
+        <svg viewBox="0 0 48 48"><path d="M8 34c6-5 10-5 16 0s10 5 16 0"/><path d="M8 40c6-5 10-5 16 0s10 5 16 0"/><path d="M20 27 31 16"/><path d="m27 12 4 4 7-7-4-4-7 7Z"/><path d="m17 30-4 4"/></svg>
+      </div>
+      <div class="maintenance-kicker">DRIFT ISLAND</div>
+      <h1 class="maintenance-title" id="maintenanceTitle">系统维护中</h1>
+      <p class="maintenance-message" id="maintenanceMessage">漂屿正在进行系统升级与优化，请稍后再来。</p>
+      <div class="maintenance-estimate" id="maintenanceEstimate">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <span id="maintenanceEstimateText">恢复时间待定，请稍后再试</span>
+      </div>
+      <button class="maintenance-retry" onclick="retryMaintenanceStatus()">重新检查服务状态</button>
+      <div class="maintenance-note">维护完成后即可正常进入，无需重新注册</div>
+    </div>
+  </div>
+
   <!-- ===== PAGE: Login ===== -->
   <div class="page" id="page-login">
     <div class="auth-page">
@@ -1617,6 +1646,10 @@ async function api(path, options = {}) {
       if (res.status === 413) throw new Error('图片总大小过大，请减少图片数量后重试');
       throw new Error(res.ok ? '服务器返回异常，请稍后重试' : `请求失败（${res.status}）`);
     }
+    if (data && data.maintenance === true) {
+      showMaintenancePage(data);
+      return data;
+    }
     if (res.status === 413) {
       throw new Error(data.error || '图片总大小过大，请减少图片数量后重试');
     }
@@ -1668,6 +1701,61 @@ let currentChatSessionId = null;
 let lobbyFilter = 'all';
 let chatMultiSelect = false;
 let selectedSessions = new Set();
+
+function maintenanceEstimateText(value) {
+  if (!value) return '恢复时间待定，请稍后再试';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '恢复时间待定，请稍后再试';
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  return `预计 ${month}月${day}日 ${hour}:${minute} 完成维护`;
+}
+
+function showMaintenancePage(status = {}) {
+  window._maintenanceActive = true;
+  if (typeof wsReconnectTimer !== 'undefined' && wsReconnectTimer) {
+    clearTimeout(wsReconnectTimer);
+    wsReconnectTimer = null;
+  }
+  if (ws) {
+    try { ws.onclose = null; ws.close(); } catch (_) {}
+    ws = null;
+  }
+  if ($('maintenanceTitle')) $('maintenanceTitle').textContent = status.title || '系统维护中';
+  if ($('maintenanceMessage')) $('maintenanceMessage').textContent = status.message || '漂屿正在进行系统升级与优化，请稍后再来。';
+  if ($('maintenanceEstimateText')) $('maintenanceEstimateText').textContent = maintenanceEstimateText(status.estimatedEndAt);
+  navigateTo('maintenance', true);
+  if (!window._maintenancePoll) {
+    window._maintenancePoll = setInterval(() => retryMaintenanceStatus(true), 30000);
+  }
+}
+
+async function fetchSystemStatus() {
+  const response = await fetch(API_BASE + '/system/status', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
+  if (!response.ok) throw new Error('status unavailable');
+  return response.json();
+}
+
+async function retryMaintenanceStatus(silent = false) {
+  try {
+    const status = await fetchSystemStatus();
+    if (status.maintenance) {
+      showMaintenancePage(status);
+      if (!silent) showToast('系统仍在维护中');
+      return;
+    }
+    window._maintenanceActive = false;
+    if (window._maintenancePoll) {
+      clearInterval(window._maintenancePoll);
+      window._maintenancePoll = null;
+    }
+    location.reload();
+  } catch (_) {
+    if (!silent) showToast('暂时无法连接服务器，请稍后再试');
+  }
+}
 
 /* ================================================================
    UTILITIES
@@ -3384,6 +3472,8 @@ function connectWS() {
       } else if (msg.type === 'important_popup') {
         resetApiCache();
         checkPendingImportantPopup();
+      } else if (msg.type === 'system_maintenance') {
+        showMaintenancePage(msg.data || {});
       } else if (msg.type === 'error') {
         showToast(msg.error);
       }
@@ -3392,6 +3482,7 @@ function connectWS() {
 
   ws.onclose = function() {
     ws = null;
+    if (window._maintenanceActive) return;
     // Auto reconnect with exponential backoff (max 30s).
     if (!wsReconnectTimer && wsReconnectAttempts < 10) {
       const delay = Math.min(1000 * Math.pow(1.5, wsReconnectAttempts), 30000);
@@ -4497,6 +4588,15 @@ updateClock();
    INITIALIZATION
    ================================================================ */
 async function init() {
+  try {
+    const systemStatus = await fetchSystemStatus();
+    if (systemStatus.maintenance) {
+      showMaintenancePage(systemStatus);
+      return;
+    }
+  } catch (_) {
+    // Preserve the existing login flow if the lightweight status probe fails.
+  }
   const token = getToken();
   if (token) {
     try {
@@ -4531,7 +4631,7 @@ document.addEventListener('visibilitychange', () => {
     return;
   }
   // 切回前台：若已无登录态且不在登录 / 欢迎页，强制回到登录页
-  if (!getToken() && currentPage && currentPage !== 'login' && currentPage !== 'welcome') {
+  if (!getToken() && currentPage && currentPage !== 'login' && currentPage !== 'welcome' && currentPage !== 'maintenance') {
     navigateTo('login', true);
   }
 });

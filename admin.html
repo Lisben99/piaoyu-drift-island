@@ -931,6 +931,20 @@ async function renderConfig() {
       </select></div>
       <button class="btn-sm btn-primary" style="margin-top:12px;padding:10px 24px" onclick="saveCoinOperationMode()">立即切换模式</button>
     </div>
+    <div class="card" style="margin-bottom:20px;border:2px solid ${c.maintenance_mode ? '#ef7b62' : '#61b6a8'}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px">
+        <div class="card__title" style="margin:0">系统维护模式</div>
+        <span class="badge ${c.maintenance_mode ? 'badge-banned' : 'badge-active'}">${c.maintenance_mode ? '维护中' : '正常服务'}</span>
+      </div>
+      <div style="font-size:13px;line-height:1.8;color:#667;margin-bottom:14px">开启后，所有用户端功能立即停止访问并显示维护页面；管理员后台、健康检查和关闭维护的入口保持可用。</div>
+      <div class="config-item" style="margin-bottom:12px"><label><input type="checkbox" id="cfg_maintenance_mode" ${c.maintenance_mode?'checked':''}> 开启系统维护模式</label></div>
+      <div class="config-grid">
+        <div class="config-item"><label>维护页面标题</label><input type="text" id="cfg_maintenance_title" maxlength="60" value="${escapeHtml(c.maintenance_title || '系统维护中')}"></div>
+        <div class="config-item"><label>预计维护完成时间（选填）</label><input type="datetime-local" id="cfg_maintenance_end_at" value="${escapeHtml(String(c.maintenance_end_at || '').slice(0,16))}"></div>
+      </div>
+      <div class="config-item" style="margin-top:12px"><label>维护提示内容</label><textarea id="cfg_maintenance_message" maxlength="500" style="width:100%;min-height:92px;padding:11px;border:1px solid #ddd;border-radius:8px;resize:vertical;line-height:1.6">${escapeHtml(c.maintenance_message || '漂屿正在进行系统升级与优化，请稍后再来。感谢你的理解与耐心等待。')}</textarea></div>
+      <button class="btn-sm ${c.maintenance_mode ? 'btn-danger' : 'btn-warning'}" style="margin-top:12px;padding:10px 24px" onclick="saveMaintenanceSettings()">${c.maintenance_mode ? '更新或关闭维护' : '保存维护设置'}</button>
+    </div>
     <div class="card">
       <div class="card__title">共建期基础与签到奖励</div>
       <div class="config-item" style="margin-bottom:14px"><label><input type="checkbox" id="cfg_growth_mode_enabled" ${c.growth_mode_enabled!==false?'checked':''}> 开启“用户增长共建期”经济规则</label></div>
@@ -971,7 +985,6 @@ async function renderConfig() {
       </div>
       <div class="config-item" style="margin-top:12px"><label>收款提示文字</label><input type="text" id="cfg_paymentQR_note" value="${c.paymentQRNote || ''}" placeholder="如：微信扫码付款，转账备注填你的手机号" style="width:100%" /></div>
       <div class="config-item" style="margin-top:12px"><label>系统公告</label><input type="text" id="cfg_system_announcement" value="${c.system_announcement || ''}" style="width:100%"></div>
-      <div class="config-item" style="margin-top:12px"><label><input type="checkbox" id="cfg_maintenance_mode" ${c.maintenance_mode?'checked':''}> 维护模式（开启后用户无法使用）</label></div>
     </div>
 
     <div class="card" style="margin-top:20px">
@@ -1072,6 +1085,27 @@ async function saveCoinOperationMode() {
   renderConfig();
 }
 
+async function saveMaintenanceSettings() {
+  const enabled = document.getElementById('cfg_maintenance_mode').checked;
+  const title = document.getElementById('cfg_maintenance_title').value.trim();
+  const message = document.getElementById('cfg_maintenance_message').value.trim();
+  const estimatedEndAt = document.getElementById('cfg_maintenance_end_at').value;
+  if (!title || !message) return showToast('请填写维护标题和提示内容', 'error');
+  if (enabled && !confirm('确认开启系统维护？所有在线用户将立即看到维护页面。')) return;
+  const res = await api('/config', {
+    method:'POST',
+    body:JSON.stringify({
+      maintenance_mode: enabled,
+      maintenance_title: title,
+      maintenance_message: message,
+      maintenance_end_at: estimatedEndAt
+    })
+  });
+  if (!res.success) return showToast(res.error || '保存失败', 'error');
+  showToast(enabled ? '维护模式已开启' : '维护模式已关闭');
+  renderConfig();
+}
+
 async function saveConfig() {
   const levelList = id => document.getElementById(id).value.split(',').map(value => parseInt(value.trim(), 10));
   const updates = {
@@ -1147,6 +1181,9 @@ async function saveConfig() {
     recharge_rate: parseInt(document.getElementById('cfg_recharge_rate').value),
     system_announcement: document.getElementById('cfg_system_announcement').value,
     maintenance_mode: document.getElementById('cfg_maintenance_mode').checked,
+    maintenance_title: document.getElementById('cfg_maintenance_title').value.trim(),
+    maintenance_message: document.getElementById('cfg_maintenance_message').value.trim(),
+    maintenance_end_at: document.getElementById('cfg_maintenance_end_at').value,
     paymentQR: window.pendingPaymentQR || '',
     paymentQRNote: document.getElementById('cfg_paymentQR_note').value,
     enable_bot: document.getElementById('cfg_enable_bot').checked,

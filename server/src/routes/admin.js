@@ -12,7 +12,7 @@ const botEngine = require('../services/botEngine');
 const aiProvider = require('../services/aiProvider');
 const { sendSiteMail, listAdminMail } = require('../services/siteMail');
 const { sendPopupNotification, listAdminPopups } = require('../services/popupNotifications');
-const { sendToUser } = require('../services/websocket');
+const { sendToUser, broadcastMaintenance } = require('../services/websocket');
 
 // Admin login
 router.post('/login', (req, res) => {
@@ -527,15 +527,28 @@ router.post('/config', adminAuth, (req, res) => {
       if (key === 'coin_operation_mode' && !['free', 'normal'].includes(value)) {
         return res.status(400).json({ success: false, error: '运营模式只能是免费推广模式或正常运营模式' });
       }
+      if (key === 'maintenance_end_at' && value && Number.isNaN(Date.parse(value))) {
+        return res.status(400).json({ success: false, error: '预计维护完成时间格式无效' });
+      }
       updates[key] = value;
     }
   }
   if (!Object.keys(updates).length) return res.status(400).json({ success: false, error: '没有可保存的配置' });
   const oldConfig = { ...db().config };
+  const nextConfig = { ...oldConfig, ...updates };
+  if (nextConfig.maintenance_mode && (!String(nextConfig.maintenance_title || '').trim() || !String(nextConfig.maintenance_message || '').trim())) {
+    return res.status(400).json({ success: false, error: '开启维护模式前请填写维护标题和提示内容' });
+  }
   Object.assign(db().config, updates);
   console.log('[Admin] config updated:', JSON.stringify(updates));
   addAuditLog(req.admin.id, 'config_update', 'config', `配置更新: ${JSON.stringify(updates)}`);
   save();
+  if (db().config.maintenance_mode && (
+    oldConfig.maintenance_mode !== true ||
+    Object.prototype.hasOwnProperty.call(updates, 'maintenance_title') ||
+    Object.prototype.hasOwnProperty.call(updates, 'maintenance_message') ||
+    Object.prototype.hasOwnProperty.call(updates, 'maintenance_end_at')
+  )) broadcastMaintenance();
   res.json({ success: true, config: db().config });
 });
 

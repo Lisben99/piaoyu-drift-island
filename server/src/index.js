@@ -10,6 +10,7 @@ const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
 const crypto = require('crypto');
+const { db } = require('./db');
 
 const app = express();
 const server = http.createServer(app);
@@ -105,6 +106,36 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
+function publicSystemStatus() {
+  const config = db().config;
+  return {
+    success: true,
+    maintenance: config.maintenance_mode === true,
+    title: config.maintenance_title || '系统维护中',
+    message: config.maintenance_message || '漂屿正在进行系统升级与优化，请稍后再来。',
+    estimatedEndAt: config.maintenance_end_at || '',
+    serverTime: Date.now()
+  };
+}
+
+// Public status remains available during maintenance so the app can render a
+// dedicated maintenance screen and detect when service has resumed.
+app.get('/api/system/status', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, max-age=0');
+  res.json(publicSystemStatus());
+});
+
+// Keep health checks and the administrator console available. All user APIs
+// are rejected while maintenance is active, including login and mutations.
+app.use('/api', (req, res, next) => {
+  const pathname = String(req.originalUrl || '').split('?')[0];
+  if (pathname === '/api/health' || pathname === '/api/system/status' || pathname.startsWith('/api/admin')) return next();
+  const status = publicSystemStatus();
+  if (!status.maintenance) return next();
+  res.setHeader('Cache-Control', 'no-store, max-age=0');
+  return res.status(503).json({ ...status, success: false, error: status.message });
+});
+
 // Initialize WebSocket
 const wsService = require('./services/websocket');
 wsService.init(server);
@@ -142,6 +173,7 @@ app.use('/api/redeem', redeemRoutes.user);
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
+    maintenance: db().config.maintenance_mode === true,
     timestamp: Date.now(),
     sms_provider: process.env.SMS_PROVIDER || 'dev',
     email_provider: process.env.EMAIL_PROVIDER || 'dev',

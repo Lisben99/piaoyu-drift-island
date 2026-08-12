@@ -17,6 +17,10 @@ function init(server) {
   wss = new WebSocketServer({ server, path: '/ws' });
   
   wss.on('connection', (ws, req) => {
+    if (db().config.maintenance_mode === true) {
+      ws.close(1013, 'System maintenance');
+      return;
+    }
     // Parse token from URL query
     const url = new URL(req.url, 'http://localhost');
     const token = url.searchParams.get('token');
@@ -72,6 +76,11 @@ function init(server) {
 }
 
 async function handleMessage(ws, msg) {
+  if (db().config.maintenance_mode === true) {
+    ws.send(JSON.stringify({ type: 'system_maintenance', data: maintenancePayload() }));
+    ws.close(1013, 'System maintenance');
+    return;
+  }
   const { type, data } = msg;
   
   if (type === 'chat_message') {
@@ -212,4 +221,28 @@ function disconnectUser(userId, reason = 'account_deleted') {
   return closed;
 }
 
-module.exports = { init, sendToUser, isUserOnline, disconnectUser };
+function maintenancePayload() {
+  const config = db().config;
+  return {
+    maintenance: true,
+    title: config.maintenance_title || '系统维护中',
+    message: config.maintenance_message || '漂屿正在进行系统升级与优化，请稍后再来。',
+    estimatedEndAt: config.maintenance_end_at || ''
+  };
+}
+
+function broadcastMaintenance() {
+  const payload = JSON.stringify({ type: 'system_maintenance', data: maintenancePayload() });
+  connections.forEach(conns => {
+    conns.forEach(ws => {
+      try {
+        if (ws.readyState === 1) ws.send(payload);
+        setTimeout(() => {
+          try { if (ws.readyState === 1 || ws.readyState === 0) ws.close(1013, 'System maintenance'); } catch (_) {}
+        }, 150);
+      } catch (_) {}
+    });
+  });
+}
+
+module.exports = { init, sendToUser, isUserOnline, disconnectUser, broadcastMaintenance };
