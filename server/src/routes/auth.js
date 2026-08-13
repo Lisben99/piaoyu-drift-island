@@ -50,6 +50,32 @@ function _clientIp(req) {
   return (req.ip || (req.connection && req.connection.remoteAddress) || 'unknown');
 }
 
+function _maskLoginIdentifier(value) {
+  const raw = String(value || 'unknown');
+  if (raw.includes('@')) {
+    const [name, domain] = raw.split('@');
+    return `${name.slice(0, 2)}***@${domain || 'unknown'}`;
+  }
+  if (/^1\d{10}$/.test(raw)) return `${raw.slice(0, 3)}****${raw.slice(-4)}`;
+  return raw === 'unknown' ? raw : `${raw.slice(0, 2)}***`;
+}
+
+// Render 免费方案不提供 HTTP Request Logs，因此只为登录接口记录不含密码、
+// 验证码和完整联系方式的诊断日志，便于区分“请求未到服务器”和“业务校验失败”。
+function _attachLoginDiagnosticLog(req, res) {
+  const body = req.body || {};
+  const mode = body.password ? 'password' : (body.email ? 'email_code' : 'sms_code');
+  const identifier = body.account || body.email || body.phone || 'unknown';
+  const origin = String(req.headers.origin || req.headers.referer || 'direct').slice(0, 160);
+  const startedAt = Date.now();
+  const originalJson = res.json.bind(res);
+  res.json = (payload) => {
+    const result = payload && payload.success ? 'success' : `failed:${String((payload && payload.error) || 'unknown').slice(0, 80)}`;
+    console.log(`[AUTH][LOGIN] mode=${mode} account=${_maskLoginIdentifier(identifier)} result=${result} durationMs=${Date.now() - startedAt} origin=${origin}`);
+    return originalJson(payload);
+  };
+}
+
 function _todayStr() { return new Date().toISOString().slice(0, 10); }
 
 // 返回 null 表示放行；返回字符串表示拦截原因
@@ -168,6 +194,7 @@ router.post('/register', async (req, res) => {
 // Login: either (account + password) or (phone|email + code).
 // Code login auto-creates the account on first verify (legacy behavior, no password set).
 router.post('/login', async (req, res) => {
+  _attachLoginDiagnosticLog(req, res);
   const { phone, email, code, account, password } = req.body;
 
   // ---- Password login ----
