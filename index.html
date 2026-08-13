@@ -888,7 +888,7 @@ body{background:linear-gradient(145deg,#e9e4d8,#f8eee4);color:var(--island-text)
   </div>
 
   <!-- ===== PAGE: Login ===== -->
-  <div class="page" id="page-login">
+  <div class="page active" id="page-login">
     <div class="auth-page">
 
       <!-- 进入 / 欢迎页（升级版：插画 + 手机号/邮箱快捷输入 + 协议勾选） -->
@@ -1732,10 +1732,27 @@ function showMaintenancePage(status = {}) {
   }
 }
 
-async function fetchSystemStatus() {
-  const response = await fetch(API_BASE + '/system/status', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
-  if (!response.ok) throw new Error('status unavailable');
-  return response.json();
+async function fetchSystemStatus(timeoutMs = 4000) {
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  let timeoutId;
+  try {
+    const request = fetch(API_BASE + '/system/status', {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' },
+      ...(controller ? { signal: controller.signal } : {})
+    });
+    const timeout = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        if (controller) controller.abort();
+        reject(new Error('status timeout'));
+      }, Math.max(1000, Number(timeoutMs) || 4000));
+    });
+    const response = await Promise.race([request, timeout]);
+    if (!response.ok) throw new Error('status unavailable');
+    return response.json();
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
 
 async function retryMaintenanceStatus(silent = false) {
@@ -4588,19 +4605,19 @@ updateClock();
    INITIALIZATION
    ================================================================ */
 async function init() {
-  try {
-    const systemStatus = await fetchSystemStatus();
-    if (systemStatus.maintenance) {
-      showMaintenancePage(systemStatus);
-      return;
-    }
-  } catch (_) {
-    // Preserve the existing login flow if the lightweight status probe fails.
-  }
+  // Keep the login page visible immediately. The maintenance probe runs in the
+  // background so a slow/cold backend can never leave users on a blank shell.
+  navigateTo('login', true);
+  fetchSystemStatus().then(systemStatus => {
+    if (systemStatus.maintenance) showMaintenancePage(systemStatus);
+  }).catch(() => {
+    // API calls still enforce maintenance mode; a failed probe must not block login.
+  });
   const token = getToken();
   if (token) {
     try {
       const res = await api('/auth/me');
+      if (res && res.maintenance === true) return;
       if (res && res.id) {
         currentUser = res;
         if (!res.role) {
@@ -4621,7 +4638,7 @@ async function init() {
       }
     } catch (e) { clearToken(); }
   }
-  navigateTo('login', true);
+  if (!window._maintenanceActive) navigateTo('login', true);
 }
 
 /* 切到后台即清除登录态：微信 / App 内切出再点链接必须重新登录 */
