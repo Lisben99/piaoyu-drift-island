@@ -1621,7 +1621,12 @@ function apiCacheDuration(path) {
 }
 
 async function api(path, options = {}) {
-  const { cacheMs, timeoutMs = 15000, ...requestOptions } = options;
+  const { cacheMs, timeoutMs: requestedTimeoutMs, ...requestOptions } = options;
+  // Render 免费实例冷启动可能超过 50 秒。认证请求必须等到实例完成唤醒，
+  // 普通业务请求仍使用较短超时，避免页面长时间无反馈。
+  const timeoutMs = requestedTimeoutMs == null
+    ? (/^\/auth\//.test(path) ? 75000 : 15000)
+    : requestedTimeoutMs;
   const method = String(requestOptions.method || 'GET').toUpperCase();
   const token = getToken();
   const cacheKey = `${token || 'guest'}:${path}`;
@@ -1701,6 +1706,23 @@ async function api(path, options = {}) {
   } finally {
     if (method === 'GET' && apiInflightRequests.get(cacheKey) === request) apiInflightRequests.delete(cacheKey);
   }
+}
+
+const BACKUP_LOGIN_URL = 'https://drift-island-api.onrender.com/?v=backup-login';
+function handleAuthRequestError(error, action = '登录') {
+  const message = error && error.message ? String(error.message) : `${action}失败，请重试`;
+  if (message.includes('服务器连接超时') || message.includes('Failed to fetch') || message.includes('网络')) {
+    showModal(
+      '当前网络连接不稳定',
+      `手机当前无法连接登录服务。你可以重试，或使用备用入口继续${action}。`,
+      [
+        { text: '稍后重试', cancel: true },
+        { text: '使用备用入口', onClick: () => { window.location.href = BACKUP_LOGIN_URL; } }
+      ]
+    );
+    return;
+  }
+  showToast(message);
 }
 
 /* ================================================================
@@ -2136,7 +2158,7 @@ async function doSendCode() {
   try {
     res = await api(endpoint, { method: 'POST', body: JSON.stringify(body) });
   } catch (e) {
-    showToast('发送失败，请重试');
+    handleAuthRequestError(e, '获取验证码');
     btn.innerHTML = '获取验证码'; btn.disabled = false;
     return;
   }
@@ -2253,7 +2275,7 @@ $('homeActionBtn').onclick = async () => {
       } else {
         showToast(res.error || '登录失败');
       }
-    } catch (e) { showToast('登录失败，请重试'); }
+    } catch (e) { handleAuthRequestError(e, '登录'); }
     btn.innerHTML = '登录'; btn.disabled = false;
   } else {
     const val = (homeMode === 'phone' ? $('homePhoneInput') : $('homeEmailInput')).value.trim();
@@ -2296,7 +2318,7 @@ $('loginBtn').onclick = async function() {
     } else {
       showToast(res.error || '登录失败');
     }
-  } catch (e) { showToast('登录失败，请重试'); }
+  } catch (e) { handleAuthRequestError(e, '登录'); }
   this.innerHTML = '验证并登录'; this.disabled = false;
 };
 
@@ -2321,7 +2343,7 @@ $('pwdLoginBtn').onclick = async function() {
     } else {
       showToast(res.error || '登录失败');
     }
-  } catch (e) { showToast('登录失败，请重试'); }
+  } catch (e) { handleAuthRequestError(e, '登录'); }
   this.innerHTML = '登录'; this.disabled = false;
 };
 
