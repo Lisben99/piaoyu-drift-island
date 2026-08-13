@@ -1621,7 +1621,7 @@ function apiCacheDuration(path) {
 }
 
 async function api(path, options = {}) {
-  const { cacheMs, ...requestOptions } = options;
+  const { cacheMs, timeoutMs = 15000, ...requestOptions } = options;
   const method = String(requestOptions.method || 'GET').toUpperCase();
   const token = getToken();
   const cacheKey = `${token || 'guest'}:${path}`;
@@ -1636,8 +1636,21 @@ async function api(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...requestOptions.headers };
   const token = getToken();
   if (token) headers['Authorization'] = 'Bearer ' + token;
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  let timeoutId;
   try {
-    const res = await fetch(API_BASE + path, { ...requestOptions, headers });
+    const networkRequest = fetch(API_BASE + path, {
+      ...requestOptions,
+      headers,
+      ...(controller ? { signal: controller.signal } : {})
+    });
+    const timeout = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        if (controller) controller.abort();
+        reject(new Error('request timeout'));
+      }, Math.max(3000, Number(timeoutMs) || 15000));
+    });
+    const res = await Promise.race([networkRequest, timeout]);
     const responseText = await res.text();
     let data;
     try {
@@ -1672,10 +1685,13 @@ async function api(path, options = {}) {
     }
     return data;
   } catch (e) {
-    if (e.message.includes('Failed to fetch')) {
-      showToast('网络连接失败，请检查网络');
+    if (e.message.includes('Failed to fetch') || e.message.includes('timeout') || e.name === 'AbortError') {
+      showToast('服务器连接超时，请稍后重试或切换网络');
+      throw new Error('服务器连接超时，请稍后重试或切换网络');
     }
     throw e;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
   }
   })();
 
